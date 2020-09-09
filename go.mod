@@ -50,8 +50,8 @@ replace (
 
 // libpod v2.0.6
 replace (
-	github.com/containernetworking/cni => github.com/containernetworking/cni v0.7.2-0.20200304161608-4fae32b84921
-	github.com/containernetworking/plugins => github.com/containernetworking/plugins v0.8.6
+	github.com/containernetworking/cni => github.com/containernetworking/cni v0.8.0
+	github.com/containernetworking/plugins => github.com/containernetworking/plugins v0.8.7
 	github.com/containers/buildah => github.com/containers/buildah v1.15.1
 	github.com/containers/common => github.com/containers/common v0.21.0
 	github.com/containers/image/v5 => github.com/containers/image/v5 v5.5.2
