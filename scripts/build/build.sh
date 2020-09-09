@@ -30,9 +30,16 @@ _build() {
   eval "$1"
 }
 
-template_application_go() {
-  # TODO: set mandatory tags and predefined tags for specific platforms
-  _build "CGO_ENABLED=0 ${GOBUILD} -tags='nokube nocloud ${PREDEFINED_BUILD_TAGS}' ./cmd/template-application-go"
+arhat_none() {
+  _build "${GOBUILD} -tags='arhat netgo nokube nocloud rt_none ${PREDEFINED_BUILD_TAGS} ${TAGS}' ./cmd/arhat-none"
+}
+
+arhat_docker() {
+  _build "${GOBUILD} -tags='arhat netgo nokube nocloud rt_docker ${PREDEFINED_BUILD_TAGS} ${TAGS}' ./cmd/arhat-docker"
+}
+
+arhat_libpod() {
+  _build "${GOBUILD} -tags='arhat netgo nokube nocloud rt_libpod ${PREDEFINED_BUILD_TAGS} ${TAGS}' ./cmd/arhat-libpod"
 }
 
 COMP=$(printf "%s" "$@" | cut -d. -f1)
@@ -43,7 +50,7 @@ CMD=$(printf "%s" "$@" | tr '-' '_' | tr '.'  ' ')
 GOOS="$(printf "%s" "$@" | cut -d. -f2 || true)"
 ARCH="$(printf "%s" "$@" | cut -d. -f3 || true)"
 
-if [ -z "${GOOS}" ] || [ "${GOOS}" = "$(printf "%s" "${COMP}" | tr '-' '_')" ]; then
+if [ -z "${GOOS}" ] || [ "${GOOS}" = "${COMP}" ]; then
   # fallback to goos and goarch values
   GOOS="$(go env GOHOSTOS)"
   ARCH="$(go env GOHOSTARCH)"
@@ -160,11 +167,11 @@ fi
 CGO_FLAGS="CC=${CC} CXX=${CXX} CC_FOR_TARGET=${CC} CXX_FOR_TARGET=${CXX} CGO_CFLAGS_ALLOW='-W' CGO_CFLAGS='${CFLAGS}' CGO_LDFLAGS='${LDFLAGS}'"
 
 GO_LDFLAGS="-s -w \
-  -X arhat.dev/template-application-go/pkg/version.branch=${GIT_BRANCH} \
-  -X arhat.dev/template-application-go/pkg/version.commit=${GIT_COMMIT} \
-  -X arhat.dev/template-application-go/pkg/version.tag=${GIT_TAG} \
-  -X arhat.dev/template-application-go/pkg/version.arch=${ARCH} \
-  -X arhat.dev/template-application-go/pkg/version.goCompilerPlatform=$(go version | cut -d\  -f4)"
+  -X arhat.dev/arhat/pkg/version.branch=${GIT_BRANCH} \
+  -X arhat.dev/arhat/pkg/version.commit=${GIT_COMMIT} \
+  -X arhat.dev/arhat/pkg/version.tag=${GIT_TAG} \
+  -X arhat.dev/arhat/pkg/version.arch=${ARCH} \
+  -X arhat.dev/arhat/pkg/version.goCompilerPlatform=$(go version | cut -d\  -f4)"
 
 GOARM="$(_get_goarm "${ARCH}")"
 if [ -z "${GOARM}" ]; then

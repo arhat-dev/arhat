@@ -31,25 +31,37 @@ vendor:
 include scripts/test/unit.mk
 
 # binary build
-include scripts/build/template-application-go.mk
+include scripts/build/arhat-none.mk
+include scripts/build/arhat-docker.mk
+include scripts/build/arhat-libpod.mk
 
 # image
-include scripts/image/template-application-go.mk
+include scripts/image/arhat-none.mk
+include scripts/image/arhat-docker.mk
+include scripts/image/arhat-libpod.mk
 
 image.build.linux.all: \
-	image.build.template-application-go.linux.all
+	image.build.arhat-none.linux.all \
+	image.build.arhat-docker.linux.all \
+	image.build.arhat-libpod.linux.all
 
 image.build.windows.all: \
-	image.build.template-application-go.windows.all
+	image.build.arhat-none.windows.all \
+	image.build.arhat-docker.windows.all
 
 image.push.linux.all: \
-	image.push.template-application-go.linux.all
+	image.push.arhat-none.linux.all \
+	image.push.arhat-docker.linux.all \
+	image.push.arhat-libpod.linux.all
 
 image.push.windows.all: \
-	image.push.template-application-go.windows.all
+	image.push.arhat-none.windows.all \
+	image.push.arhat-docker.windows.all
 
 # packaging
-include scripts/package/template-application-go.mk
+include scripts/package/arhat-none.mk
+include scripts/package/arhat-docker.mk
+include scripts/package/arhat-libpod.mk
 
 # optional private scripts
 -include private/scripts.mk

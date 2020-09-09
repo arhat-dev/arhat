@@ -27,18 +27,22 @@ jobs:
 
     - name: Build
       run: |
-        make template-application-go.linux.all
+        CGO_ENABLED=0 make arhat-none.linux.all
+        CGO_ENABLED=0 make arhat-docker.linux.all
+        CGO_ENABLED=1 make arhat-libpod.linux.all
 
     - name: Package
       run: |
-        make package.template-application-go.linux.all
+        make package.arhat-none.linux.all
+        make package.arhat-docker.linux.all
+        make package.arhat-libpod.linux.all
 
     - name: Hash
       run: |
         cd build
-        sha256sum template-application-go.linux* > sha256.linux.txt
-        sha512sum template-application-go.linux* > sha512.linux.txt
-        md5sum template-application-go.linux* > md5.linux.txt
+        sha256sum arhat-*.linux* > sha256.linux.txt
+        sha512sum arhat-*.linux* > sha512.linux.txt
+        md5sum arhat-*.linux* > md5.linux.txt
         cd -
 
     - name: Upload Artifact
@@ -58,11 +62,13 @@ jobs:
 
     - name: Build
       run: |
-        make template-application-go.darwin.all
+        CGO_ENABLED=1 make arhat-none.darwin.all
+        CGO_ENABLED=1 make arhat-docker.darwin.all
 
     - name: Package
       run: |
-        make package.template-application-go.darwin.all
+        make package.arhat-none.darwin.all
+        make package.arhat-docker.darwin.all
 
     - name: Install md5sum
       run: |
@@ -71,9 +77,9 @@ jobs:
     - name: Hash
       run: |
         cd build
-        shasum -a 256 template-application-go.darwin* > sha256.darwin.txt
-        shasum -a 512 template-application-go.darwin* > sha512.darwin.txt
-        md5sum template-application-go.darwin* > md5.darwin.txt
+        shasum -a 256 arhat-*.darwin* > sha256.darwin.txt
+        shasum -a 512 arhat-*.darwin* > sha512.darwin.txt
+        md5sum arhat-*.darwin* > md5.darwin.txt
         cd -
 
     - name: Upload Artifact
@@ -84,6 +90,7 @@ jobs:
 
   build-on-windows:
     runs-on: windows-latest
+    shell: bash
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-go@v2
@@ -93,18 +100,20 @@ jobs:
 
     - name: Build
       run: |
-        make template-application-go.windows.all
+        CGO_ENABLED=0 make arhat-none.windows.all
+        CGO_ENABLED=0 make arhat-docker.windows.all
 
     - name: Package
       run: |
-        make package.template-application-go.windows.all
+        make package.arhat-none.windows.all
+        make package.arhat-docker.windows.all
 
     - name: Hash
       run: |
         cd build
-        sha256sum template-application-go.windows* > sha256.windows.txt
-        sha512sum template-application-go.windows* > sha512.windows.txt
-        md5sum template-application-go.windows* > md5.windows.txt
+        sha256sum arhat-*.windows* > sha256.windows.txt
+        sha512sum arhat-*.windows* > sha512.windows.txt
+        md5sum arhat-*.windows* > md5.windows.txt
         cd -
 
     - name: Upload Artifact
@@ -139,6 +148,11 @@ jobs:
       with:
         name: build-on-darwin
         path: build
+    
+    - name: Extract tag name
+      id: extract_tag
+      run: |
+        echo "::set-output name=tag::$(echo ${GITHUB_REF#refs/tags/})"
 
     - name: Create Release
       id: create_release
@@ -155,23 +169,39 @@ jobs:
 
           ## Features
 
-          - Add foo support #issue-ref
-          - Add bar support #issue-ref
+          - `arhat-none`
+          - `arhat-docker`
+          - `arhat-libpod`
+            - Add foo support #issue-ref
+            - Add bar support #issue-ref
 
           ## Bug fixes
 
-          - Fixed foo bug #issue-ref
-          - Fixed bar bug #issue-ref #pr-ref
+          - `arhat-none`
+          - `arhat-docker`
+          - `arhat-libpod`
+            - Fixed foo #issue-ref
+            - Fixed bar #issue-ref #pr-ref
 
           ## Breaking Changes
 
-          - Foo ...
-          - Bar ...
+          - `arhat-none`
+          - `arhat-docker`
+          - `arhat-libpod`
+            - Foo ...
+            - Bar ...
 
           ## Images
 
-          - `docker.io/arhatdev/template-application-go:${{ github.ref }}`
-          - `ghcr.io/arhat-dev/template-application-go:${{ github.ref }}`
+          - `arhat-none`
+            - `docker.io/arhatdev/arhat-none:${{ steps.extract_tag.outputs.tag }}`
+            - `ghcr.io/arhat-dev/arhat-none:${{ steps.extract_tag.outputs.tag }}`
+          - `arhat-docker`
+            - `docker.io/arhatdev/arhat-docker:${{ steps.extract_tag.outputs.tag }}`
+            - `ghcr.io/arhat-dev/arhat-docker:${{ steps.extract_tag.outputs.tag }}`
+          - `arhat-libpod`
+            - `docker.io/arhatdev/arhat-libpod:${{ steps.extract_tag.outputs.tag }}`
+            - `ghcr.io/arhat-dev/arhat-libpod:${{ steps.extract_tag.outputs.tag }}`
 
     #
     # checksums
@@ -220,338 +250,338 @@ jobs:
         asset_path: build/md5.txt
         asset_content_type: text/plain
 
-    - name: Upload template-application-go.darwin.amd64
+    - name: Upload arhat-none.darwin.amd64
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.darwin.amd64
-        asset_path: build/template-application-go.darwin.amd64
+        asset_name: arhat-none.darwin.amd64
+        asset_path: build/arhat-none.darwin.amd64
         asset_content_type: application/octet-stream
 
     # TODO: support darwin/arm64 build
-    # - name: Upload template-application-go.darwin.arm64
+    # - name: Upload arhat-none.darwin.arm64
     #   uses: actions/upload-release-asset@v1
     #   env:
     #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     #   with:
     #     upload_url: ${{ steps.create_release.outputs.upload_url }}
-    #     asset_name: template-application-go.darwin.arm64
-    #     asset_path: build/template-application-go.darwin.arm64
+    #     asset_name: arhat-none.darwin.arm64
+    #     asset_path: build/arhat-none.darwin.arm64
     #     asset_content_type: application/octet-stream
 
-    - name: Upload template-application-go.windows.x86
+    - name: Upload arhat-none.windows.x86
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.windows.x86.exe
-        asset_path: build/template-application-go.windows.x86.exe
+        asset_name: arhat-none.windows.x86.exe
+        asset_path: build/arhat-none.windows.x86.exe
         asset_content_type: application/x-ms-dos-executable
 
-    - name: Upload template-application-go.windows.amd64
+    - name: Upload arhat-none.windows.amd64
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.windows.amd64.exe
-        asset_path: build/template-application-go.windows.amd64.exe
+        asset_name: arhat-none.windows.amd64.exe
+        asset_path: build/arhat-none.windows.amd64.exe
         asset_content_type: application/x-ms-dos-executable
 
     # TODO: support windows/arm
-    # - name: Upload template-application-go.windows.armv7
+    # - name: Upload arhat-none.windows.armv7
     #   uses: actions/upload-release-asset@v1
     #   env:
     #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     #   with:
     #     upload_url: ${{ steps.create_release.outputs.upload_url }}
-    #     asset_name: template-application-go.windows.armv7.exe
-    #     asset_path: build/template-application-go.windows.armv7.exe
+    #     asset_name: arhat-none.windows.armv7.exe
+    #     asset_path: build/arhat-none.windows.armv7.exe
     #     asset_content_type: application/x-ms-dos-executable
 
-    - name: Upload template-application-go.linux.x86
+    - name: Upload arhat-none.linux.x86
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.linux.x86
-        asset_path: build/template-application-go.linux.x86
+        asset_name: arhat-none.linux.x86
+        asset_path: build/arhat-none.linux.x86
         asset_content_type: application/octet-stream
 
-    - name: Upload template-application-go.linux.amd64
+    - name: Upload arhat-none.linux.amd64
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.linux.amd64
-        asset_path: build/template-application-go.linux.amd64
+        asset_name: arhat-none.linux.amd64
+        asset_path: build/arhat-none.linux.amd64
         asset_content_type: application/octet-stream
 
-    - name: Upload template-application-go.linux.armv5
+    - name: Upload arhat-none.linux.armv5
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.linux.armv5
-        asset_path: build/template-application-go.linux.armv5
+        asset_name: arhat-none.linux.armv5
+        asset_path: build/arhat-none.linux.armv5
         asset_content_type: application/octet-stream
 
-    - name: Upload template-application-go.linux.armv6
+    - name: Upload arhat-none.linux.armv6
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.linux.armv6
-        asset_path: build/template-application-go.linux.armv6
+        asset_name: arhat-none.linux.armv6
+        asset_path: build/arhat-none.linux.armv6
         asset_content_type: application/octet-stream
 
-    - name: Upload template-application-go.linux.armv7
+    - name: Upload arhat-none.linux.armv7
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.linux.armv7
-        asset_path: build/template-application-go.linux.armv7
+        asset_name: arhat-none.linux.armv7
+        asset_path: build/arhat-none.linux.armv7
         asset_content_type: application/octet-stream
 
-    - name: Upload template-application-go.linux.arm64
+    - name: Upload arhat-none.linux.arm64
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.linux.arm64
-        asset_path: build/template-application-go.linux.arm64
+        asset_name: arhat-none.linux.arm64
+        asset_path: build/arhat-none.linux.arm64
         asset_content_type: application/octet-stream
 
-    - name: Upload template-application-go.linux.ppc64
+    - name: Upload arhat-none.linux.ppc64
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.linux.ppc64
-        asset_path: build/template-application-go.linux.ppc64
+        asset_name: arhat-none.linux.ppc64
+        asset_path: build/arhat-none.linux.ppc64
         asset_content_type: application/octet-stream
 
-    - name: Upload template-application-go.linux.ppc64le
+    - name: Upload arhat-none.linux.ppc64le
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.linux.ppc64le
-        asset_path: build/template-application-go.linux.ppc64le
+        asset_name: arhat-none.linux.ppc64le
+        asset_path: build/arhat-none.linux.ppc64le
         asset_content_type: application/octet-stream
 
-    - name: Upload template-application-go.linux.s390x
+    - name: Upload arhat-none.linux.s390x
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.linux.s390x
-        asset_path: build/template-application-go.linux.s390x
+        asset_name: arhat-none.linux.s390x
+        asset_path: build/arhat-none.linux.s390x
         asset_content_type: application/octet-stream
 
-    - name: Upload template-application-go.linux.mips
+    - name: Upload arhat-none.linux.mips
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.linux.mips
-        asset_path: build/template-application-go.linux.mips
+        asset_name: arhat-none.linux.mips
+        asset_path: build/arhat-none.linux.mips
         asset_content_type: application/octet-stream
 
-    - name: Upload template-application-go.linux.mipshf
+    - name: Upload arhat-none.linux.mipshf
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.linux.mipshf
-        asset_path: build/template-application-go.linux.mipshf
+        asset_name: arhat-none.linux.mipshf
+        asset_path: build/arhat-none.linux.mipshf
         asset_content_type: application/octet-stream
 
-    - name: Upload template-application-go.linux.mipsle
+    - name: Upload arhat-none.linux.mipsle
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.linux.mipsle
-        asset_path: build/template-application-go.linux.mipsle
+        asset_name: arhat-none.linux.mipsle
+        asset_path: build/arhat-none.linux.mipsle
         asset_content_type: application/octet-stream
 
-    - name: Upload template-application-go.linux.mipslehf
+    - name: Upload arhat-none.linux.mipslehf
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.linux.mipslehf
-        asset_path: build/template-application-go.linux.mipslehf
+        asset_name: arhat-none.linux.mipslehf
+        asset_path: build/arhat-none.linux.mipslehf
         asset_content_type: application/octet-stream
 
-    - name: Upload template-application-go.linux.mips64
+    - name: Upload arhat-none.linux.mips64
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.linux.mips64
-        asset_path: build/template-application-go.linux.mips64
+        asset_name: arhat-none.linux.mips64
+        asset_path: build/arhat-none.linux.mips64
         asset_content_type: application/octet-stream
 
-    - name: Upload template-application-go.linux.mips64hf
+    - name: Upload arhat-none.linux.mips64hf
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.linux.mips64hf
-        asset_path: build/template-application-go.linux.mips64hf
+        asset_name: arhat-none.linux.mips64hf
+        asset_path: build/arhat-none.linux.mips64hf
         asset_content_type: application/octet-stream
 
-    - name: Upload template-application-go.linux.mips64le
+    - name: Upload arhat-none.linux.mips64le
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.linux.mips64le
-        asset_path: build/template-application-go.linux.mips64le
+        asset_name: arhat-none.linux.mips64le
+        asset_path: build/arhat-none.linux.mips64le
         asset_content_type: application/octet-stream
 
-    - name: Upload template-application-go.linux.mips64lehf
+    - name: Upload arhat-none.linux.mips64lehf
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.linux.mips64lehf
-        asset_path: build/template-application-go.linux.mips64lehf
+        asset_name: arhat-none.linux.mips64lehf
+        asset_path: build/arhat-none.linux.mips64lehf
         asset_content_type: application/octet-stream
 
     #
     # packages
     #
 
-    - name: Upload template-application-go-amd64.deb
+    - name: Upload arhat-none-amd64.deb
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.amd64.deb
-        asset_path: build/template-application-go.amd64.deb
+        asset_name: arhat-none.amd64.deb
+        asset_path: build/arhat-none.amd64.deb
         asset_content_type: application/vnd.debian.binary-package
 
-    - name: Upload template-application-go-x86_64.rpm
+    - name: Upload arhat-none-x86_64.rpm
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.x86_64.rpm
-        asset_path: build/template-application-go.x86_64.rpm
+        asset_name: arhat-none.x86_64.rpm
+        asset_path: build/arhat-none.x86_64.rpm
         asset_content_type: application/x-rpm
 
-    - name: Upload template-application-go-armel.deb
+    - name: Upload arhat-none-armel.deb
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.armel.deb
-        asset_path: build/template-application-go.armel.deb
+        asset_name: arhat-none.armel.deb
+        asset_path: build/arhat-none.armel.deb
         asset_content_type: application/vnd.debian.binary-package
 
-    - name: Upload template-application-go-armhf.deb
+    - name: Upload arhat-none-armhf.deb
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.armhf.deb
-        asset_path: build/template-application-go.armhf.deb
+        asset_name: arhat-none.armhf.deb
+        asset_path: build/arhat-none.armhf.deb
         asset_content_type: application/vnd.debian.binary-package
 
-    - name: Upload template-application-go-armhfp.rpm
+    - name: Upload arhat-none-armhfp.rpm
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.armhfp.rpm
-        asset_path: build/template-application-go.armhfp.rpm
+        asset_name: arhat-none.armhfp.rpm
+        asset_path: build/arhat-none.armhfp.rpm
         asset_content_type: application/x-rpm
 
-    - name: Upload template-application-go-arm64.deb
+    - name: Upload arhat-none-arm64.deb
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.arm64.deb
-        asset_path: build/template-application-go.arm64.deb
+        asset_name: arhat-none.arm64.deb
+        asset_path: build/arhat-none.arm64.deb
         asset_content_type: application/vnd.debian.binary-package
 
-    - name: Upload template-application-go-aarch64.rpm
+    - name: Upload arhat-none-aarch64.rpm
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: template-application-go.aarch64.rpm
-        asset_path: build/template-application-go.aarch64.rpm
+        asset_name: arhat-none.aarch64.rpm
+        asset_path: build/arhat-none.aarch64.rpm
         asset_content_type: application/x-rpm
 
-    # - name: Upload template-application-go-arm64.msi
+    # - name: Upload arhat-none-arm64.msi
     #   uses: actions/upload-release-asset@v1
     #   env:
     #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     #   with:
     #     upload_url: ${{ steps.create_release.outputs.upload_url }}
-    #     asset_name: template-application-go.arm64.msi
-    #     asset_path: build/template-application-go.arm64.msi
+    #     asset_name: arhat-none.arm64.msi
+    #     asset_path: build/arhat-none.arm64.msi
     #     asset_content_type: application/x-msdownload
 
-    # - name: Upload template-application-go-amd64.msi
+    # - name: Upload arhat-none-amd64.msi
     #   uses: actions/upload-release-asset@v1
     #   env:
     #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     #   with:
     #     upload_url: ${{ steps.create_release.outputs.upload_url }}
-    #     asset_name: template-application-go.amd64.msi
-    #     asset_path: build/template-application-go.amd64.msi
+    #     asset_name: arhat-none.amd64.msi
+    #     asset_path: build/arhat-none.amd64.msi
     #     asset_content_type: application/x-msdownload
 
-    # - name: Upload template-application-go-arm64.pkg
+    # - name: Upload arhat-none-arm64.pkg
     #   uses: actions/upload-release-asset@v1
     #   env:
     #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     #   with:
     #     upload_url: ${{ steps.create_release.outputs.upload_url }}
-    #     asset_name: template-application-go.arm64.pkg
-    #     asset_path: build/template-application-go.arm64.pkg
+    #     asset_name: arhat-none.arm64.pkg
+    #     asset_path: build/arhat-none.arm64.pkg
     #     asset_content_type: application/octet-stream
 
-    # - name: Upload template-application-go-amd64.pkg
+    # - name: Upload arhat-none-amd64.pkg
     #   uses: actions/upload-release-asset@v1
     #   env:
     #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     #   with:
     #     upload_url: ${{ steps.create_release.outputs.upload_url }}
-    #     asset_name: template-application-go.amd64.pkg
-    #     asset_path: build/template-application-go.amd64.pkg
+    #     asset_name: arhat-none.amd64.pkg
+    #     asset_path: build/arhat-none.amd64.pkg
     #     asset_content_type: application/octet-stream

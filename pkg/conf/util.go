@@ -29,7 +29,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
-	"arhat.dev/template-application-go/pkg/constant"
+	"arhat.dev/arhat/pkg/constant"
 )
 
 type Config interface {

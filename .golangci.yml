@@ -1,10 +1,21 @@
+service:
+  prepare:
+  - export CGO_ENABLED=0
+  - export GOOS=linux
+  - export GOARCH=$(go env GOHOSTARCH)
+
 run:
   deadline: 5m
   tests: true
   modules-download-mode: vendor
   skip-dirs:
   - vendor
-  build-tags: []
+  build-tags:
+  - containers_image_openpgp
+  - rt_docker
+  - nokube
+  - nocloud
+  - arhat
 
 output:
   format: colored-line-number
@@ -50,7 +61,7 @@ linters-settings:
   gocyclo:
     min-complexity: 30
   goimports:
-    local-prefixes: arhat.dev/template-application-go
+    local-prefixes: arhat.dev/arhat
   lll:
     line-length: 120
     # tab width in spaces. Default to 1.
@@ -60,6 +71,11 @@ linters-settings:
 
 issues:
   exclude-rules:
+  - path: pkg/runtime/.*/.*\.go
+    text: context.Context should be the first parameter of a function
+    linters:
+    - golint
+
   - path: _test\.go
     linters:
     - gocyclo

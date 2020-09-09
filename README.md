@@ -1,10 +1,10 @@
 # Template Application Go
 
-[![CI](https://github.com/arhat-dev/template-application-go/workflows/CI/badge.svg)](https://github.com/arhat-dev/template-application-go/actions?query=workflow%3ACI)
-[![Build](https://github.com/arhat-dev/template-application-go/workflows/Build/badge.svg)](https://github.com/arhat-dev/template-application-go/actions?query=workflow%3ABuild)
-[![PkgGoDev](https://pkg.go.dev/badge/arhat.dev/template-application-go)](https://pkg.go.dev/arhat.dev/template-application-go)
-[![GoReportCard](https://goreportcard.com/badge/arhat.dev/template-application-go)](https://goreportcard.com/report/arhat.dev/template-application-go)
-[![codecov](https://codecov.io/gh/arhat-dev/template-application-go/branch/master/graph/badge.svg)](https://codecov.io/gh/arhat-dev/template-application-go)
+[![CI](https://github.com/arhat-dev/arhat/workflows/CI/badge.svg)](https://github.com/arhat-dev/arhat/actions?query=workflow%3ACI)
+[![Build](https://github.com/arhat-dev/arhat/workflows/Build/badge.svg)](https://github.com/arhat-dev/arhat/actions?query=workflow%3ABuild)
+[![PkgGoDev](https://pkg.go.dev/badge/arhat.dev/arhat)](https://pkg.go.dev/arhat.dev/arhat)
+[![GoReportCard](https://goreportcard.com/badge/arhat.dev/arhat)](https://goreportcard.com/report/arhat.dev/arhat)
+[![codecov](https://codecov.io/gh/arhat-dev/arhat/branch/master/graph/badge.svg)](https://codecov.io/gh/arhat-dev/arhat)
 
 Template repo for applications written in Go
 

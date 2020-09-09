@@ -16,6 +16,30 @@ limitations under the License.
 
 package constant
 
+import "time"
+
 const (
-	DefaultTemplateApplicationGoConfigFile = "/etc/template-application-go/config.yaml"
+	// arhat defaults
+	DefaultArhatConfigFile     = "/etc/arhat/config.yaml"
+	DefaultArhatDataDir        = "/var/lib/arhat/data"
+	DefaultPauseImage          = "k8s.gcr.io/pause:3.1"
+	DefaultPauseCommand        = "/pause"
+	DefaultManagementNamespace = "container.arhat.dev"
+	DefaultProcfsPath          = "/proc"
+	DefaultSysfsPath           = "/sys"
+
+	DefaultDockerUnixEndpoint    = "unix:///var/run/docker.sock"
+	DefaultDockerWindowsEndpoint = "tcp://docker.for.win.localhost:2375"
+	DefaultRuntimeDialTimeout    = time.Minute
+	DefaultRuntimeActionTimeout  = 10 * time.Minute
+)
+
+const (
+	DefaultInteractiveStreamReadTimeout    = 20 * time.Millisecond
+	DefaultNonInteractiveStreamReadTimeout = 200 * time.Millisecond
+	DefaultPortForwardStreamReadTimeout    = 50 * time.Millisecond
+)
+
+const (
+	DefaultExitCodeOnError = 128
 )
