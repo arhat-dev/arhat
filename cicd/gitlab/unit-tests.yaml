@@ -1,0 +1,18 @@
+.test:unit:
+  stage: unit-tests
+  image: arhatdev/base-go:debian
+  script:
+  - make test.pkg
+  - make test.cmd
+  dependencies:
+  - stylecheck
+
+test:unit:linux:template-application-go:
+  extends: .test:unit
+  tags:
+  - linux
+
+# test:unit:windows:template-application-go:
+#   extends: .test:unit
+#   tags:
+#   - windows
