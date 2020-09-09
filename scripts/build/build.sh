@@ -39,6 +39,7 @@ arhat_docker() {
 }
 
 arhat_libpod() {
+  _install_deps
   _build "${GOBUILD} -tags='arhat netgo nokube nocloud rt_libpod ${PREDEFINED_BUILD_TAGS} ${TAGS}' ./cmd/arhat-libpod"
 }
 
@@ -117,8 +118,7 @@ if [ -n "${PM_DEB}" ]; then
     LDFLAGS="-L/lib/${TRIPLE} -L/usr/lib/${TRIPLE}"
   fi
 
-  # TODO: Add required deb packages
-  deb_packages=""
+  deb_packages="libbtrfs-dev libc6-dev libglib2.0-dev libgpgme-dev libseccomp-dev libdevmapper-dev libglib2.0-dev-bin"
 
   # TODO: inspect why install packages directly will not setup pkgconfig files
   INSTALL="apt-get install -y ${deb_packages}"
@@ -128,8 +128,8 @@ if [ -n "${PM_DEB}" ]; then
     for pkg in ${deb_packages}; do
       packages_with_arch="${pkg}:${debian_arch} ${packages_with_arch}"
     done
-    # TODO: fix install command here
-    # INSTALL="${INSTALL} python3-distutils=3.7.3-1 python3-lib2to3=3.7.3-1 python3=3.7.3-1 && apt-get install -y ${packages_with_arch}"
+
+    INSTALL="${INSTALL} python3-distutils=3.7.3-1 python3-lib2to3=3.7.3-1 python3=3.7.3-1 && apt-get install -y ${packages_with_arch}"
   fi
 fi
 
@@ -141,8 +141,7 @@ if [ -n "${PM_APK}" ]; then
     LDFLAGS="-L/${TRIPLE}/lib -L/${TRIPLE}/usr/lib"
   fi
 
-  # TODO: Add required apk packages
-  apk_packages=""
+  apk_packages="btrfs-progs-dev lvm2-dev libc-dev glib-dev gpgme-dev libseccomp-dev ostree-dev"
 
   INSTALL="apk add ${apk_packages}"
   alpine_arch="$(_get_alpine_arch "${ARCH}")"
