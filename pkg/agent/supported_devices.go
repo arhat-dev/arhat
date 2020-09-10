@@ -2,6 +2,7 @@
 
 package agent
 
+// nolint:golint
 import (
 	_ "arhat.dev/arhat/pkg/devices/coap"
 	_ "arhat.dev/arhat/pkg/devices/file"

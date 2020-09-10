@@ -1,11 +1,11 @@
 /*
-Copyright 2019 The arhat.dev Authors.
+Copyright 2020 The arhat.dev Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -51,6 +51,13 @@ func NewAgent(appCtx context.Context, config *conf.ArhatConfig) (*Agent, error) 
 	ctx, exit := context.WithCancel(appCtx)
 
 	extInfo, err := convertNodeExtInfo(config.Arhat.Node.ExtInfo)
+
+	defer func() {
+		if err != nil {
+			exit()
+		}
+	}()
+
 	if err != nil {
 		return nil, err
 	}
@@ -225,6 +232,7 @@ func (b *Agent) handleSyncLoop(sid uint64, name string, opt *aranyagopb.SyncOpti
 	})
 }
 
+// nolint:unparam
 func (b *Agent) handleUnknownCmd(sid uint64, category string, cmd interface{}) bool {
 	b.logger.I(fmt.Sprintf("unknown %s cmd", category), log.Uint64("sid", sid), log.Any("cmd", cmd))
 	return b.handleRuntimeError(sid, wellknownerrors.ErrNotSupported)
@@ -243,6 +251,7 @@ func (b *Agent) handleRuntimeError(sid uint64, err error) bool {
 	return true
 }
 
+// nolint:unparam
 func (b *Agent) handleConnectivityError(sid uint64, err error) bool {
 	if err == nil {
 		return false

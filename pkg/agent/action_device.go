@@ -88,7 +88,12 @@ func (b *Agent) doDeviceRemove(sid uint64, deviceID string) {
 	}
 }
 
-func newDevice(id string, conn, uploadConn types.DeviceConnectivity, operations []*aranyagopb.DeviceOperation, metrics []*aranyagopb.DeviceMetrics) *device {
+func newDevice(
+	id string,
+	conn, uploadConn types.DeviceConnectivity,
+	operations []*aranyagopb.DeviceOperation,
+	metrics []*aranyagopb.DeviceMetrics,
+) *device {
 	ops := make(map[string]*aranyagopb.DeviceOperation)
 	for i, o := range operations {
 		ops[o.Id] = operations[i]
@@ -151,6 +156,7 @@ func (d *device) status() *aranyagopb.DeviceStatus {
 	return aranyagopb.NewDeviceStatus(d.id, d.state, d.stateMsg)
 }
 
+// nolint:unused
 func (d *device) operate(id string) ([][]byte, error) {
 	op, ok := d.operations[id]
 	if !ok {
@@ -165,6 +171,7 @@ func (d *device) operate(id string) ([][]byte, error) {
 	return resp, nil
 }
 
+// nolint:unused
 func (d *device) collectMetrics() ([]byte, error) {
 	buf := new(bytes.Buffer)
 	for _, m := range d.metrics {
@@ -305,6 +312,7 @@ func (m *deviceManager) getAllStatuses() []*aranyagopb.DeviceStatus {
 	return result
 }
 
+// nolint:unused
 func (m *deviceManager) cleanup() {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

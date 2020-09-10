@@ -1,7 +1,6 @@
 package impl
 
 import (
-	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
 	"bytes"
 	"context"
 	"crypto/tls"
@@ -11,6 +10,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/log"

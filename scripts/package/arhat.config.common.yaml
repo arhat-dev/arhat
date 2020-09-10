@@ -40,7 +40,7 @@ storage:
   - /opt/bin
   args:
     sshfs:
-    - "root@example.com:${ARHAT_STORAGE_REMOTE_PATH}"
+    - root@example.com:${ARHAT_STORAGE_REMOTE_PATH}
     - ${ARHAT_STORAGE_LOCAL_PATH}
     - -p
     - "54322"

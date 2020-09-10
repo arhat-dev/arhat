@@ -15,14 +15,15 @@ import (
 	"time"
 
 	"arhat.dev/aranya-proto/aranyagopb"
-	"arhat.dev/arhat/pkg/constant"
-	"arhat.dev/arhat/pkg/runtime/runtimeutil"
-	"arhat.dev/arhat/pkg/util/errconv"
-	"arhat.dev/arhat/pkg/util/exec"
 	"arhat.dev/pkg/exechelper"
 	"arhat.dev/pkg/iohelper"
 	"arhat.dev/pkg/log"
 	"arhat.dev/pkg/wellknownerrors"
+
+	"arhat.dev/arhat/pkg/constant"
+	"arhat.dev/arhat/pkg/runtime/runtimeutil"
+	"arhat.dev/arhat/pkg/util/errconv"
+	"arhat.dev/arhat/pkg/util/exec"
 )
 
 func (b *Agent) handlePodOperationCmd(sid uint64, data []byte) {
@@ -153,7 +154,12 @@ func (b *Agent) handleStreamOperation(
 	err = run(stdout, stderr)
 }
 
-func (b *Agent) doContainerAttach(sid uint64, options *aranyagopb.ExecOptions, stdin io.Reader, resizeCh <-chan *aranyagopb.TtyResizeOptions) {
+func (b *Agent) doContainerAttach(
+	sid uint64,
+	options *aranyagopb.ExecOptions,
+	stdin io.Reader,
+	resizeCh <-chan *aranyagopb.TtyResizeOptions,
+) {
 	b.handleStreamOperation(sid, options.Stdin, options.Stdout, options.Stderr, options.Tty || options.PodUid == "",
 		// preRun check
 		nil,
@@ -165,7 +171,12 @@ func (b *Agent) doContainerAttach(sid uint64, options *aranyagopb.ExecOptions, s
 
 			// container attach
 			if options.PodUid != "" {
-				return errconv.ToConnectivityError(b.runtime.AttachContainer(options.PodUid, options.Container, stdin, stdout, stderr, resizeCh))
+				return errconv.ToConnectivityError(
+					b.runtime.AttachContainer(
+						options.PodUid, options.Container,
+						stdin, stdout, stderr, resizeCh,
+					),
+				)
 			}
 
 			// host attach
@@ -204,7 +215,12 @@ func (b *Agent) doContainerAttach(sid uint64, options *aranyagopb.ExecOptions, s
 	)
 }
 
-func (b *Agent) doContainerExec(sid uint64, options *aranyagopb.ExecOptions, stdin io.Reader, resizeCh <-chan *aranyagopb.TtyResizeOptions) {
+func (b *Agent) doContainerExec(
+	sid uint64,
+	options *aranyagopb.ExecOptions,
+	stdin io.Reader,
+	resizeCh <-chan *aranyagopb.TtyResizeOptions,
+) {
 	b.handleStreamOperation(sid, options.Stdin, options.Stdout, options.Stderr, options.Tty,
 		// preRun check
 		func() error {
@@ -221,7 +237,11 @@ func (b *Agent) doContainerExec(sid uint64, options *aranyagopb.ExecOptions, std
 
 			// container exec
 			if options.PodUid != "" {
-				return b.runtime.ExecInContainer(options.PodUid, options.Container, stdin, stdout, stderr, resizeCh, options.Command, options.Tty)
+				return b.runtime.ExecInContainer(
+					options.PodUid, options.Container,
+					stdin, stdout, stderr,
+					resizeCh, options.Command, options.Tty,
+				)
 			}
 
 			// host exec
@@ -232,7 +252,12 @@ func (b *Agent) doContainerExec(sid uint64, options *aranyagopb.ExecOptions, std
 			ctx, cancel := context.WithCancel(b.ctx)
 			defer cancel()
 
-			exitCode, err := exec.DoIfTryFailed(ctx, stdin, stdout, stderr, resizeCh, options.Command, options.Tty, options.Envs)
+			exitCode, err := exec.DoIfTryFailed(
+				ctx,
+				stdin, stdout, stderr,
+				resizeCh,
+				options.Command, options.Tty, options.Envs,
+			)
 			if err != nil {
 				return aranyagopb.NewCommonErrorWithCode(int64(exitCode), err.Error())
 			}
@@ -241,7 +266,12 @@ func (b *Agent) doContainerExec(sid uint64, options *aranyagopb.ExecOptions, std
 	)
 }
 
-func (b *Agent) doContainerLog(sid uint64, options *aranyagopb.LogOptions, logCtx context.Context) {
+// nolint:golint
+func (b *Agent) doContainerLog(
+	sid uint64,
+	options *aranyagopb.LogOptions,
+	logCtx context.Context,
+) {
 	b.handleStreamOperation(sid, false, true, true, false,
 		// preRun check
 		nil,
@@ -249,7 +279,14 @@ func (b *Agent) doContainerLog(sid uint64, options *aranyagopb.LogOptions, logCt
 		func(stdout, stderr io.WriteCloser) *aranyagopb.Error {
 			// handle /containerLogs
 			if options.PodUid != "" {
-				return errconv.ToConnectivityError(b.runtime.GetContainerLogs(options.PodUid, options, stdout, stderr, logCtx))
+				return errconv.ToConnectivityError(
+					b.runtime.GetContainerLogs(
+						options.PodUid,
+						options,
+						stdout, stderr,
+						logCtx,
+					),
+				)
 			}
 
 			// handle host log
@@ -265,7 +302,8 @@ func (b *Agent) doContainerLog(sid uint64, options *aranyagopb.LogOptions, logCt
 				}
 
 				if info.IsDir() {
-					files, err := ioutil.ReadDir(options.Path)
+					var files []os.FileInfo
+					files, err = ioutil.ReadDir(options.Path)
 					if err != nil {
 						return errconv.ToConnectivityError(err)
 					}
@@ -338,9 +376,9 @@ func (b *Agent) doPortForward(sid uint64, options *aranyagopb.PortForwardOptions
 
 	go func() {
 		// pipe received remote data into upstream
-		n, err := io.Copy(upstream, input)
-		if err != nil && n == 0 {
-			logger.I("failed to send remote data", log.Error(err))
+		n, err2 := io.Copy(upstream, input)
+		if err2 != nil && n == 0 {
+			logger.I("failed to send remote data", log.Error(err2))
 			return
 		}
 
@@ -381,7 +419,12 @@ func (b *Agent) doPortForward(sid uint64, options *aranyagopb.PortForwardOptions
 	err = runtimeutil.PortForward(b.ctx, "localhost", protocol, options.Port, downstream)
 }
 
-func (b *Agent) createTerminalStream(sid uint64, useStdout, useStderr, interactive bool, pSeq *uint64, wg *sync.WaitGroup) (stdout, stderr io.WriteCloser, close func()) {
+func (b *Agent) createTerminalStream(
+	sid uint64,
+	useStdout, useStderr, interactive bool,
+	pSeq *uint64,
+	wg *sync.WaitGroup,
+) (stdout, stderr io.WriteCloser, close func()) {
 	var (
 		readStdout  io.ReadCloser
 		readStderr  io.ReadCloser
@@ -429,20 +472,26 @@ func (b *Agent) createTerminalStream(sid uint64, useStdout, useStderr, interacti
 	}
 }
 
-func (b *Agent) uploadDataOutput(sid uint64, rd io.Reader, kind aranyagopb.Data_Kind, readTimeout time.Duration, pSeq *uint64) {
+func (b *Agent) uploadDataOutput(
+	sid uint64,
+	rd io.Reader,
+	kind aranyagopb.Data_Kind,
+	readTimeout time.Duration,
+	pSeq *uint64,
+) {
 	r := iohelper.NewTimeoutReader(rd, b.GetClient().MaxDataSize())
 	go r.StartBackgroundReading()
 
 	stopSig := b.ctx.Done()
 	timer := time.NewTimer(0)
 	if !timer.Stop() {
-		_ = <-timer.C
+		<-timer.C
 	}
 
 	defer func() {
 		if !timer.Stop() {
 			select {
-			case _ = <-timer.C:
+			case <-timer.C:
 			default:
 			}
 		}
@@ -452,7 +501,7 @@ func (b *Agent) uploadDataOutput(sid uint64, rd io.Reader, kind aranyagopb.Data_
 		timer.Reset(readTimeout)
 		data, isTimeout := r.ReadUntilTimeout(timer.C)
 		if !isTimeout && !timer.Stop() {
-			_ = <-timer.C
+			<-timer.C
 		}
 
 		err := b.PostMsg(aranyagopb.NewDataMsg(sid, false, kind, nextSeq(pSeq), data))

@@ -27,12 +27,16 @@ jobs:
 
     - name: Install cross compiler
       run: |
-        sed -i 's/^deb\b/& [arch=amd64,i386,arm64,armhf,armel,mips,mipsel,mips64el,ppc64el,s390x]/g' /etc/apt/sources.list
+        sed -i 's/^deb\b/& [arch=amd64,i386,arm64,armhf,armel,mips,mipsel,mips64el,ppc64el,s390x]/g' \
+          /etc/apt/sources.list
 
         wget -qO- https://www.ports.debian.org/archive_2020.key | apt-key add -
-        echo "deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports unstable main" >> /etc/apt/sources.list
-        echo "deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports unreleased main" >> /etc/apt/sources.list
-        echo "deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports experimental main" >> /etc/apt/sources.list
+        echo "deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports unstable main" \
+          >> /etc/apt/sources.list
+        echo "deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports unreleased main" \
+          >> /etc/apt/sources.list
+        echo "deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports experimental main" \
+          >> /etc/apt/sources.list
 
         apt-get update
         apt-get install -y --no-install-recommends \
@@ -57,17 +61,30 @@ jobs:
         CGO_ENABLED=0 make -j$(nproc --all) arhat-docker.linux.all
         CGO_ENABLED=0 make arhat-docker.linux.riscv64 TAGS='nometrics'
 
-        CGO_ENABLED=0 make -j$(nproc --all) arhat-none.freebsd.all TAGS='noboottime noexec nomeminfo nonetdev nozfs nofilesystem'
-        CGO_ENABLED=0 make -j$(nproc --all) arhat-none.netbsd.all TAGS='noboottime nofilesystem nointerrupts nonetdev noloadavg nomeminfo'
-        CGO_ENABLED=0 make -j$(nproc --all) arhat-none.openbsd.all TAGS='noboottime nofilesystem nointerrupts nonetdev noloadavg nomeminfo'
-        CGO_ENABLED=0 make -j$(nproc --all) arhat-none.plan9.all TAGS='nometrics nodev_serial nodev_file nodev_modbus_serial'
-        CGO_ENABLED=0 make -j$(nproc --all) arhat-none.solaris.amd64 TAGS='nometrics nodev_serial nodev_modbus_serial'
-        CGO_ENABLED=0 make -j$(nproc --all) arhat-none.aix.ppc64 TAGS='nometrics nodev_serial nodev_file nodev_modbus_serial'
-        CGO_ENABLED=0 make -j$(nproc --all) arhat-none.dragonfly.amd64 TAGS='nometrics nodev_serial nodev_file nodev_modbus_serial'
+        CGO_ENABLED=0 make -j$(nproc --all) arhat-none.freebsd.all \
+          TAGS='noboottime noexec nomeminfo nonetdev nozfs nofilesystem'
+
+        CGO_ENABLED=0 make -j$(nproc --all) arhat-none.netbsd.all \
+          TAGS='noboottime nofilesystem nointerrupts nonetdev noloadavg nomeminfo'
+
+        CGO_ENABLED=0 make -j$(nproc --all) arhat-none.openbsd.all \
+          TAGS='noboottime nofilesystem nointerrupts nonetdev noloadavg nomeminfo'
+
+        CGO_ENABLED=0 make -j$(nproc --all) arhat-none.plan9.all \
+          TAGS='nometrics nodev_serial nodev_file nodev_modbus_serial'
+
+        CGO_ENABLED=0 make -j$(nproc --all) arhat-none.solaris.amd64 \
+          TAGS='nometrics nodev_serial nodev_modbus_serial'
+
+        CGO_ENABLED=0 make -j$(nproc --all) arhat-none.aix.ppc64 \
+          TAGS='nometrics nodev_serial nodev_file nodev_modbus_serial'
+
+        CGO_ENABLED=0 make -j$(nproc --all) arhat-none.dragonfly.amd64 \
+          TAGS='nometrics nodev_serial nodev_file nodev_modbus_serial'
 
         CGO_ENABLED=1 make arhat-libpod.linux.all
         CGO_ENABLED=1 make arhat-libpod.linux.riscv64 TAGS='nometrics'
-    
+
     # TODO: Enable arhat-libpod packaging
     - name: Package
       run: |
@@ -223,7 +240,7 @@ jobs:
       with:
         name: build-on-darwin
         path: build
-    
+
     - name: Extract tag name
       id: extract_tag
       run: |
@@ -627,7 +644,7 @@ jobs:
         asset_path: build/arhat-none.freebsd.arm64
         asset_content_type: application/octet-stream
 
-        - name: Upload arhat-none.openbsd.x86
+    - name: Upload arhat-none.openbsd.x86
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -687,7 +704,7 @@ jobs:
         asset_path: build/arhat-none.openbsd.arm64
         asset_content_type: application/octet-stream
 
-        - name: Upload arhat-none.netbsd.x86
+    - name: Upload arhat-none.netbsd.x86
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -747,7 +764,7 @@ jobs:
         asset_path: build/arhat-none.netbsd.arm64
         asset_content_type: application/octet-stream
 
-        - name: Upload arhat-none.plan9.x86
+    - name: Upload arhat-none.plan9.x86
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -806,7 +823,7 @@ jobs:
         asset_name: arhat-none.dragonfly.amd64
         asset_path: build/arhat-none.dragonfly.amd64
         asset_content_type: application/octet-stream
-    
+
     - name: Upload arhat-none.solaris.amd64
       uses: actions/upload-release-asset@v1
       env:

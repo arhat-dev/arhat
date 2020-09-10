@@ -4,6 +4,7 @@ yaml-files:
 
 ignore: |
   vendor/
+  build/
   cicd/deploy/charts/**/templates/
   cicd/deploy/charts/**/crds/
   cicd/deploy/kube/
