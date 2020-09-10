@@ -1,4 +1,5 @@
 #!/bin/sh /etc/rc.common
+# shellcheck disable=SC2034
 
 # procd init script for arhat on openwrt ...
 
@@ -23,6 +24,6 @@ start_service() {
 }
 
 stop_service() {
-  local name="$(basename ${BIN})"
-  kill $(pidof ${name})
+  name="$(basename "${BIN}")"
+  kill "$(pidof "${name}")"
 }

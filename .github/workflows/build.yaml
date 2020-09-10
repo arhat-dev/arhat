@@ -27,19 +27,19 @@ jobs:
 
     - name: Install cross compiler
       run: |
-        sed -i 's/^deb\b/& [arch=amd64,i386,arm64,armhf,armel,mips,mipsel,mips64el,ppc64el,s390x]/g' \
+        sudo sed -i 's/^deb\b/& [arch=amd64,i386,arm64,armhf,armel,mips,mipsel,mips64el,ppc64el,s390x]/g' \
           /etc/apt/sources.list
 
-        wget -qO- https://www.ports.debian.org/archive_2020.key | apt-key add -
-        echo "deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports unstable main" \
+        wget -qO- https://www.ports.debian.org/archive_2020.key | sudo apt-key add -
+        sudo echo "deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports unstable main" \
           >> /etc/apt/sources.list
-        echo "deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports unreleased main" \
+        sudo echo "deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports unreleased main" \
           >> /etc/apt/sources.list
-        echo "deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports experimental main" \
+        sudo echo "deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports experimental main" \
           >> /etc/apt/sources.list
 
-        apt-get update
-        apt-get install -y --no-install-recommends \
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
           gcc-arm-linux-gnueabi g++-arm-linux-gnueabi linux-libc-dev-armel-cross \
           gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf linux-libc-dev-armhf-cross \
           gcc-aarch64-linux-gnu g++-aarch64-linux-gnu linux-libc-dev-arm64-cross \

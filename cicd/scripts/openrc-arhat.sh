@@ -1,4 +1,5 @@
 #!/sbin/openrc-run
+# shellcheck disable=SC2034
 
 # openrc init script for arhat on alpine ...
 
