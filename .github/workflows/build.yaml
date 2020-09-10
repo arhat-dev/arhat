@@ -25,17 +25,55 @@ jobs:
         # TODO: update to 1.15.x once 1.15.4 released
         go-version: 1.14.x
 
+    - name: Install cross compiler
+      run: |
+        sed -i 's/^deb\b/& [arch=amd64,i386,arm64,armhf,armel,mips,mipsel,mips64el,ppc64el,s390x]/g' /etc/apt/sources.list
+
+        wget -qO- https://www.ports.debian.org/archive_2020.key | apt-key add -
+        echo "deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports unstable main" >> /etc/apt/sources.list
+        echo "deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports unreleased main" >> /etc/apt/sources.list
+        echo "deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports experimental main" >> /etc/apt/sources.list
+
+        apt-get update
+        apt-get install -y --no-install-recommends \
+          gcc-arm-linux-gnueabi g++-arm-linux-gnueabi linux-libc-dev-armel-cross \
+          gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf linux-libc-dev-armhf-cross \
+          gcc-aarch64-linux-gnu g++-aarch64-linux-gnu linux-libc-dev-arm64-cross \
+          gcc-mips-linux-gnu g++-mips-linux-gnu linux-libc-dev-mips-cross \
+          gcc-mipsel-linux-gnu g++-mipsel-linux-gnu linux-libc-dev-mipsel-cross \
+          gcc-mips64-linux-gnuabi64 g++-mips64-linux-gnuabi64 linux-libc-dev-mips64-cross \
+          gcc-mips64el-linux-gnuabi64 g++-mips64el-linux-gnuabi64 linux-libc-dev-mips64el-cross \
+          gcc-powerpc64-linux-gnu g++-powerpc64-linux-gnu linux-libc-dev-ppc64-cross \
+          gcc-powerpc64le-linux-gnu g++-powerpc64le-linux-gnu linux-libc-dev-ppc64el-cross \
+          gcc-i686-linux-gnu g++-i686-linux-gnu linux-libc-dev-i386-cross \
+          gcc-riscv64-linux-gnu g++-riscv64-linux-gnu linux-libc-dev-riscv64-cross \
+          gcc-s390x-linux-gnu g++-s390x-linux-gnu linux-libc-dev-s390x-cross
+
     - name: Build
       run: |
-        CGO_ENABLED=0 make arhat-none.linux.all
-        CGO_ENABLED=0 make arhat-docker.linux.all
-        CGO_ENABLED=1 make arhat-libpod.linux.all
+        CGO_ENABLED=0 make -j$(nproc --all) arhat-none.linux.all
+        CGO_ENABLED=0 make arhat-none.linux.riscv64 TAGS='nometrics'
 
+        CGO_ENABLED=0 make -j$(nproc --all) arhat-docker.linux.all
+        CGO_ENABLED=0 make arhat-docker.linux.riscv64 TAGS='nometrics'
+
+        CGO_ENABLED=0 make -j$(nproc --all) arhat-none.freebsd.all TAGS='noboottime noexec nomeminfo nonetdev nozfs nofilesystem'
+        CGO_ENABLED=0 make -j$(nproc --all) arhat-none.netbsd.all TAGS='noboottime nofilesystem nointerrupts nonetdev noloadavg nomeminfo'
+        CGO_ENABLED=0 make -j$(nproc --all) arhat-none.openbsd.all TAGS='noboottime nofilesystem nointerrupts nonetdev noloadavg nomeminfo'
+        CGO_ENABLED=0 make -j$(nproc --all) arhat-none.plan9.all TAGS='nometrics nodev_serial nodev_file nodev_modbus_serial'
+        CGO_ENABLED=0 make -j$(nproc --all) arhat-none.solaris.amd64 TAGS='nometrics nodev_serial nodev_modbus_serial'
+        CGO_ENABLED=0 make -j$(nproc --all) arhat-none.aix.ppc64 TAGS='nometrics nodev_serial nodev_file nodev_modbus_serial'
+        CGO_ENABLED=0 make -j$(nproc --all) arhat-none.dragonfly.amd64 TAGS='nometrics nodev_serial nodev_file nodev_modbus_serial'
+
+        CGO_ENABLED=1 make arhat-libpod.linux.all
+        CGO_ENABLED=1 make arhat-libpod.linux.riscv64 TAGS='nometrics'
+    
+    # TODO: Enable arhat-libpod packaging
     - name: Package
       run: |
         make package.arhat-none.linux.all
         make package.arhat-docker.linux.all
-        make package.arhat-libpod.linux.all
+        # make package.arhat-libpod.linux.all
 
     - name: Hash
       run: |
@@ -43,6 +81,34 @@ jobs:
         sha256sum arhat-*.linux* > sha256.linux.txt
         sha512sum arhat-*.linux* > sha512.linux.txt
         md5sum arhat-*.linux* > md5.linux.txt
+
+        sha256sum arhat-*.freebsd* > sha256.freebsd.txt
+        sha512sum arhat-*.freebsd* > sha512.freebsd.txt
+        md5sum arhat-*.freebsd* > md5.freebsd.txt
+
+        sha256sum arhat-*.openbsd* > sha256.openbsd.txt
+        sha512sum arhat-*.openbsd* > sha512.openbsd.txt
+        md5sum arhat-*.openbsd* > md5.openbsd.txt
+
+        sha256sum arhat-*.netbsd* > sha256.netbsd.txt
+        sha512sum arhat-*.netbsd* > sha512.netbsd.txt
+        md5sum arhat-*.netbsd* > md5.netbsd.txt
+
+        sha256sum arhat-*.plan9* > sha256.plan9.txt
+        sha512sum arhat-*.plan9* > sha512.plan9.txt
+        md5sum arhat-*.plan9* > md5.plan9.txt
+
+        sha256sum arhat-*.aix* > sha256.aix.txt
+        sha512sum arhat-*.aix* > sha512.aix.txt
+        md5sum arhat-*.aix* > md5.aix.txt
+
+        sha256sum arhat-*.solaris* > sha256.solaris.txt
+        sha512sum arhat-*.solaris* > sha512.solaris.txt
+        md5sum arhat-*.solaris* > md5.solaris.txt
+
+        sha256sum arhat-*.dragonfly* > sha256.dragonfly.txt
+        sha512sum arhat-*.dragonfly* > sha512.dragonfly.txt
+        md5sum arhat-*.dragonfly* > md5.dragonfly.txt
         cd -
 
     - name: Upload Artifact
@@ -65,10 +131,11 @@ jobs:
         CGO_ENABLED=1 make arhat-none.darwin.all
         CGO_ENABLED=1 make arhat-docker.darwin.all
 
-    - name: Package
-      run: |
-        make package.arhat-none.darwin.all
-        make package.arhat-docker.darwin.all
+    # # TODO: Support macos packaging
+    # - name: Package
+    #   run: |
+    #     make package.arhat-none.darwin.all
+    #     make package.arhat-docker.darwin.all
 
     - name: Install md5sum
       run: |
@@ -100,13 +167,21 @@ jobs:
 
     - name: Build
       run: |
-        CGO_ENABLED=0 make arhat-none.windows.all
-        CGO_ENABLED=0 make arhat-docker.windows.all
+        CGO_ENABLED=0 make -j$(nproc --all) arhat-none.windows.all
+        CGO_ENABLED=0 make arhat-none.windows.armv5 TAGS='nometrics'
+        CGO_ENABLED=0 make arhat-none.windows.armv6 TAGS='nometrics'
+        CGO_ENABLED=0 make arhat-none.windows.armv7 TAGS='nometrics'
 
-    - name: Package
-      run: |
-        make package.arhat-none.windows.all
-        make package.arhat-docker.windows.all
+        CGO_ENABLED=0 make -j$(nproc --all) arhat-docker.windows.all
+        CGO_ENABLED=0 make arhat-docker.windows.armv5 TAGS='nometrics'
+        CGO_ENABLED=0 make arhat-docker.windows.armv6 TAGS='nometrics'
+        CGO_ENABLED=0 make arhat-docker.windows.armv7 TAGS='nometrics'
+
+    # # TODO: Support windows packaging
+    # - name: Package
+    #   run: |
+    #     make package.arhat-none.windows.all
+    #     make package.arhat-docker.windows.all
 
     - name: Hash
       run: |
@@ -209,15 +284,16 @@ jobs:
     - name: Create Checksum Files
       run: |
         files="sha256 sha512 md5"
+        os_list="darwin windows freebsd netbsd openbsd plan9 aix solaris dragonfly"
+
         for f in ${files}; do
           printf "# Linux builds\n\n" > "build/${f}.txt"
           cat build/${f}.linux.txt >> "build/${f}.txt"
 
-          printf "# Darwin builds\n\n" >> "build/${f}.txt"
-          cat build/${f}.darwin.txt >> "build/${f}.txt"
-
-          printf "# Windows builds\n\n" >> "build/${f}.txt"
-          cat build/${f}.windows.txt >> "build/${f}.txt"
+          for os in ${os_list}; do
+            printf "\n# ${os} builds\n\n" >> "build/${f}.txt"
+            cat build/${f}.${os}.txt >> "build/${f}.txt"
+          done
         done
 
     - name: Upload sha256
@@ -291,16 +367,35 @@ jobs:
         asset_path: build/arhat-none.windows.amd64.exe
         asset_content_type: application/x-ms-dos-executable
 
-    # TODO: support windows/arm
-    # - name: Upload arhat-none.windows.armv7
-    #   uses: actions/upload-release-asset@v1
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #   with:
-    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
-    #     asset_name: arhat-none.windows.armv7.exe
-    #     asset_path: build/arhat-none.windows.armv7.exe
-    #     asset_content_type: application/x-ms-dos-executable
+    - name: Upload arhat-none.windows.armv5
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.windows.armv5.exe
+        asset_path: build/arhat-none.windows.armv5.exe
+        asset_content_type: application/x-ms-dos-executable
+
+    - name: Upload arhat-none.windows.armv6
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.windows.armv6.exe
+        asset_path: build/arhat-none.windows.armv6.exe
+        asset_content_type: application/x-ms-dos-executable
+
+    - name: Upload arhat-none.windows.armv7
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.windows.armv7.exe
+        asset_path: build/arhat-none.windows.armv7.exe
+        asset_content_type: application/x-ms-dos-executable
 
     - name: Upload arhat-none.linux.x86
       uses: actions/upload-release-asset@v1
@@ -472,6 +567,667 @@ jobs:
         asset_path: build/arhat-none.linux.mips64lehf
         asset_content_type: application/octet-stream
 
+    - name: Upload arhat-none.freebsd.x86
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.freebsd.x86
+        asset_path: build/arhat-none.freebsd.x86
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-none.freebsd.amd64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.freebsd.amd64
+        asset_path: build/arhat-none.freebsd.amd64
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-none.freebsd.armv5
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.freebsd.armv5
+        asset_path: build/arhat-none.freebsd.armv5
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-none.freebsd.armv6
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.freebsd.armv6
+        asset_path: build/arhat-none.freebsd.armv6
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-none.freebsd.armv7
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.freebsd.armv7
+        asset_path: build/arhat-none.freebsd.armv7
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-none.freebsd.arm64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.freebsd.arm64
+        asset_path: build/arhat-none.freebsd.arm64
+        asset_content_type: application/octet-stream
+
+        - name: Upload arhat-none.openbsd.x86
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.openbsd.x86
+        asset_path: build/arhat-none.openbsd.x86
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-none.openbsd.amd64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.openbsd.amd64
+        asset_path: build/arhat-none.openbsd.amd64
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-none.openbsd.armv5
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.openbsd.armv5
+        asset_path: build/arhat-none.openbsd.armv5
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-none.openbsd.armv6
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.openbsd.armv6
+        asset_path: build/arhat-none.openbsd.armv6
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-none.openbsd.armv7
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.openbsd.armv7
+        asset_path: build/arhat-none.openbsd.armv7
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-none.openbsd.arm64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.openbsd.arm64
+        asset_path: build/arhat-none.openbsd.arm64
+        asset_content_type: application/octet-stream
+
+        - name: Upload arhat-none.netbsd.x86
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.netbsd.x86
+        asset_path: build/arhat-none.netbsd.x86
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-none.netbsd.amd64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.netbsd.amd64
+        asset_path: build/arhat-none.netbsd.amd64
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-none.netbsd.armv5
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.netbsd.armv5
+        asset_path: build/arhat-none.netbsd.armv5
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-none.netbsd.armv6
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.netbsd.armv6
+        asset_path: build/arhat-none.netbsd.armv6
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-none.netbsd.armv7
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.netbsd.armv7
+        asset_path: build/arhat-none.netbsd.armv7
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-none.netbsd.arm64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.netbsd.arm64
+        asset_path: build/arhat-none.netbsd.arm64
+        asset_content_type: application/octet-stream
+
+        - name: Upload arhat-none.plan9.x86
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.plan9.x86
+        asset_path: build/arhat-none.plan9.x86
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-none.plan9.amd64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.plan9.amd64
+        asset_path: build/arhat-none.plan9.amd64
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-none.plan9.armv5
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.plan9.armv5
+        asset_path: build/arhat-none.plan9.armv5
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-none.plan9.armv6
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.plan9.armv6
+        asset_path: build/arhat-none.plan9.armv6
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-none.plan9.armv7
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.plan9.armv7
+        asset_path: build/arhat-none.plan9.armv7
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-none.dragonfly.amd64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.dragonfly.amd64
+        asset_path: build/arhat-none.dragonfly.amd64
+        asset_content_type: application/octet-stream
+    
+    - name: Upload arhat-none.solaris.amd64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.solaris.amd64
+        asset_path: build/arhat-none.solaris.amd64
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-docker.darwin.amd64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.darwin.amd64
+        asset_path: build/arhat-docker.darwin.amd64
+        asset_content_type: application/octet-stream
+
+    # TODO: support darwin/arm64 build
+    # - name: Upload arhat-docker.darwin.arm64
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat-docker.darwin.arm64
+    #     asset_path: build/arhat-docker.darwin.arm64
+    #     asset_content_type: application/octet-stream
+
+    - name: Upload arhat-docker.windows.x86
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.windows.x86.exe
+        asset_path: build/arhat-docker.windows.x86.exe
+        asset_content_type: application/x-ms-dos-executable
+
+    - name: Upload arhat-docker.windows.amd64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.windows.amd64.exe
+        asset_path: build/arhat-docker.windows.amd64.exe
+        asset_content_type: application/x-ms-dos-executable
+
+    - name: Upload arhat-docker.windows.armv5
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.windows.armv5.exe
+        asset_path: build/arhat-docker.windows.armv5.exe
+        asset_content_type: application/x-ms-dos-executable
+
+    - name: Upload arhat-docker.windows.armv6
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.windows.armv6.exe
+        asset_path: build/arhat-docker.windows.armv6.exe
+        asset_content_type: application/x-ms-dos-executable
+
+    - name: Upload arhat-docker.windows.armv7
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.windows.armv7.exe
+        asset_path: build/arhat-docker.windows.armv7.exe
+        asset_content_type: application/x-ms-dos-executable
+
+    - name: Upload arhat-docker.linux.x86
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.linux.x86
+        asset_path: build/arhat-docker.linux.x86
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-docker.linux.amd64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.linux.amd64
+        asset_path: build/arhat-docker.linux.amd64
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-docker.linux.armv5
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.linux.armv5
+        asset_path: build/arhat-docker.linux.armv5
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-docker.linux.armv6
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.linux.armv6
+        asset_path: build/arhat-docker.linux.armv6
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-docker.linux.armv7
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.linux.armv7
+        asset_path: build/arhat-docker.linux.armv7
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-docker.linux.arm64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.linux.arm64
+        asset_path: build/arhat-docker.linux.arm64
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-docker.linux.ppc64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.linux.ppc64
+        asset_path: build/arhat-docker.linux.ppc64
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-docker.linux.ppc64le
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.linux.ppc64le
+        asset_path: build/arhat-docker.linux.ppc64le
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-docker.linux.s390x
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.linux.s390x
+        asset_path: build/arhat-docker.linux.s390x
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-docker.linux.mips
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.linux.mips
+        asset_path: build/arhat-docker.linux.mips
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-docker.linux.mipshf
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.linux.mipshf
+        asset_path: build/arhat-docker.linux.mipshf
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-docker.linux.mipsle
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.linux.mipsle
+        asset_path: build/arhat-docker.linux.mipsle
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-docker.linux.mipslehf
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.linux.mipslehf
+        asset_path: build/arhat-docker.linux.mipslehf
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-docker.linux.mips64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.linux.mips64
+        asset_path: build/arhat-docker.linux.mips64
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-docker.linux.mips64hf
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.linux.mips64hf
+        asset_path: build/arhat-docker.linux.mips64hf
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-docker.linux.mips64le
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.linux.mips64le
+        asset_path: build/arhat-docker.linux.mips64le
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-docker.linux.mips64lehf
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.linux.mips64lehf
+        asset_path: build/arhat-docker.linux.mips64lehf
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-libpod.linux.x86
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-libpod.linux.x86
+        asset_path: build/arhat-libpod.linux.x86
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-libpod.linux.amd64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-libpod.linux.amd64
+        asset_path: build/arhat-libpod.linux.amd64
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-libpod.linux.armv5
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-libpod.linux.armv5
+        asset_path: build/arhat-libpod.linux.armv5
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-libpod.linux.armv6
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-libpod.linux.armv6
+        asset_path: build/arhat-libpod.linux.armv6
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-libpod.linux.armv7
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-libpod.linux.armv7
+        asset_path: build/arhat-libpod.linux.armv7
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-libpod.linux.arm64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-libpod.linux.arm64
+        asset_path: build/arhat-libpod.linux.arm64
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-libpod.linux.ppc64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-libpod.linux.ppc64
+        asset_path: build/arhat-libpod.linux.ppc64
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-libpod.linux.ppc64le
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-libpod.linux.ppc64le
+        asset_path: build/arhat-libpod.linux.ppc64le
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-libpod.linux.s390x
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-libpod.linux.s390x
+        asset_path: build/arhat-libpod.linux.s390x
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-libpod.linux.mips
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-libpod.linux.mips
+        asset_path: build/arhat-libpod.linux.mips
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-libpod.linux.mipshf
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-libpod.linux.mipshf
+        asset_path: build/arhat-libpod.linux.mipshf
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-libpod.linux.mipsle
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-libpod.linux.mipsle
+        asset_path: build/arhat-libpod.linux.mipsle
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-libpod.linux.mipslehf
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-libpod.linux.mipslehf
+        asset_path: build/arhat-libpod.linux.mipslehf
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-libpod.linux.mips64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-libpod.linux.mips64
+        asset_path: build/arhat-libpod.linux.mips64
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-libpod.linux.mips64hf
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-libpod.linux.mips64hf
+        asset_path: build/arhat-libpod.linux.mips64hf
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-libpod.linux.mips64le
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-libpod.linux.mips64le
+        asset_path: build/arhat-libpod.linux.mips64le
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat-libpod.linux.mips64lehf
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-libpod.linux.mips64lehf
+        asset_path: build/arhat-libpod.linux.mips64lehf
+        asset_content_type: application/octet-stream
+
     #
     # packages
     #
@@ -546,42 +1302,223 @@ jobs:
         asset_path: build/arhat-none.aarch64.rpm
         asset_content_type: application/x-rpm
 
-    # - name: Upload arhat-none-arm64.msi
-    #   uses: actions/upload-release-asset@v1
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #   with:
-    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
-    #     asset_name: arhat-none.arm64.msi
-    #     asset_path: build/arhat-none.arm64.msi
-    #     asset_content_type: application/x-msdownload
+    # # - name: Upload arhat-none-arm64.msi
+    # #   uses: actions/upload-release-asset@v1
+    # #   env:
+    # #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    # #   with:
+    # #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    # #     asset_name: arhat-none.arm64.msi
+    # #     asset_path: build/arhat-none.arm64.msi
+    # #     asset_content_type: application/x-msdownload
 
-    # - name: Upload arhat-none-amd64.msi
-    #   uses: actions/upload-release-asset@v1
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #   with:
-    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
-    #     asset_name: arhat-none.amd64.msi
-    #     asset_path: build/arhat-none.amd64.msi
-    #     asset_content_type: application/x-msdownload
+    # # - name: Upload arhat-none-amd64.msi
+    # #   uses: actions/upload-release-asset@v1
+    # #   env:
+    # #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    # #   with:
+    # #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    # #     asset_name: arhat-none.amd64.msi
+    # #     asset_path: build/arhat-none.amd64.msi
+    # #     asset_content_type: application/x-msdownload
 
-    # - name: Upload arhat-none-arm64.pkg
-    #   uses: actions/upload-release-asset@v1
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #   with:
-    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
-    #     asset_name: arhat-none.arm64.pkg
-    #     asset_path: build/arhat-none.arm64.pkg
-    #     asset_content_type: application/octet-stream
+    # # - name: Upload arhat-none-arm64.pkg
+    # #   uses: actions/upload-release-asset@v1
+    # #   env:
+    # #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    # #   with:
+    # #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    # #     asset_name: arhat-none.arm64.pkg
+    # #     asset_path: build/arhat-none.arm64.pkg
+    # #     asset_content_type: application/octet-stream
 
-    # - name: Upload arhat-none-amd64.pkg
+    # # - name: Upload arhat-none-amd64.pkg
+    # #   uses: actions/upload-release-asset@v1
+    # #   env:
+    # #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    # #   with:
+    # #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    # #     asset_name: arhat-none.amd64.pkg
+    # #     asset_path: build/arhat-none.amd64.pkg
+    # #     asset_content_type: application/octet-stream
+
+    - name: Upload arhat-docker-amd64.deb
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.amd64.deb
+        asset_path: build/arhat-docker.amd64.deb
+        asset_content_type: application/vnd.debian.binary-package
+
+    - name: Upload arhat-docker-x86_64.rpm
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.x86_64.rpm
+        asset_path: build/arhat-docker.x86_64.rpm
+        asset_content_type: application/x-rpm
+
+    - name: Upload arhat-docker-armel.deb
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.armel.deb
+        asset_path: build/arhat-docker.armel.deb
+        asset_content_type: application/vnd.debian.binary-package
+
+    - name: Upload arhat-docker-armhf.deb
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.armhf.deb
+        asset_path: build/arhat-docker.armhf.deb
+        asset_content_type: application/vnd.debian.binary-package
+
+    - name: Upload arhat-docker-armhfp.rpm
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.armhfp.rpm
+        asset_path: build/arhat-docker.armhfp.rpm
+        asset_content_type: application/x-rpm
+
+    - name: Upload arhat-docker-arm64.deb
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.arm64.deb
+        asset_path: build/arhat-docker.arm64.deb
+        asset_content_type: application/vnd.debian.binary-package
+
+    - name: Upload arhat-docker-aarch64.rpm
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-docker.aarch64.rpm
+        asset_path: build/arhat-docker.aarch64.rpm
+        asset_content_type: application/x-rpm
+
+    # # - name: Upload arhat-docker-arm64.msi
+    # #   uses: actions/upload-release-asset@v1
+    # #   env:
+    # #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    # #   with:
+    # #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    # #     asset_name: arhat-docker.arm64.msi
+    # #     asset_path: build/arhat-docker.arm64.msi
+    # #     asset_content_type: application/x-msdownload
+
+    # # - name: Upload arhat-docker-amd64.msi
+    # #   uses: actions/upload-release-asset@v1
+    # #   env:
+    # #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    # #   with:
+    # #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    # #     asset_name: arhat-docker.amd64.msi
+    # #     asset_path: build/arhat-docker.amd64.msi
+    # #     asset_content_type: application/x-msdownload
+
+    # # - name: Upload arhat-docker-arm64.pkg
+    # #   uses: actions/upload-release-asset@v1
+    # #   env:
+    # #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    # #   with:
+    # #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    # #     asset_name: arhat-docker.arm64.pkg
+    # #     asset_path: build/arhat-docker.arm64.pkg
+    # #     asset_content_type: application/octet-stream
+
+    # # - name: Upload arhat-docker-amd64.pkg
+    # #   uses: actions/upload-release-asset@v1
+    # #   env:
+    # #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    # #   with:
+    # #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    # #     asset_name: arhat-docker.amd64.pkg
+    # #     asset_path: build/arhat-docker.amd64.pkg
+    # #     asset_content_type: application/octet-stream
+
+    # # TODO: upload arhat-libpod once supported
+    # - name: Upload arhat-libpod-amd64.deb
     #   uses: actions/upload-release-asset@v1
     #   env:
     #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     #   with:
     #     upload_url: ${{ steps.create_release.outputs.upload_url }}
-    #     asset_name: arhat-none.amd64.pkg
-    #     asset_path: build/arhat-none.amd64.pkg
-    #     asset_content_type: application/octet-stream
+    #     asset_name: arhat-libpod.amd64.deb
+    #     asset_path: build/arhat-libpod.amd64.deb
+    #     asset_content_type: application/vnd.debian.binary-package
+
+    # - name: Upload arhat-libpod-x86_64.rpm
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat-libpod.x86_64.rpm
+    #     asset_path: build/arhat-libpod.x86_64.rpm
+    #     asset_content_type: application/x-rpm
+
+    # - name: Upload arhat-libpod-armel.deb
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat-libpod.armel.deb
+    #     asset_path: build/arhat-libpod.armel.deb
+    #     asset_content_type: application/vnd.debian.binary-package
+
+    # - name: Upload arhat-libpod-armhf.deb
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat-libpod.armhf.deb
+    #     asset_path: build/arhat-libpod.armhf.deb
+    #     asset_content_type: application/vnd.debian.binary-package
+
+    # - name: Upload arhat-libpod-armhfp.rpm
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat-libpod.armhfp.rpm
+    #     asset_path: build/arhat-libpod.armhfp.rpm
+    #     asset_content_type: application/x-rpm
+
+    # - name: Upload arhat-libpod-arm64.deb
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat-libpod.arm64.deb
+    #     asset_path: build/arhat-libpod.arm64.deb
+    #     asset_content_type: application/vnd.debian.binary-package
+
+    # - name: Upload arhat-libpod-aarch64.rpm
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat-libpod.aarch64.rpm
+    #     asset_path: build/arhat-libpod.aarch64.rpm
+    #     asset_content_type: application/x-rpm

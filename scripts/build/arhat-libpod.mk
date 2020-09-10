@@ -74,7 +74,6 @@ arhat-libpod.linux.riscv64:
 arhat-libpod.linux.all: \
 	arhat-libpod.linux.x86 \
 	arhat-libpod.linux.amd64 \
-	arhat-libpod.linux.armv5 \
 	arhat-libpod.linux.armv6 \
 	arhat-libpod.linux.armv7 \
 	arhat-libpod.linux.arm64 \
@@ -88,5 +87,4 @@ arhat-libpod.linux.all: \
 	arhat-libpod.linux.mips64lehf \
 	arhat-libpod.linux.ppc64 \
 	arhat-libpod.linux.ppc64le \
-	arhat-libpod.linux.s390x \
-	arhat-libpod.linux.riscv64
+	arhat-libpod.linux.s390x

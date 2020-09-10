@@ -1,0 +1,96 @@
+arhat:
+  log:
+  - level: debug
+    format: console
+    file: stderr
+    kubeLog: false
+  - level: debug
+    format: console
+    kubeLog: true
+    file: /var/log/arhat.log
+
+  host:
+    allowExec: true
+    allowAttach: true
+    allowPortForward: true
+    allowLog: true
+
+  node:
+    extInfo:
+      value: "1"
+      operator: +=
+      valueType: int
+      applyTo: metadata.annotations['example.com/key']
+
+  optimization:
+    maxProcessors: 1
+    pprof:
+      enabled: false
+      listen: localhost:8080
+      httpPath: /foo
+      mutexProfileFraction: 100
+      blockProfileRate: 1
+
+storage:
+  backend: ""
+  stdoutFile: stdout
+  stderrFile: stderr
+  processCheckTimeout: 5s
+  lookupPaths:
+  - /opt/bin
+  args:
+    sshfs:
+    - "root@example.com:${ARHAT_STORAGE_REMOTE_PATH}"
+    - ${ARHAT_STORAGE_LOCAL_PATH}
+    - -p
+    - "54322"
+    - -o
+    - sshfs_debug
+
+connectivity:
+  dialTimeout: 10s
+  initialBackoff: 10s
+  maxBackoff: 3m
+  backoffFactor: 1.5
+  method: mqtt
+
+  grpc:
+    endpoint: grpc.example.com
+    priority: 1
+    tls:
+      enabled: true
+
+  coap:
+    endpoint: coap.example.com:5684
+    priority: 1
+    transport: udp
+    pathNamespace: /ps/exmaple/topic/foo
+    uriQueries:
+      foo: bar
+      a: b
+    tls:
+      enabled: false
+      allowInsecureHashes: false
+      preSharedKey:
+        serverHintMapping:
+        - a2V5:dmFsdWU=
+
+  mqtt:
+    variant: ""
+    endpoint: mqtt.example.com:8883
+    priority: 1
+    transport: tcp
+    topicNamespace: arhat.dev/aranya/foo
+    clientID: foo
+    username: foo-user
+    password: my-password
+    tls:
+      enabled: true
+      # caCert: /path/to/ca.crt
+      # cert: /path/to/client.crt
+      # key: /path/to/client.key
+      # serverName: foo.example.com
+      # insecureSkipVerify: false
+      # keyLogFile: /path/to/tmp/tls/log
+      # cipherSuites:
+      # - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256

@@ -88,8 +88,7 @@ arhat-docker.linux.all: \
 	arhat-docker.linux.mips64lehf \
 	arhat-docker.linux.ppc64 \
 	arhat-docker.linux.ppc64le \
-	arhat-docker.linux.s390x \
-	arhat-docker.linux.riscv64
+	arhat-docker.linux.s390x
 
 arhat-docker.darwin.amd64:
 	sh scripts/build/build.sh $@
@@ -106,12 +105,18 @@ arhat-docker.windows.x86:
 arhat-docker.windows.amd64:
 	sh scripts/build/build.sh $@
 
+# currently windows/arm builds do not support metrics collecting due to
+# https://github.com/go-ole/go-ole/issues/202
+arhat-docker.windows.armv5:
+	sh scripts/build/build.sh $@
+
 arhat-docker.windows.armv6:
 	sh scripts/build/build.sh $@
 
 arhat-docker.windows.armv7:
 	sh scripts/build/build.sh $@
 
+# # currently no support for windows/arm64
 # arhat-docker.windows.arm64:
 # 	sh scripts/build/build.sh $@
 

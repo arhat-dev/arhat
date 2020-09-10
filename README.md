@@ -1,4 +1,4 @@
-# Template Application Go
+# arhat `阿罗汉`
 
 [![CI](https://github.com/arhat-dev/arhat/workflows/CI/badge.svg)](https://github.com/arhat-dev/arhat/actions?query=workflow%3ACI)
 [![Build](https://github.com/arhat-dev/arhat/workflows/Build/badge.svg)](https://github.com/arhat-dev/arhat/actions?query=workflow%3ABuild)
@@ -6,19 +6,7 @@
 [![GoReportCard](https://goreportcard.com/badge/arhat.dev/arhat)](https://goreportcard.com/report/arhat.dev/arhat)
 [![codecov](https://codecov.io/gh/arhat-dev/arhat/branch/master/graph/badge.svg)](https://codecov.io/gh/arhat-dev/arhat)
 
-Template repo for applications written in Go
-
-## Make Targets
-
-- binary build: `<comp>.{OS}.{ARCH}`
-- image build: `image.build.<comp>.{OS}.{ARCH}`
-- image push: `image.push.<comp>.{OS}.{ARCH}`
-- unit tests: `test.pkg`, `test.cmd`
-- packaging:
-  - linux deb: `package.<comp>.deb.{ARCH}`
-  - linux rpm: `package.<comp>.rpm.{ARCH}`
-  - windows msi: `package.<comp>.msi.{ARCH}`
-  - darwin pkg: `package.<comp>.pkg.{ARCH}`
+The EdgeDevice Agent for `aranya`
 
 ## LICENSE
 
