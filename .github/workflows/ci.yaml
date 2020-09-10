@@ -27,15 +27,15 @@ jobs:
       with:
         go-version: 1.14.x
 
-    - name: Ensure tidy gomod
-      run: |
-        go mod download -x
-        go mod tidy
-        if ! git diff --exit-code
-        then
-          echo "go mod not tidy"
-          exit 1
-        fi
+    # - name: Ensure tidy gomod
+    #   run: |
+    #     go mod download -x
+    #     go mod tidy
+    #     if ! git diff --exit-code
+    #     then
+    #       echo "go mod not tidy"
+    #       exit 1
+    #     fi
 
     - name: Lint
       run: |

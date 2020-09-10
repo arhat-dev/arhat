@@ -174,7 +174,6 @@ jobs:
 
   build-on-windows:
     runs-on: windows-latest
-    shell: bash
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-go@v2
@@ -183,6 +182,7 @@ jobs:
         go-version: 1.14.x
 
     - name: Build
+      shell: bash
       run: |
         CGO_ENABLED=0 make -j$(nproc --all) arhat-none.windows.all
         CGO_ENABLED=0 make arhat-none.windows.armv5 TAGS='nometrics'
@@ -196,11 +196,13 @@ jobs:
 
     # # TODO: Support windows packaging
     # - name: Package
+    #   shell: bash
     #   run: |
     #     make package.arhat-none.windows.all
     #     make package.arhat-docker.windows.all
 
     - name: Hash
+      shell: bash
       run: |
         cd build
         sha256sum arhat-*.windows* > sha256.windows.txt
