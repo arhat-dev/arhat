@@ -72,7 +72,6 @@ arhat-libpod.linux.riscv64:
 	sh scripts/build/build.sh $@
 
 arhat-libpod.linux.all: \
-	arhat-libpod.linux.x86 \
 	arhat-libpod.linux.amd64 \
 	arhat-libpod.linux.armv6 \
 	arhat-libpod.linux.armv7 \
