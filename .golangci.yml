@@ -1,15 +1,17 @@
 service:
   prepare:
-  - export CGO_ENABLED=0
-  - export GOOS=linux
+  - export CGO_ENABLED=1
+  - export GOOS=darwin
   - export GOARCH=$(go env GOHOSTARCH)
 
 run:
-  deadline: 5m
+  deadline: 10m
   tests: true
   modules-download-mode: vendor
+  skip-dirs-use-default: true
   skip-dirs:
   - vendor
+  - pkg/runtime/libpod
   build-tags:
   - containers_image_openpgp
   - rt_docker

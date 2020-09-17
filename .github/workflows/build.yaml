@@ -31,12 +31,12 @@ jobs:
           /etc/apt/sources.list
 
         wget -qO- https://www.ports.debian.org/archive_2020.key | sudo apt-key add -
-        sudo echo "deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports unstable main" \
-          >> /etc/apt/sources.list
-        sudo echo "deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports unreleased main" \
-          >> /etc/apt/sources.list
-        sudo echo "deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports experimental main" \
-          >> /etc/apt/sources.list
+
+        sudo cat >> /etc/apt/sources.list <EOF
+        deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports unstable main
+        deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports unreleased main
+        deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports experimental main
+        EOF
 
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends \

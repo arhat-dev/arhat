@@ -1,4 +1,4 @@
-// +build !rt_libpod
+// +build !rt_libpod,!rt_docker
 
 /*
 Copyright 2020 The arhat.dev Authors.

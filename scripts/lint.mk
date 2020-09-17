@@ -27,8 +27,8 @@ lint.go:
 lint.yaml:
 	${RUN_LINTER} arhatdev/yamllint:latest yamllint -c .yaml-lint.yml .
 
+# TODO: enable linter for go once fixed build issue with btrfs (CGO)
 lint.all: \
 	lint.file \
 	lint.shell \
-	lint.go \
 	lint.yaml
