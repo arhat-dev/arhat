@@ -24,8 +24,8 @@ jobs:
     - uses: actions/checkout@v2
     - name: Install Extra Packages
       run: |
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends \
+        apt-get update
+        apt-get install -y --no-install-recommends \
           gcc-mips-linux-gnu g++-mips-linux-gnu linux-libc-dev-mips-cross \
           gcc-mipsel-linux-gnu g++-mipsel-linux-gnu linux-libc-dev-mipsel-cross \
           gcc-mips64-linux-gnuabi64 g++-mips64-linux-gnuabi64 linux-libc-dev-mips64-cross \
