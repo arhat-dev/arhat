@@ -135,6 +135,7 @@ require (
 	arhat.dev/aranya-proto v0.0.0-20200908142500-6dfc5c1969d3
 	arhat.dev/pkg v0.0.0-20200814094720-eac4d5d5680b
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
+	github.com/containerd/containerd v1.3.3 // indirect
 	github.com/containers/common v0.21.0
 	github.com/containers/image/v5 v5.5.2
 	github.com/containers/libpod/v2 v2.0.6
@@ -146,7 +147,11 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/goiiot/libmqtt v0.9.5
 	github.com/goiiot/libserial v0.0.0-20200819082916-cd2b4aa0cf09
+	github.com/gorilla/mux v1.8.0 // indirect
+	github.com/grpc-ecosystem/grpc-gateway v1.14.6 // indirect
+	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/mholt/archiver/v3 v3.3.0
+	github.com/mistifyio/go-zfs v2.1.2-0.20190413222219-f784269be439+incompatible // indirect
 	github.com/mssola/user_agent v0.5.2
 	github.com/opencontainers/image-spec v1.0.2-0.20190823105129-775207bd45b6
 	github.com/opencontainers/runtime-spec v1.0.3-0.20200728170252-4d89ac9fbff6
@@ -161,10 +166,15 @@ require (
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
+	github.com/vishvananda/netns v0.0.0-20200520041808-52d707b772fe // indirect
 	go.uber.org/multierr v1.5.0
-	golang.org/x/sys v0.0.0-20200728102440-3e129f6d46b1
+	golang.org/x/crypto v0.0.0-20200728195943-123391ffb6de // indirect
+	golang.org/x/sys v0.0.0-20200824131525-c12d262b63d8
+	golang.org/x/tools v0.0.0-20200811032001-fd80f4dbb3ea // indirect
 	google.golang.org/grpc v1.31.1
+	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/client-go v0.18.8
+	k8s.io/utils v0.0.0-20200821003339-5e75c0163111 // indirect
 )

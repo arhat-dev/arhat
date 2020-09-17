@@ -19,7 +19,7 @@ limitations under the License.
 package main
 
 import (
-	"arhat.dev/aranya/pkg/constant"
+	"arhat.dev/arhat/pkg/constant"
 	"github.com/spf13/pflag"
 )
 
