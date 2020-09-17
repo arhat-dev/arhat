@@ -29,8 +29,7 @@ jobs:
 
     # - name: Ensure tidy gomod
     #   run: |
-    #     go mod download -x
-    #     go mod tidy
+    #     make vendor
     #     if ! git diff --exit-code
     #     then
     #       echo "go mod not tidy"
@@ -49,16 +48,21 @@ jobs:
         go-version:
         - 1.14.x
         # - 1.15.x
-        os:
-        - ubuntu-latest
-        # - windows-latest
-        # - macos-latest
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/setup-go@v2
       with:
         go-version: ${{ matrix.go-version }}
     - uses: actions/checkout@v2
+
+    - name: Install Extra Packages
+      run: |
+        sudo apt update
+        sudo apt install -y \
+          python3-distutils=3.7.3-1 python3-lib2to3=3.7.3-1 python3=3.7.3-1 \
+          libbtrfs-dev libc6-dev libglib2.0-dev libgpgme-dev \
+          libseccomp-dev libdevmapper-dev libglib2.0-dev-bin
+
     - name: Test Packages
       run: |
         make test.pkg

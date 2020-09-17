@@ -77,14 +77,14 @@ arhat-libpod.linux.all: \
 	arhat-libpod.linux.armv6 \
 	arhat-libpod.linux.armv7 \
 	arhat-libpod.linux.arm64 \
-	arhat-libpod.linux.mips \
-	arhat-libpod.linux.mipshf \
-	arhat-libpod.linux.mipsle \
-	arhat-libpod.linux.mipslehf \
-	arhat-libpod.linux.mips64 \
-	arhat-libpod.linux.mips64hf \
-	arhat-libpod.linux.mips64le \
-	arhat-libpod.linux.mips64lehf \
-	arhat-libpod.linux.ppc64 \
 	arhat-libpod.linux.ppc64le \
 	arhat-libpod.linux.s390x
+	# arhat-libpod.linux.ppc64 \
+	# arhat-libpod.linux.mips \
+	# arhat-libpod.linux.mipshf \
+	# arhat-libpod.linux.mipsle \
+	# arhat-libpod.linux.mipslehf \
+	# arhat-libpod.linux.mips64 \
+	# arhat-libpod.linux.mips64hf \
+	# arhat-libpod.linux.mips64le \
+	# arhat-libpod.linux.mips64lehf \

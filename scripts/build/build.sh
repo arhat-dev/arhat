@@ -40,7 +40,7 @@ arhat_docker() {
 
 arhat_libpod() {
   _install_deps
-  _build "${GOBUILD} -tags='arhat netgo nokube nocloud rt_libpod ${PREDEFINED_BUILD_TAGS} ${TAGS}' ./cmd/arhat-libpod"
+  _build "${GOBUILD} -tags='arhat netgo nokube nocloud rt_libpod containers_image_openpgp ${PREDEFINED_BUILD_TAGS} ${TAGS}' ./cmd/arhat-libpod"
 }
 
 COMP=$(printf "%s" "$@" | cut -d. -f1)
@@ -129,7 +129,7 @@ if [ -n "${PM_DEB}" ]; then
       packages_with_arch="${pkg}:${debian_arch} ${packages_with_arch}"
     done
 
-    INSTALL="${INSTALL} python3-distutils=3.7.3-1 python3-lib2to3=3.7.3-1 python3=3.7.3-1 && apt-get install -y ${packages_with_arch}"
+    INSTALL="dpkg --add-architecture ${debian_arch} && ${INSTALL} && apt-get install -y ${packages_with_arch}"
   fi
 fi
 

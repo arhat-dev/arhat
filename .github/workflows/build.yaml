@@ -18,31 +18,22 @@ on:
 jobs:
   build-on-linux:
     runs-on: ubuntu-latest
-    container:
-      image: arhatdev/builder-go:debian
     steps:
     - uses: actions/checkout@v2
-    - name: Install Extra Packages
-      run: |
-        apt-get update
-        apt-get install -y --no-install-recommends \
-          gcc-mips-linux-gnu g++-mips-linux-gnu linux-libc-dev-mips-cross \
-          gcc-mipsel-linux-gnu g++-mipsel-linux-gnu linux-libc-dev-mipsel-cross \
-          gcc-mips64-linux-gnuabi64 g++-mips64-linux-gnuabi64 linux-libc-dev-mips64-cross \
-          gcc-mips64el-linux-gnuabi64 g++-mips64el-linux-gnuabi64 linux-libc-dev-mips64el-cross \
-          gcc-powerpc64-linux-gnu g++-powerpc64-linux-gnu linux-libc-dev-ppc64-cross \
-          gcc-powerpc64le-linux-gnu g++-powerpc64le-linux-gnu linux-libc-dev-ppc64el-cross \
-          gcc-i686-linux-gnu g++-i686-linux-gnu linux-libc-dev-i386-cross \
-          gcc-riscv64-linux-gnu g++-riscv64-linux-gnu linux-libc-dev-riscv64-cross \
-          gcc-s390x-linux-gnu g++-s390x-linux-gnu linux-libc-dev-s390x-cross
+    - uses: actions/setup-go@v2
+      with:
+        # TODO: update to 1.15.x once 1.15.4 released
+        go-version: 1.14.x
 
     - name: Build
       run: |
         CGO_ENABLED=0 make -j$(nproc --all) arhat-none.linux.all
-        CGO_ENABLED=0 make arhat-none.linux.riscv64 TAGS='nometrics'
+        CGO_ENABLED=0 make arhat-none.linux.riscv64 \
+          TAGS='nometrics'
 
         CGO_ENABLED=0 make -j$(nproc --all) arhat-docker.linux.all
-        CGO_ENABLED=0 make arhat-docker.linux.riscv64 TAGS='nometrics'
+        CGO_ENABLED=0 make arhat-docker.linux.riscv64 \
+          TAGS='nometrics'
 
         CGO_ENABLED=0 make -j$(nproc --all) arhat-none.freebsd.all \
           TAGS='noboottime noexec nomeminfo nonetdev nozfs nofilesystem'
@@ -65,15 +56,10 @@ jobs:
         CGO_ENABLED=0 make -j$(nproc --all) arhat-none.dragonfly.amd64 \
           TAGS='nometrics nodev_serial nodev_file nodev_modbus_serial'
 
-        CGO_ENABLED=1 make arhat-libpod.linux.all
-        CGO_ENABLED=1 make arhat-libpod.linux.riscv64 TAGS='nometrics'
-
-    # TODO: Enable arhat-libpod packaging
     - name: Package
       run: |
         make package.arhat-none.linux.all
         make package.arhat-docker.linux.all
-        # make package.arhat-libpod.linux.all
 
     - name: Hash
       run: |
@@ -115,6 +101,41 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: build-on-linux
+        path: build
+
+  build-arhat-libpod:
+    runs-on: ubuntu-latest
+    container:
+      image: arhatdev/builder-go:debian
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install Extra Packages
+      run: |
+        apt update
+        apt install -y python3-distutils=3.7.3-1 python3-lib2to3=3.7.3-1 python3=3.7.3-1
+
+    - name: Build
+      run: |
+        CGO_ENABLED=1 make arhat-libpod.linux.all
+        # CGO_ENABLED=1 make arhat-libpod.linux.riscv64 TAGS='nometrics'
+
+    # TODO: Enable arhat-libpod packaging
+    # - name: Package
+    #   run: |
+    #     # make package.arhat-libpod.linux.all
+
+    - name: Hash
+      run: |
+        cd build
+        sha256sum arhat-libpod.linux* > sha256.linux.txt
+        sha512sum arhat-libpod.linux* > sha512.linux.txt
+        md5sum arhat-libpod.linux* > md5.linux.txt
+        cd -
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: build-arhat-libpod
         path: build
 
   build-on-darwin:
@@ -206,6 +227,7 @@ jobs:
     - build-on-linux
     - build-on-windows
     - build-on-darwin
+    - build-arhat-libpod
 
     runs-on: ubuntu-latest
     steps:
@@ -225,6 +247,12 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: build-on-darwin
+        path: build
+
+    - name: Download arhat-libpod builds
+      uses: actions/download-artifact@v2
+      with:
+        name: build-arhat-libpod
         path: build
 
     - name: Extract tag name
