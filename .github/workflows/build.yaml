@@ -32,7 +32,7 @@ jobs:
 
         wget -qO- https://www.ports.debian.org/archive_2020.key | sudo apt-key add -
 
-        sudo cat >> /etc/apt/sources.list <EOF
+        cat <<EOF | sudo tee -a /etc/apt/sources.list
         deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports unstable main
         deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports unreleased main
         deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports experimental main
