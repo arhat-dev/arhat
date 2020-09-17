@@ -18,31 +18,14 @@ on:
 jobs:
   build-on-linux:
     runs-on: ubuntu-latest
+    container:
+      image: arhatdev/builder-go:debian
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/setup-go@v2
-      with:
-        # TODO: update to 1.15.x once 1.15.4 released
-        go-version: 1.14.x
-
-    - name: Install cross compiler
+    - name: Install Extra Packages
       run: |
-        sudo sed -i 's/^deb\b/& [arch=amd64,i386,arm64,armhf,armel,mips,mipsel,mips64el,ppc64el,s390x]/g' \
-          /etc/apt/sources.list
-
-        wget -qO- https://www.ports.debian.org/archive_2020.key | sudo apt-key add -
-
-        cat <<EOF | sudo tee -a /etc/apt/sources.list
-        deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports unstable main
-        deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports unreleased main
-        deb [arch=ppc64,riscv64] http://ftp.ports.debian.org/debian-ports experimental main
-        EOF
-
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends \
-          gcc-arm-linux-gnueabi g++-arm-linux-gnueabi linux-libc-dev-armel-cross \
-          gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf linux-libc-dev-armhf-cross \
-          gcc-aarch64-linux-gnu g++-aarch64-linux-gnu linux-libc-dev-arm64-cross \
           gcc-mips-linux-gnu g++-mips-linux-gnu linux-libc-dev-mips-cross \
           gcc-mipsel-linux-gnu g++-mipsel-linux-gnu linux-libc-dev-mipsel-cross \
           gcc-mips64-linux-gnuabi64 g++-mips64-linux-gnuabi64 linux-libc-dev-mips64-cross \
@@ -145,6 +128,7 @@ jobs:
 
     - name: Build
       run: |
+        # node_exporter requires CGO for darwin, or we can only get useless metrics
         CGO_ENABLED=1 make arhat-none.darwin.all
         CGO_ENABLED=1 make arhat-docker.darwin.all
 
