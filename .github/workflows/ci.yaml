@@ -41,20 +41,13 @@ jobs:
         make lint.all
 
   unit-tests:
+    container:
+      image: arhatdev/builder-go:debian
     needs:
     - stylecheck
-    strategy:
-      matrix:
-        go-version:
-        - 1.14.x
-        # - 1.15.x
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/setup-go@v2
-      with:
-        go-version: ${{ matrix.go-version }}
     - uses: actions/checkout@v2
-
     - name: Install Extra Packages
       run: |
         sudo apt update

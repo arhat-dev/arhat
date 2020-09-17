@@ -15,20 +15,38 @@
 # limitations under the License.
 
 common_go_test_env="GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH)"
-common_go_test_flags="-mod=vendor -v -failfast -covermode=atomic -tags='arhat netgo nokube nocloud containers_image_openpgp'"
+common_go_test_flags="-mod=vendor -v -failfast -covermode=atomic"
 
-pkg() {
-    go_test="${common_go_test_env} CGO_ENABLED=1 go test ${common_go_test_flags} -coverprofile=coverage.pkg.txt -coverpkg=./pkg/... ./pkg/..."
+_run_go_test() {
+    env_vars="$1"
+    flags="$2"
+    tags="$3"
+    dir="$4"
 
     set -ex
-    eval "${go_test}"
+    eval "${common_go_test_env} ${env_vars} go test ${common_go_test_flags} -tags='${tags}' ${flags} ${dir}"
+}
+
+pkg() {
+    _run_go_test \
+        "CGO_ENABLED=1" \
+        "-coverprofile=coverage.pkg.txt -coverpkg=./pkg/..." \
+        "arhat netgo nokube nocloud containers_image_openpgp rt_docker" \
+        "./pkg/..."
 }
 
 cmd() {
-    go_test="${common_go_test_env} CGO_ENABLED=0 go test ${common_go_test_flags} -coverprofile=coverage.cmd.txt -coverpkg=./cmd/... ./cmd/..."
+    _run_go_test \
+        "CGO_ENABLED=0" \
+        "-coverprofile=coverage.cmd.txt -coverpkg=./cmd/arhat-none/... " \
+        "arhat netgo nokube nocloud rt_none nometrics nodevices" \
+        "./cmd/arhat-none/..."
 
-    set -ex
-    eval "${go_test}"
+    _run_go_test \
+        "CGO_ENABLED=0" \
+        "-coverprofile=coverage.cmd.txt -coverpkg=./cmd/arhat-docker/... " \
+        "arhat netgo nokube nocloud rt_docker nometrics nodevices" \
+        "./cmd/arhat-docker/..."
 }
 
 $1
