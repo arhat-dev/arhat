@@ -116,9 +116,11 @@ jobs:
     container:
       image: arhatdev/builder-go:debian
     steps:
-    - uses: arhat-dev/actions-hostrun@main
-      run: |
-        docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+    - name: Run in Host
+      uses: arhat-dev/actions-hostrun@main
+      with:
+        run: |
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 
     - uses: actions/checkout@v2
     - name: Install Extra Packages
