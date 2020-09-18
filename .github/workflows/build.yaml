@@ -1113,15 +1113,15 @@ jobs:
         asset_path: build/arhat-docker.linux.mips64lehf
         asset_content_type: application/octet-stream
 
-    - name: Upload arhat-libpod.linux.x86
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: arhat-libpod.linux.x86
-        asset_path: build/arhat-libpod.linux.x86
-        asset_content_type: application/octet-stream
+    # - name: Upload arhat-libpod.linux.x86
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat-libpod.linux.x86
+    #     asset_path: build/arhat-libpod.linux.x86
+    #     asset_content_type: application/octet-stream
 
     - name: Upload arhat-libpod.linux.amd64
       uses: actions/upload-release-asset@v1
@@ -1173,15 +1173,15 @@ jobs:
         asset_path: build/arhat-libpod.linux.arm64
         asset_content_type: application/octet-stream
 
-    - name: Upload arhat-libpod.linux.ppc64
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: arhat-libpod.linux.ppc64
-        asset_path: build/arhat-libpod.linux.ppc64
-        asset_content_type: application/octet-stream
+    # - name: Upload arhat-libpod.linux.ppc64
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat-libpod.linux.ppc64
+    #     asset_path: build/arhat-libpod.linux.ppc64
+    #     asset_content_type: application/octet-stream
 
     - name: Upload arhat-libpod.linux.ppc64le
       uses: actions/upload-release-asset@v1
@@ -1203,85 +1203,85 @@ jobs:
         asset_path: build/arhat-libpod.linux.s390x
         asset_content_type: application/octet-stream
 
-    - name: Upload arhat-libpod.linux.mips
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: arhat-libpod.linux.mips
-        asset_path: build/arhat-libpod.linux.mips
-        asset_content_type: application/octet-stream
+    # - name: Upload arhat-libpod.linux.mips
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat-libpod.linux.mips
+    #     asset_path: build/arhat-libpod.linux.mips
+    #     asset_content_type: application/octet-stream
 
-    - name: Upload arhat-libpod.linux.mipshf
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: arhat-libpod.linux.mipshf
-        asset_path: build/arhat-libpod.linux.mipshf
-        asset_content_type: application/octet-stream
+    # - name: Upload arhat-libpod.linux.mipshf
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat-libpod.linux.mipshf
+    #     asset_path: build/arhat-libpod.linux.mipshf
+    #     asset_content_type: application/octet-stream
 
-    - name: Upload arhat-libpod.linux.mipsle
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: arhat-libpod.linux.mipsle
-        asset_path: build/arhat-libpod.linux.mipsle
-        asset_content_type: application/octet-stream
+    # - name: Upload arhat-libpod.linux.mipsle
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat-libpod.linux.mipsle
+    #     asset_path: build/arhat-libpod.linux.mipsle
+    #     asset_content_type: application/octet-stream
 
-    - name: Upload arhat-libpod.linux.mipslehf
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: arhat-libpod.linux.mipslehf
-        asset_path: build/arhat-libpod.linux.mipslehf
-        asset_content_type: application/octet-stream
+    # - name: Upload arhat-libpod.linux.mipslehf
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat-libpod.linux.mipslehf
+    #     asset_path: build/arhat-libpod.linux.mipslehf
+    #     asset_content_type: application/octet-stream
 
-    - name: Upload arhat-libpod.linux.mips64
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: arhat-libpod.linux.mips64
-        asset_path: build/arhat-libpod.linux.mips64
-        asset_content_type: application/octet-stream
+    # - name: Upload arhat-libpod.linux.mips64
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat-libpod.linux.mips64
+    #     asset_path: build/arhat-libpod.linux.mips64
+    #     asset_content_type: application/octet-stream
 
-    - name: Upload arhat-libpod.linux.mips64hf
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: arhat-libpod.linux.mips64hf
-        asset_path: build/arhat-libpod.linux.mips64hf
-        asset_content_type: application/octet-stream
+    # - name: Upload arhat-libpod.linux.mips64hf
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat-libpod.linux.mips64hf
+    #     asset_path: build/arhat-libpod.linux.mips64hf
+    #     asset_content_type: application/octet-stream
 
-    - name: Upload arhat-libpod.linux.mips64le
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: arhat-libpod.linux.mips64le
-        asset_path: build/arhat-libpod.linux.mips64le
-        asset_content_type: application/octet-stream
+    # - name: Upload arhat-libpod.linux.mips64le
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat-libpod.linux.mips64le
+    #     asset_path: build/arhat-libpod.linux.mips64le
+    #     asset_content_type: application/octet-stream
 
-    - name: Upload arhat-libpod.linux.mips64lehf
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: arhat-libpod.linux.mips64lehf
-        asset_path: build/arhat-libpod.linux.mips64lehf
-        asset_content_type: application/octet-stream
+    # - name: Upload arhat-libpod.linux.mips64lehf
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat-libpod.linux.mips64lehf
+    #     asset_path: build/arhat-libpod.linux.mips64lehf
+    #     asset_content_type: application/octet-stream
 
     #
     # packages
