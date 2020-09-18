@@ -39,6 +39,7 @@ image.build.arhat-libpod.linux.all: \
 	image.build.arhat-libpod.linux.arm64 \
 	image.build.arhat-libpod.linux.armv7 \
 	image.build.arhat-libpod.linux.armv6 \
+	image.build.arhat-libpod.linux.x86 \
 	image.build.arhat-libpod.linux.s390x \
 	image.build.arhat-libpod.linux.ppc64le
 
@@ -69,5 +70,6 @@ image.push.arhat-libpod.linux.all: \
 	image.push.arhat-libpod.linux.arm64 \
 	image.push.arhat-libpod.linux.armv7 \
 	image.push.arhat-libpod.linux.armv6 \
+	image.push.arhat-libpod.linux.x86 \
 	image.push.arhat-libpod.linux.s390x \
 	image.push.arhat-libpod.linux.ppc64le
