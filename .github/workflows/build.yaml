@@ -116,6 +116,14 @@ jobs:
     container:
       image: arhatdev/builder-go:debian
     steps:
+    - name: Install docker-cli in Container
+      run: |
+        curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add –
+        add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian buster stable"
+        apt update
+        apt install -y docker-ce-cli
+        docker -v
+
     - name: Run in Host
       uses: arhat-dev/actions-hostrun@main
       with:
