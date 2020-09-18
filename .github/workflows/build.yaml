@@ -15,6 +15,10 @@ on:
     tags:
     - v*
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   build-on-linux:
     runs-on: ubuntu-latest
@@ -112,6 +116,10 @@ jobs:
     container:
       image: arhatdev/builder-go:debian
     steps:
+    - uses: arhat-dev/actions-hostrun@main
+      run: |
+        docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+
     - uses: actions/checkout@v2
     - name: Install Extra Packages
       run: |
@@ -191,7 +199,6 @@ jobs:
         go-version: 1.14.x
 
     - name: Build
-      shell: bash
       run: |
         CGO_ENABLED=0 make -j$(nproc --all) arhat-none.windows.all
         CGO_ENABLED=0 make arhat-none.windows.armv5 TAGS='nometrics'
@@ -205,13 +212,11 @@ jobs:
 
     # # TODO: Support windows packaging
     # - name: Package
-    #   shell: bash
     #   run: |
     #     make package.arhat-none.windows.all
     #     make package.arhat-docker.windows.all
 
     - name: Hash
-      shell: bash
       run: |
         cd build
         sha256sum arhat-*.windows* > sha256.windows.txt
