@@ -6,5 +6,5 @@ import "arhat.dev/aranya-proto/aranyagopb"
 
 type NetworkRuntime interface {
 	// UpdateContainerNetwork update cni config dynamically
-	UpdateContainerNetwork(options *aranyagopb.NetworkOptions) ([]*aranyagopb.PodStatus, error)
+	UpdateContainerNetwork(options *aranyagopb.NetworkUpdatePodNetworkCmd) ([]*aranyagopb.PodStatusMsg, error)
 }

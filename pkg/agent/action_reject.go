@@ -30,7 +30,7 @@ func (b *Agent) handleRejectCmd(sid uint64, data []byte) {
 
 	err := cmd.Unmarshal(data)
 	if err != nil {
-		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal reject cmd: %w", err))
+		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal RejectCmd: %w", err))
 		return
 	}
 

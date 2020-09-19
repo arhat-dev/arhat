@@ -7,7 +7,7 @@ import (
 
 func ResizeChannelToHandlerFunc(
 	exitCh <-chan struct{},
-	resizeCh <-chan *aranyagopb.TtyResizeOptions,
+	resizeCh <-chan *aranyagopb.ContainerTerminalResizeCmd,
 ) exechelper.TtyResizeSignalFunc {
 	if resizeCh == nil {
 		return func(doResize func(cols uint64, rows uint64) error) (more bool) {

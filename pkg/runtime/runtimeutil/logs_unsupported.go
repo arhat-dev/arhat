@@ -26,6 +26,6 @@ import (
 	"arhat.dev/pkg/wellknownerrors"
 )
 
-func ReadLogs(ctx context.Context, path string, options *aranyagopb.LogOptions, stdout, stderr io.Writer) error {
+func ReadLogs(ctx context.Context, path string, options *aranyagopb.ContainerLogsCmd, stdout, stderr io.Writer) error {
 	return wellknownerrors.ErrNotSupported
 }

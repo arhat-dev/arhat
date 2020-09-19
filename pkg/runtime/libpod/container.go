@@ -141,10 +141,10 @@ func (r *libpodRuntime) execInContainer(
 	ctr *libpod.Container,
 	stdin io.Reader,
 	stdout, stderr io.Writer,
-	resizeCh <-chan *aranyagopb.TtyResizeOptions,
+	resizeCh <-chan *aranyagopb.ContainerTerminalResizeCmd,
 	command []string,
 	tty bool,
-) *aranyagopb.Error {
+) *aranyagopb.ErrorMsg {
 	execCtx, cancelExec := r.ActionContext()
 	defer cancelExec()
 
@@ -182,7 +182,7 @@ func (r *libpodRuntime) execInContainer(
 	}
 	exitCode, err := ctr.Exec(execConfig, streams, resize)
 	if err != nil {
-		return aranyagopb.NewCommonErrorWithCode(int64(exitCode), err.Error())
+		return aranyagopb.NewCommonErrorMsgWithCode(int64(exitCode), err.Error())
 	}
 
 	return nil
@@ -190,7 +190,7 @@ func (r *libpodRuntime) execInContainer(
 
 func (r *libpodRuntime) createPauseContainer(
 	ctx context.Context,
-	options *aranyagopb.CreateOptions,
+	options *aranyagopb.PodEnsureCmd,
 ) (_ *libpod.Pod, _ *libpod.Container, podIP string, err error) {
 	logger := r.Log().WithFields(log.String("action", "createPauseContainer"))
 	podName := fmt.Sprintf("%s.%s", options.Namespace, options.Name)
@@ -365,7 +365,7 @@ func (r *libpodRuntime) createPauseContainer(
 // nolint:gocyclo
 func (r *libpodRuntime) createContainer(
 	ctx context.Context,
-	options *aranyagopb.CreateOptions,
+	options *aranyagopb.PodEnsureCmd,
 	pod *libpod.Pod,
 	spec *aranyagopb.ContainerSpec,
 	ns map[string]string,

@@ -51,7 +51,7 @@ func (l *logWrapper) Log(kv ...interface{}) error {
 	return nil
 }
 
-func CreateNodeMetricsGatherer(config *aranyagopb.MetricsConfigOptions) (types.MetricsCollectFunc, error) {
+func CreateNodeMetricsGatherer(config *aranyagopb.MetricsConfigCmd) (types.MetricsCollectFunc, error) {
 	args := []string{os.Args[0]}
 
 	var collectors []string

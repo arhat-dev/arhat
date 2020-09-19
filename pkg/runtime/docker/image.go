@@ -31,7 +31,7 @@ import (
 )
 
 func (r *dockerRuntime) ensureImages(
-	images map[string]*aranyagopb.ImagePull,
+	images map[string]*aranyagopb.ImagePullConfig,
 ) (map[string]*dockertype.ImageSummary, error) {
 	var (
 		pulledImages = make(map[string]*dockertype.ImageSummary)

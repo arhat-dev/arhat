@@ -54,10 +54,10 @@ func (r *noneRuntime) ExecInContainer(
 	podUID, container string,
 	stdin io.Reader,
 	stdout, stderr io.Writer,
-	resizeCh <-chan *aranyagopb.TtyResizeOptions,
+	resizeCh <-chan *aranyagopb.ContainerTerminalResizeCmd,
 	command []string,
 	tty bool,
-) *aranyagopb.Error {
+) *aranyagopb.ErrorMsg {
 	return errconv.ToConnectivityError(wellknownerrors.ErrNotSupported)
 }
 
@@ -65,14 +65,14 @@ func (r *noneRuntime) AttachContainer(
 	podUID, container string,
 	stdin io.Reader,
 	stdout, stderr io.Writer,
-	resizeCh <-chan *aranyagopb.TtyResizeOptions,
+	resizeCh <-chan *aranyagopb.ContainerTerminalResizeCmd,
 ) error {
 	return wellknownerrors.ErrNotSupported
 }
 
 func (r *noneRuntime) GetContainerLogs(
 	podUID string,
-	options *aranyagopb.LogOptions,
+	options *aranyagopb.ContainerLogsCmd,
 	stdout, stderr io.WriteCloser,
 	logCtx context.Context,
 ) error {

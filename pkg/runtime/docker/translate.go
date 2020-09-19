@@ -53,9 +53,9 @@ func (r *dockerRuntime) translatePodStatus(
 	podIP string,
 	pauseContainer *dockertype.ContainerJSON,
 	containers []*dockertype.ContainerJSON,
-) *aranyagopb.PodStatus {
+) *aranyagopb.PodStatusMsg {
 	podUID := pauseContainer.Config.Labels[constant.ContainerLabelPodUID]
-	ctrStatus := make(map[string]*aranyagopb.PodStatus_ContainerStatus)
+	ctrStatus := make(map[string]*aranyagopb.ContainerStatus)
 
 	for _, ctr := range containers {
 		ctrPodUID := ctr.Config.Labels[constant.ContainerLabelPodUID]
@@ -69,17 +69,17 @@ func (r *dockerRuntime) translatePodStatus(
 		ctrStatus[name] = status
 	}
 
-	return aranyagopb.NewPodStatus(podUID, podIP, ctrStatus)
+	return aranyagopb.NewPodStatusMsg(podUID, podIP, ctrStatus)
 }
 
 func (r *dockerRuntime) translateContainerStatus(
 	ctrInfo *dockertype.ContainerJSON,
-) *aranyagopb.PodStatus_ContainerStatus {
+) *aranyagopb.ContainerStatus {
 	ctrCreatedAt, _ := time.Parse(time.RFC3339Nano, ctrInfo.Created)
 	ctrStartedAt, _ := time.Parse(time.RFC3339Nano, ctrInfo.State.StartedAt)
 	ctrFinishedAt, _ := time.Parse(time.RFC3339Nano, ctrInfo.State.FinishedAt)
 
-	return &aranyagopb.PodStatus_ContainerStatus{
+	return &aranyagopb.ContainerStatus{
 		ContainerId: r.Name() + "://" + ctrInfo.ID,
 		ImageId:     ctrInfo.Image,
 		CreatedAt:   ctrCreatedAt.Format(aranyagoconst.TimeLayout),
@@ -99,7 +99,7 @@ func (r *dockerRuntime) doHookActions(
 	logger log.Interface,
 	ctrID string,
 	hook *aranyagopb.ActionMethod,
-) *aranyagopb.Error {
+) *aranyagopb.ErrorMsg {
 	switch action := hook.Action.(type) {
 	case *aranyagopb.ActionMethod_Exec:
 		if cmd := action.Exec.Command; len(cmd) > 0 {

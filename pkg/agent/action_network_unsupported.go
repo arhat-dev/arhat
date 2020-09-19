@@ -2,6 +2,6 @@
 
 package agent
 
-func (b *Agent) handleNetworkCmd(sid uint64, data []byte) {
+func (b *Agent) handleNetworkUpdatePodNet(sid uint64, data []byte) {
 	b.handleUnknownCmd(sid, "net", nil)
 }

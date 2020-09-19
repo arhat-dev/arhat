@@ -67,7 +67,7 @@ func IsHostNetwork(labels map[string]string) bool {
 	return ok
 }
 
-func ContainerLabels(options *aranyagopb.CreateOptions, container string) map[string]string {
+func ContainerLabels(options *aranyagopb.PodEnsureCmd, container string) map[string]string {
 	defaults := map[string]string{
 		constant.ContainerLabelPodUID:       options.PodUid,
 		constant.ContainerLabelPodNamespace: options.Namespace,

@@ -235,15 +235,15 @@ func (r *dockerRuntime) InitRuntime() error {
 	return nil
 }
 
-func (r *dockerRuntime) EnsureImages(options *aranyagopb.ImageEnsureOptions) ([]*aranyagopb.Image, error) {
+func (r *dockerRuntime) EnsureImages(options *aranyagopb.ImageEnsureCmd) ([]*aranyagopb.ImageStatusMsg, error) {
 	logger := r.Log().WithFields(log.String("action", "ensureImages"), log.Any("options", options))
 	logger.D("ensuring pod container image(s)")
 
-	allImages := map[string]*aranyagopb.ImagePull{
+	allImages := map[string]*aranyagopb.ImagePullConfig{
 		r.PauseImage: {PullPolicy: aranyagopb.IMAGE_PULL_IF_NOT_PRESENT},
 	}
 
-	for imageName, opt := range options.ImagePull {
+	for imageName, opt := range options.Images {
 		allImages[imageName] = opt
 	}
 
@@ -253,7 +253,7 @@ func (r *dockerRuntime) EnsureImages(options *aranyagopb.ImageEnsureOptions) ([]
 		return nil, err
 	}
 
-	var images []*aranyagopb.Image
+	var images []*aranyagopb.ImageStatusMsg
 	for _, img := range pulledImages {
 		var sha256Hash string
 		for _, digest := range img.RepoDigests {
@@ -267,7 +267,7 @@ func (r *dockerRuntime) EnsureImages(options *aranyagopb.ImageEnsureOptions) ([]
 			continue
 		}
 
-		images = append(images, &aranyagopb.Image{
+		images = append(images, &aranyagopb.ImageStatusMsg{
 			Sha256: sha256Hash,
 			Names:  img.RepoTags,
 		})
@@ -276,7 +276,7 @@ func (r *dockerRuntime) EnsureImages(options *aranyagopb.ImageEnsureOptions) ([]
 	return images, nil
 }
 
-func (r *dockerRuntime) CreateInitContainers(options *aranyagopb.CreateOptions) (*aranyagopb.PodStatus, error) {
+func (r *dockerRuntime) CreateInitContainers(options *aranyagopb.PodEnsureCmd) (*aranyagopb.PodStatusMsg, error) {
 	logger := r.Log().WithFields(
 		log.String("action", "createInitContainers"),
 		log.String("namespace", options.Namespace),
@@ -418,7 +418,7 @@ func (r *dockerRuntime) CreateInitContainers(options *aranyagopb.CreateOptions) 
 	return r.translatePodStatus(podIP, pauseCtr, allCtrInfo), nil
 }
 
-func (r *dockerRuntime) CreateContainers(options *aranyagopb.CreateOptions) (_ *aranyagopb.PodStatus, err error) {
+func (r *dockerRuntime) CreateContainers(options *aranyagopb.PodEnsureCmd) (_ *aranyagopb.PodStatusMsg, err error) {
 	logger := r.Log().WithFields(
 		log.String("action", "create"),
 		log.String("namespace", options.Namespace),
@@ -531,12 +531,12 @@ func (r *dockerRuntime) CreateContainers(options *aranyagopb.CreateOptions) (_ *
 	return r.translatePodStatus(podIP, pauseCtrInfo, allCtrInfo), nil
 }
 
-func (r *dockerRuntime) DeleteContainers(podUID string, containers []string) (*aranyagopb.PodStatus, error) {
+func (r *dockerRuntime) DeleteContainers(podUID string, containers []string) (*aranyagopb.PodStatusMsg, error) {
 	// TODO: implement
 	return nil, wellknownerrors.ErrNotSupported
 }
 
-func (r *dockerRuntime) DeletePod(options *aranyagopb.DeleteOptions) (_ *aranyagopb.PodStatus, err error) {
+func (r *dockerRuntime) DeletePod(options *aranyagopb.PodDeleteCmd) (_ *aranyagopb.PodStatusMsg, err error) {
 	logger := r.Log().WithFields(log.String("action", "delete"), log.Any("options", options))
 	logger.D("deleting pod containers")
 
@@ -609,10 +609,10 @@ func (r *dockerRuntime) DeletePod(options *aranyagopb.DeleteOptions) (_ *aranyag
 	}
 
 	logger.D("pod deleted")
-	return aranyagopb.NewPodStatus(options.PodUid, "", nil), nil
+	return aranyagopb.NewPodStatusMsg(options.PodUid, "", nil), nil
 }
 
-func (r *dockerRuntime) ListPods(options *aranyagopb.ListOptions) ([]*aranyagopb.PodStatus, error) {
+func (r *dockerRuntime) ListPods(options *aranyagopb.PodListCmd) ([]*aranyagopb.PodStatusMsg, error) {
 	logger := r.Log().WithFields(log.String("action", "list"), log.Any("options", options))
 	logger.D("listing pods")
 
@@ -641,7 +641,7 @@ func (r *dockerRuntime) ListPods(options *aranyagopb.ListOptions) ([]*aranyagopb
 	}
 
 	var (
-		results []*aranyagopb.PodStatus
+		results []*aranyagopb.PodStatusMsg
 		// podUID -> pause container
 		pauseContainers = make(map[string]dockertype.Container)
 		// podUID -> containers
@@ -702,9 +702,9 @@ func (r *dockerRuntime) ExecInContainer(
 	podUID, container string,
 	stdin io.Reader,
 	stdout, stderr io.Writer,
-	resizeCh <-chan *aranyagopb.TtyResizeOptions,
+	resizeCh <-chan *aranyagopb.ContainerTerminalResizeCmd,
 	command []string, tty bool,
-) *aranyagopb.Error {
+) *aranyagopb.ErrorMsg {
 	logger := r.Log().WithFields(
 		log.String("uid", podUID),
 		log.String("container", container),
@@ -724,7 +724,7 @@ func (r *dockerRuntime) AttachContainer(
 	podUID, container string,
 	stdin io.Reader,
 	stdout, stderr io.Writer,
-	resizeCh <-chan *aranyagopb.TtyResizeOptions,
+	resizeCh <-chan *aranyagopb.ContainerTerminalResizeCmd,
 ) error {
 	logger := r.Log().WithFields(
 		log.String("action", "attach"),
@@ -796,7 +796,7 @@ func (r *dockerRuntime) AttachContainer(
 
 func (r *dockerRuntime) GetContainerLogs(
 	podUID string,
-	options *aranyagopb.LogOptions,
+	options *aranyagopb.ContainerLogsCmd,
 	stdout, stderr io.WriteCloser,
 	logCtx context.Context,
 ) error {
@@ -880,7 +880,9 @@ func (r *dockerRuntime) PortForward(podUID string, protocol string, port int32, 
 	return runtimeutil.PortForward(ctx, address, protocol, port, downstream)
 }
 
-func (r *dockerRuntime) UpdateContainerNetwork(options *aranyagopb.NetworkOptions) ([]*aranyagopb.PodStatus, error) {
+func (r *dockerRuntime) UpdateContainerNetwork(
+	options *aranyagopb.NetworkUpdatePodNetworkCmd,
+) ([]*aranyagopb.PodStatusMsg, error) {
 	logger := r.Log().WithFields(log.String("action", "updateContainerNetwork"))
 
 	ctx, cancelUpdate := r.ActionContext()
@@ -916,7 +918,7 @@ func (r *dockerRuntime) UpdateContainerNetwork(options *aranyagopb.NetworkOption
 		return nil, err
 	}
 
-	var result []*aranyagopb.PodStatus
+	var result []*aranyagopb.PodStatusMsg
 	for _, ctr := range pauseCtrs {
 		podUID, ok := ctr.Labels[constant.ContainerLabelPodUID]
 		if !ok {
@@ -937,7 +939,7 @@ func (r *dockerRuntime) UpdateContainerNetwork(options *aranyagopb.NetworkOption
 				return nil, err
 			}
 
-			result = append(result, aranyagopb.NewPodStatus(podUID, ip, nil))
+			result = append(result, aranyagopb.NewPodStatusMsg(podUID, ip, nil))
 		}
 	}
 	return result, nil

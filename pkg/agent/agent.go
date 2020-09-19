@@ -22,11 +22,11 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/log"
 	"arhat.dev/pkg/wellknownerrors"
+	"github.com/gogo/protobuf/proto"
 
 	"arhat.dev/arhat/pkg/conf"
 	"arhat.dev/arhat/pkg/runtime"
@@ -39,7 +39,6 @@ import (
 
 var (
 	errClientNotSet            = errors.New("client not set")
-	errNilCmd                  = errors.New("cmd is nil")
 	errRequiredOptionsNotFound = errors.New("required options not found")
 	errStreamSessionClosed     = errors.New("stream session closed")
 	errCommandNotProvided      = errors.New("command not provided for exec")
@@ -98,6 +97,7 @@ func NewAgent(appCtx context.Context, config *conf.ArhatConfig) (*Agent, error) 
 
 		metricsMU: new(sync.RWMutex),
 
+		cmdMgr:      manager.NewCmdManager(),
 		clientStore: new(atomic.Value),
 		runtime:     rt,
 		storage:     st,
@@ -111,7 +111,6 @@ func NewAgent(appCtx context.Context, config *conf.ArhatConfig) (*Agent, error) 
 
 type Agent struct {
 	hostConfig    *conf.ArhatHostConfig
-	maxPodAvail   uint64
 	machineIDFrom *conf.ArhatValueFromSpec
 	kubeLogFile   string
 	extInfo       []*aranyagopb.NodeExtInfo
@@ -125,6 +124,7 @@ type Agent struct {
 	collectNodeMetrics      types.MetricsCollectFunc
 	collectContainerMetrics types.MetricsCollectFunc
 
+	cmdMgr      *manager.CmdManager
 	clientStore *atomic.Value
 	runtime     types.Runtime
 	storage     types.Storage
@@ -144,12 +144,36 @@ func (b *Agent) GetClient() types.AgentConnectivity {
 	return nil
 }
 
-func (b *Agent) PostMsg(msg *aranyagopb.Msg) error {
-	if c := b.clientStore.Load(); c != nil {
-		return c.(types.AgentConnectivity).PostMsg(msg)
+func (b *Agent) PostData(sid uint64, kind aranyagopb.Kind, seq uint64, completed bool, data []byte) error {
+	client := b.GetClient()
+	if client == nil {
+		return errClientNotSet
 	}
 
-	return errClientNotSet
+	n := client.MaxPayloadSize()
+	for len(data) > n {
+		err := client.PostMsg(aranyagopb.NewMsg(kind, sid, seq, 0, false, data[:n]))
+		if err != nil {
+			return fmt.Errorf("failed to post msg chunk: %w", err)
+		}
+		seq++
+		data = data[n:]
+	}
+
+	err := client.PostMsg(aranyagopb.NewMsg(kind, sid, seq, 0, completed, data))
+	if err != nil {
+		return fmt.Errorf("failed to post msg chunk: %w", err)
+	}
+	return nil
+}
+
+func (b *Agent) PostMsg(sid uint64, kind aranyagopb.Kind, msg proto.Marshaler) error {
+	data, err := msg.Marshal()
+	if err != nil {
+		return fmt.Errorf("failed to marshal msg body: %w", err)
+	}
+
+	return b.PostData(sid, kind, 0, true, data)
 }
 
 func (b *Agent) Context() context.Context {
@@ -162,33 +186,65 @@ func (b *Agent) HandleCmd(cmd *aranyagopb.Cmd) {
 		return
 	}
 
-	if len(cmd.Body) == 0 {
-		b.handleRuntimeError(cmd.SessionId, errNilCmd)
+	sid := cmd.Header.Sid
+
+	// handle stream data first
+	if cmd.Header.Kind == aranyagopb.CMD_DATA_UPSTREAM {
+		if cmd.Header.Completed {
+			b.streams.CloseRead(sid, cmd.Header.Seq)
+			return
+		}
+
+		if !b.streams.Write(sid, cmd.Header.Seq, cmd.Body) {
+			b.handleRuntimeError(sid, errStreamSessionClosed)
+			return
+		}
+
 		return
 	}
 
-	switch cmd.Kind {
-	case aranyagopb.CMD_NODE:
-		b.handleNodeCmd(cmd.SessionId, cmd.Body)
-	case aranyagopb.CMD_DEVICE:
-		b.handleDeviceCmd(cmd.SessionId, cmd.Body)
-	case aranyagopb.CMD_METRICS:
-		b.handleMetricsCmd(cmd.SessionId, cmd.Body)
-	case aranyagopb.CMD_POD:
-		b.handlePodCmd(cmd.SessionId, cmd.Body)
-	case aranyagopb.CMD_POD_OPERATION:
-		b.handlePodOperationCmd(cmd.SessionId, cmd.Body)
-	case aranyagopb.CMD_CRED:
-		b.handleCredentialCmd(cmd.SessionId, cmd.Body)
-	case aranyagopb.CMD_REJECTION:
-		b.handleRejectCmd(cmd.SessionId, cmd.Body)
-	case aranyagopb.CMD_SESSION:
-		b.handleSessionCmd(cmd.SessionId, cmd.Body)
-	case aranyagopb.CMD_NETWORK:
-		b.handleNetworkCmd(cmd.SessionId, cmd.Body)
-	default:
-		b.handleUnknownCmd(cmd.SessionId, "unknown", cmd)
+	cmdBytes, complete := b.cmdMgr.Process(cmd)
+	if !complete {
+		return
 	}
+
+	handleCmd, ok := map[aranyagopb.Kind]types.CmdHandler{
+		aranyagopb.CMD_SESSION_CLOSE: b.handleSessionClose,
+
+		aranyagopb.CMD_NODE_INFO_GET: b.handleNodeInfoGet,
+
+		aranyagopb.CMD_DEVICE_LIST:   b.handleDeviceList,
+		aranyagopb.CMD_DEVICE_ENSURE: b.handleDeviceEnsure,
+		aranyagopb.CMD_DEVICE_DELETE: b.handleDeviceDelete,
+
+		aranyagopb.CMD_METRICS_CONFIG:  b.handleMetricsConfig,
+		aranyagopb.CMD_METRICS_COLLECT: b.handleMetricsCollect,
+
+		aranyagopb.CMD_IMAGE_LIST:   nil,
+		aranyagopb.CMD_IMAGE_ENSURE: b.handleImageEnsure,
+		aranyagopb.CMD_IMAGE_DELETE: nil,
+
+		aranyagopb.CMD_POD_LIST:   b.handlePodList,
+		aranyagopb.CMD_POD_ENSURE: b.handlePodEnsure,
+		aranyagopb.CMD_POD_DELETE: b.handlePodDelete,
+
+		aranyagopb.CMD_POD_CTR_EXEC:       b.handlePodContainerExec,
+		aranyagopb.CMD_POD_CTR_ATTACH:     b.handlePodContainerAttach,
+		aranyagopb.CMD_POD_CTR_LOGS:       b.handlePodContainerLogs,
+		aranyagopb.CMD_POD_CTR_TTY_RESIZE: b.handlePodContainerTerminalResize,
+		aranyagopb.CMD_POD_PORT_FORWARD:   b.handlePodPortForward,
+
+		aranyagopb.CMD_CRED_ENSURE:        b.handleCredentialEnsure,
+		aranyagopb.CMD_REJECT:             b.handleRejectCmd,
+		aranyagopb.CMD_NET_UPDATE_POD_NET: b.handleNetworkUpdatePodNet,
+	}[cmd.Header.Kind]
+
+	if handleCmd == nil || !ok {
+		b.handleUnknownCmd(sid, "unknown or unsupported cmd", cmd)
+		return
+	}
+
+	handleCmd(sid, cmdBytes)
 }
 
 func (b *Agent) processInNewGoroutine(sid uint64, cmdName string, process func()) {
@@ -197,39 +253,6 @@ func (b *Agent) processInNewGoroutine(sid uint64, cmdName string, process func()
 		process()
 		b.logger.V("finished", log.Uint64("sid", sid), log.String("work", cmdName))
 	}()
-}
-
-func (b *Agent) handleSyncLoop(sid uint64, name string, opt *aranyagopb.SyncOptions, doSync func()) {
-	if opt == nil {
-		b.handleRuntimeError(sid, errRequiredOptionsNotFound)
-		return
-	}
-
-	client := b.GetClient()
-	if client == nil {
-		b.handleRuntimeError(sid, errClientNotSet)
-		return
-	}
-
-	clientExit := client.Context().Done()
-	agentExit := b.ctx.Done()
-	interval := time.Duration(opt.Interval)
-
-	b.processInNewGoroutine(sid, name+".sync.loop", func() {
-		// sync until connection lost
-		ticker := time.NewTicker(interval)
-		for {
-			select {
-			case <-ticker.C:
-				// send global sync message
-				doSync()
-			case <-clientExit:
-				return
-			case <-agentExit:
-				return
-			}
-		}
-	})
 }
 
 // nolint:unparam
@@ -243,7 +266,7 @@ func (b *Agent) handleRuntimeError(sid uint64, err error) bool {
 		return false
 	}
 
-	plainErr := b.PostMsg(aranyagopb.NewErrorMsg(sid, errconv.ToConnectivityError(err)))
+	plainErr := b.PostMsg(sid, aranyagopb.MSG_ERROR, errconv.ToConnectivityError(err))
 	if plainErr != nil {
 		b.handleConnectivityError(sid, plainErr)
 	}

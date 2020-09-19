@@ -85,9 +85,9 @@ func (r *libpodRuntime) translatePodStatus(
 	podIP string,
 	pauseCtr *libpod.Container,
 	containers []*libpod.Container,
-) (*aranyagopb.PodStatus, error) {
+) (*aranyagopb.PodStatusMsg, error) {
 	podUID := pauseCtr.Labels()[constant.ContainerLabelPodUID]
-	ctrStatus := make(map[string]*aranyagopb.PodStatus_ContainerStatus)
+	ctrStatus := make(map[string]*aranyagopb.ContainerStatus)
 
 	for _, ctr := range containers {
 		labels := ctr.Labels()
@@ -106,16 +106,16 @@ func (r *libpodRuntime) translatePodStatus(
 		ctrStatus[name] = status
 	}
 
-	return aranyagopb.NewPodStatus(podUID, podIP, ctrStatus), nil
+	return aranyagopb.NewPodStatusMsg(podUID, podIP, ctrStatus), nil
 }
 
-func (r *libpodRuntime) translateContainerStatus(ctr *libpod.Container) (*aranyagopb.PodStatus_ContainerStatus, error) {
+func (r *libpodRuntime) translateContainerStatus(ctr *libpod.Container) (*aranyagopb.ContainerStatus, error) {
 	info, err := ctr.Inspect(false)
 	if err != nil {
 		return nil, err
 	}
 
-	return &aranyagopb.PodStatus_ContainerStatus{
+	return &aranyagopb.ContainerStatus{
 		ContainerId:  info.ID,
 		ImageId:      info.Image,
 		CreatedAt:    info.Created.Format(aranyagoconst.TimeLayout),

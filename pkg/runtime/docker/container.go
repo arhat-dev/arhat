@@ -107,10 +107,10 @@ func (r *dockerRuntime) execInContainer(
 	ctrID string,
 	stdin io.Reader,
 	stdout, stderr io.Writer,
-	resizeCh <-chan *aranyagopb.TtyResizeOptions,
+	resizeCh <-chan *aranyagopb.ContainerTerminalResizeCmd,
 	command []string,
 	tty bool,
-) *aranyagopb.Error {
+) *aranyagopb.ErrorMsg {
 	execCtx, cancelExec := r.ActionContext()
 	defer cancelExec()
 
@@ -124,13 +124,13 @@ func (r *dockerRuntime) execInContainer(
 	})
 	if plainErr != nil {
 		logger.I("failed to exec create", log.Error(plainErr))
-		return aranyagopb.NewCommonError(plainErr.Error())
+		return aranyagopb.NewCommonErrorMsg(plainErr.Error())
 	}
 
 	attachResp, plainErr := r.runtimeClient.ContainerExecAttach(execCtx, resp.ID, dockertype.ExecStartCheck{Tty: tty})
 	if plainErr != nil {
 		logger.I("failed to exec attach", log.Error(plainErr))
-		return aranyagopb.NewCommonError(plainErr.Error())
+		return aranyagopb.NewCommonErrorMsg(plainErr.Error())
 	}
 	defer func() { _ = attachResp.Conn.Close() }()
 
@@ -199,7 +199,7 @@ func (r *dockerRuntime) execInContainer(
 // nolint:goconst
 func (r *dockerRuntime) createPauseContainer(
 	ctx context.Context,
-	options *aranyagopb.CreateOptions,
+	options *aranyagopb.PodEnsureCmd,
 ) (ctrInfo *dockertype.ContainerJSON, podIP string, err error) {
 	_, err = r.findContainer(options.PodUid, constant.ContainerNamePause)
 	if err == nil {
@@ -333,7 +333,7 @@ func (r *dockerRuntime) createPauseContainer(
 
 func (r *dockerRuntime) createContainer(
 	ctx context.Context,
-	options *aranyagopb.CreateOptions,
+	options *aranyagopb.PodEnsureCmd,
 	spec *aranyagopb.ContainerSpec,
 	ns map[string]string,
 ) (ctrID string, err error) {

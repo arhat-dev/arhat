@@ -37,7 +37,13 @@ func init() {
 //
 // returned error will be wellknownerrors.ErrNotSupported if the test command is not
 // checking whether the path is a directory
-func tryTestCmd(_ io.Reader, _, _ io.Writer, _ <-chan *aranyagopb.TtyResizeOptions, command []string, _ bool) error {
+func tryTestCmd(
+	_ io.Reader,
+	_, _ io.Writer,
+	_ <-chan *aranyagopb.ContainerTerminalResizeCmd,
+	command []string,
+	_ bool,
+) error {
 	var (
 		testingDir bool
 	)

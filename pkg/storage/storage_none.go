@@ -41,5 +41,5 @@ func (s *noneStorage) Unmount(mountPoint string) error {
 	return wellknownerrors.ErrNotSupported
 }
 
-func (s *noneStorage) SetCredentials(options *aranyagopb.StorageCredentialOptions) {
+func (s *noneStorage) SetCredentials(options *aranyagopb.CredentialEnsureCmd) {
 }

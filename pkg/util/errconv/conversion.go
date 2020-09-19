@@ -7,7 +7,7 @@ import (
 	"arhat.dev/pkg/wellknownerrors"
 )
 
-func ToConnectivityError(err error) *aranyagopb.Error {
+func ToConnectivityError(err error) *aranyagopb.ErrorMsg {
 	if err == nil {
 		return nil
 	}
@@ -26,5 +26,5 @@ func ToConnectivityError(err error) *aranyagopb.Error {
 		kind = aranyagopb.ERR_NOT_SUPPORTED
 	}
 
-	return aranyagopb.NewError(kind, msg)
+	return aranyagopb.NewErrorMsg(kind, msg)
 }

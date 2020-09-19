@@ -83,7 +83,7 @@ func (o *untarOpts) buildArgs(src string) []string {
 func tryTarCmd(
 	stdin io.Reader,
 	stdout, stderr io.Writer,
-	_ <-chan *aranyagopb.TtyResizeOptions,
+	_ <-chan *aranyagopb.ContainerTerminalResizeCmd,
 	command []string, _ bool,
 ) error {
 	var (

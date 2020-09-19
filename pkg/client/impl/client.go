@@ -33,15 +33,15 @@ var (
 	ErrCmdRecvClosed          = errors.New("cmd recv closed")
 )
 
-func newBaseClient(agent types.Agent, maxDataSize int) *baseClient {
+func newBaseClient(agent types.Agent, maxPayloadSize int) *baseClient {
 	ctx, cancel := context.WithCancel(agent.Context())
 	return &baseClient{
 		ctx:  ctx,
 		exit: cancel,
 
-		log:         log.Log.WithName("client"),
-		maxDataSize: maxDataSize - aranyagopb.EmptyDataMsgSize,
-		mu:          new(sync.RWMutex),
+		log:            log.Log.WithName("client"),
+		maxPayloadSize: maxPayloadSize - aranyagopb.EmptyMsgSize,
+		mu:             new(sync.RWMutex),
 
 		parent: agent,
 	}
@@ -51,9 +51,9 @@ type baseClient struct {
 	ctx  context.Context
 	exit context.CancelFunc
 
-	log         log.Interface
-	maxDataSize int
-	mu          *sync.RWMutex
+	log            log.Interface
+	maxPayloadSize int
+	mu             *sync.RWMutex
 
 	parent types.Agent
 }
@@ -62,6 +62,6 @@ func (b *baseClient) Context() context.Context {
 	return b.ctx
 }
 
-func (b *baseClient) MaxDataSize() int {
-	return b.maxDataSize
+func (b *baseClient) MaxPayloadSize() int {
+	return b.maxPayloadSize
 }

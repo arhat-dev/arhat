@@ -12,7 +12,7 @@ import (
 )
 
 // CreateNodeMetricsCollector creates a new node metrics and a new container metrics collector
-func CreateNodeMetricsCollector(config *aranyagopb.MetricsConfigOptions) (types.MetricsCollectFunc, error) {
+func CreateNodeMetricsCollector(config *aranyagopb.MetricsConfigCmd) (types.MetricsCollectFunc, error) {
 	if len(config.Collect) == 0 {
 		return nil, wellknownerrors.ErrInvalidOperation
 	}
@@ -20,7 +20,7 @@ func CreateNodeMetricsCollector(config *aranyagopb.MetricsConfigOptions) (types.
 	return unixexporter.CreateNodeMetricsGatherer(config)
 }
 
-func CreateContainerMetricsCollector(config *aranyagopb.MetricsConfigOptions) (types.MetricsCollectFunc, error) {
+func CreateContainerMetricsCollector(config *aranyagopb.MetricsConfigCmd) (types.MetricsCollectFunc, error) {
 	if len(config.Collect) == 0 {
 		return nil, wellknownerrors.ErrInvalidOperation
 	}

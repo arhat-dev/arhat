@@ -51,7 +51,7 @@ var pullTypeMapping = map[aranyagopb.ImagePullPolicy]libpodutil.PullType{
 	aranyagopb.IMAGE_PULL_NEVER:          libpodutil.PullImageNever,
 }
 
-func (r *libpodRuntime) ensureImages(images map[string]*aranyagopb.ImagePull) (map[string]*libpodimage.Image, error) {
+func (r *libpodRuntime) ensureImages(images map[string]*aranyagopb.ImagePullConfig) (map[string]*libpodimage.Image, error) {
 	var (
 		pulledImages = make(map[string]*libpodimage.Image)
 	)

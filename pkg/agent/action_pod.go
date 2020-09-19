@@ -26,136 +26,96 @@ import (
 	"arhat.dev/arhat/pkg/types"
 )
 
-func (b *Agent) handlePodCmd(sid uint64, data []byte) {
-	cmd := new(aranyagopb.PodCmd)
+func (b *Agent) handleImageEnsure(sid uint64, data []byte) {
+	cmd := new(aranyagopb.ImageEnsureCmd)
 
 	err := cmd.Unmarshal(data)
 	if err != nil {
-		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal pod cmd: %w", err))
+		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal ImageEnsureCmd: %w", err))
 		return
 	}
 
-	switch cmd.Action {
-	case aranyagopb.START_POD_SYNC_LOOP:
-		b.handleSyncLoop(sid, "pod.syncLoop", cmd.GetSyncOptions(), func() {
-			b.doPodList(0, &aranyagopb.ListOptions{All: true})
-		})
-	case aranyagopb.ENSURE_IMAGES:
-		imageEnsureOpt := cmd.GetImageEnsureOptions()
-		if imageEnsureOpt == nil {
-			b.handleRuntimeError(sid, errRequiredOptionsNotFound)
+	b.processInNewGoroutine(sid, "pod.ensureImage", func() {
+		pulledImages, err := b.runtime.(types.ContainerRuntime).EnsureImages(cmd)
+		if err != nil {
+			b.handleRuntimeError(sid, err)
 			return
 		}
 
-		b.processInNewGoroutine(sid, "pod.ensureImage", func() {
-			b.doPodEnsureImages(sid, imageEnsureOpt)
-		})
-	case aranyagopb.CREATE_CONTAINERS:
-		createOpt := cmd.GetCreateOptions()
-		if createOpt == nil {
-			b.handleRuntimeError(sid, errRequiredOptionsNotFound)
+		err = b.PostMsg(sid, aranyagopb.MSG_IMAGE_STATUS_LIST, &aranyagopb.ImageStatusListMsg{Images: pulledImages})
+		if err != nil {
+			b.handleConnectivityError(sid, err)
+			return
+		}
+	})
+}
+
+func (b *Agent) handlePodList(sid uint64, data []byte) {
+	cmd := new(aranyagopb.PodListCmd)
+
+	err := cmd.Unmarshal(data)
+	if err != nil {
+		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal PodListCmd: %w", err))
+		return
+	}
+
+	b.processInNewGoroutine(sid, "pod.list", func() {
+		pods, err := b.runtime.(types.ContainerRuntime).ListPods(cmd)
+		if err != nil {
+			b.handleRuntimeError(sid, err)
 			return
 		}
 
-		b.processInNewGoroutine(sid, "pod.createContainers", func() {
-			b.doContainerCreate(sid, createOpt)
-		})
-	case aranyagopb.DELETE_POD:
-		deleteOpt := cmd.GetDeleteOptions()
-		if deleteOpt == nil {
-			b.handleRuntimeError(sid, errRequiredOptionsNotFound)
+		err = b.PostMsg(sid, aranyagopb.MSG_POD_STATUS_LIST, aranyagopb.NewPodStatusListMsg(pods))
+		if err != nil {
+			b.handleConnectivityError(sid, err)
+			return
+		}
+	})
+}
+
+func (b *Agent) handlePodEnsure(sid uint64, data []byte) {
+	cmd := new(aranyagopb.PodEnsureCmd)
+
+	err := cmd.Unmarshal(data)
+	if err != nil {
+		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal PodEnsureCmd: %w", err))
+		return
+	}
+
+	b.processInNewGoroutine(sid, "pod.ensure", func() {
+		podStatus, err := b.runtime.(types.ContainerRuntime).CreateContainers(cmd)
+		if err != nil {
+			b.handleRuntimeError(sid, err)
 			return
 		}
 
-		b.processInNewGoroutine(sid, "pod.delete", func() {
-			b.doPodDelete(sid, deleteOpt)
-		})
-	case aranyagopb.LIST_PODS:
-		listOpt := cmd.GetListOptions()
-		if listOpt == nil {
-			b.handleRuntimeError(sid, errRequiredOptionsNotFound)
+		if err := b.PostMsg(sid, aranyagopb.MSG_POD_STATUS, podStatus); err != nil {
+			b.handleConnectivityError(sid, err)
+			return
+		}
+	})
+}
+
+func (b *Agent) handlePodDelete(sid uint64, data []byte) {
+	cmd := new(aranyagopb.PodDeleteCmd)
+
+	err := cmd.Unmarshal(data)
+	if err != nil {
+		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal PodDeleteCmd: %w", err))
+		return
+	}
+
+	b.processInNewGoroutine(sid, "pod.delete", func() {
+		podDeleted, err := b.runtime.(types.ContainerRuntime).DeletePod(cmd)
+		if err != nil {
+			b.handleRuntimeError(sid, err)
 			return
 		}
 
-		b.processInNewGoroutine(sid, "pod.list", func() {
-			b.doPodList(sid, listOpt)
-		})
-	case aranyagopb.DELETE_CONTAINERS:
-		deleteOpt := cmd.GetDeleteOptions()
-		if deleteOpt == nil {
-			b.handleRuntimeError(sid, errRequiredOptionsNotFound)
+		if err := b.PostMsg(sid, aranyagopb.MSG_POD_STATUS, podDeleted); err != nil {
+			b.handleConnectivityError(sid, err)
 			return
 		}
-
-		b.processInNewGoroutine(sid, "ctr.delete", func() {
-			b.doContainerDelete(sid, deleteOpt)
-		})
-	default:
-		b.handleUnknownCmd(sid, "pod", cmd)
-		return
-	}
-}
-
-func (b *Agent) doPodEnsureImages(sid uint64, options *aranyagopb.ImageEnsureOptions) {
-	pulledImages, err := b.runtime.(types.ContainerRuntime).EnsureImages(options)
-	if err != nil {
-		b.handleRuntimeError(sid, err)
-		return
-	}
-
-	if err := b.PostMsg(aranyagopb.NewImageListMsg(sid, pulledImages)); err != nil {
-		b.handleConnectivityError(sid, err)
-		return
-	}
-}
-
-func (b *Agent) doContainerCreate(sid uint64, options *aranyagopb.CreateOptions) {
-	podStatus, err := b.runtime.(types.ContainerRuntime).CreateContainers(options)
-	if err != nil {
-		b.handleRuntimeError(sid, err)
-		return
-	}
-
-	if err := b.PostMsg(aranyagopb.NewPodStatusMsg(sid, podStatus)); err != nil {
-		b.handleConnectivityError(sid, err)
-		return
-	}
-}
-
-func (b *Agent) doContainerDelete(sid uint64, options *aranyagopb.DeleteOptions) {
-	s, err := b.runtime.(types.ContainerRuntime).DeleteContainers(options.PodUid, options.Containers)
-	if err != nil {
-		b.handleRuntimeError(sid, err)
-		return
-	}
-
-	if err := b.PostMsg(aranyagopb.NewPodStatusMsg(sid, s)); err != nil {
-		b.handleConnectivityError(sid, err)
-	}
-}
-
-func (b *Agent) doPodDelete(sid uint64, options *aranyagopb.DeleteOptions) {
-	podDeleted, err := b.runtime.(types.ContainerRuntime).DeletePod(options)
-	if err != nil {
-		b.handleRuntimeError(sid, err)
-		return
-	}
-
-	if err := b.PostMsg(aranyagopb.NewPodStatusMsg(sid, podDeleted)); err != nil {
-		b.handleConnectivityError(sid, err)
-		return
-	}
-}
-
-func (b *Agent) doPodList(sid uint64, options *aranyagopb.ListOptions) {
-	pods, err := b.runtime.(types.ContainerRuntime).ListPods(options)
-	if err != nil {
-		b.handleRuntimeError(sid, err)
-		return
-	}
-
-	if err := b.PostMsg(aranyagopb.NewPodStatusListMsg(sid, pods)); err != nil {
-		b.handleConnectivityError(sid, err)
-		return
-	}
+	})
 }

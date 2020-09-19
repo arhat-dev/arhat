@@ -1,3 +1,5 @@
+// +build !rt_none
+
 /*
 Copyright 2020 The arhat.dev Authors.
 
@@ -90,8 +92,11 @@ func (c *Client) CreateResolvConf(nameservers, searches, options []string) ([]by
 	return buf.Bytes(), nil
 }
 
-func (c *Client) CreateLink(pauseCtrID string, pid uint32, ctrOpts *aranyagopb.CreateOptions) (string, error) {
-	err := c.doRequestNetworkConfigUpdate(ctrOpts.NetworkOptions)
+func (c *Client) CreateLink(pauseCtrID string, pid uint32, ctrOpts *aranyagopb.PodEnsureCmd) (string, error) {
+	err := c.doRequestNetworkConfigUpdate(&aranyagopb.NetworkUpdatePodNetworkCmd{
+		CidrIpv4: ctrOpts.Network.CidrIpv4,
+		CidrIpv6: ctrOpts.Network.CidrIpv6,
+	})
 	if err != nil {
 		return "", err
 	}
@@ -108,22 +113,22 @@ func (c *Client) CreateLink(pauseCtrID string, pid uint32, ctrOpts *aranyagopb.C
 	})
 
 	// ipRange cap arg for cni
-	netOpts := ctrOpts.NetworkOptions
-	if netOpts.Ipv4PodCidr != "" {
+	netOpts := ctrOpts.Network
+	if netOpts.CidrIpv4 != "" {
 		capArgs = append(capArgs, &abbotgopb.CNICapArgs{
 			Option: &abbotgopb.CNICapArgs_IpRangeArg{
 				IpRangeArg: &abbotgopb.CNICapArgs_IPRange{
-					Subnet: netOpts.Ipv4PodCidr,
+					Subnet: netOpts.CidrIpv4,
 				},
 			},
 		})
 	}
 
-	if netOpts.Ipv6PodCidr != "" {
+	if netOpts.CidrIpv6 != "" {
 		capArgs = append(capArgs, &abbotgopb.CNICapArgs{
 			Option: &abbotgopb.CNICapArgs_IpRangeArg{
 				IpRangeArg: &abbotgopb.CNICapArgs_IPRange{
-					Subnet: netOpts.Ipv6PodCidr,
+					Subnet: netOpts.CidrIpv6,
 				},
 			},
 		})
@@ -192,13 +197,17 @@ func (c *Client) GetAddress(pid uint32) (string, error) {
 }
 
 // EnsureAddress will ensure container's address is in the podCIDR range
-func (c *Client) EnsureAddress(pauseCtrID string, pid uint32, options *aranyagopb.NetworkOptions) (string, error) {
+func (c *Client) EnsureAddress(
+	pauseCtrID string,
+	pid uint32,
+	options *aranyagopb.NetworkUpdatePodNetworkCmd,
+) (string, error) {
 	err := c.doRequestNetworkConfigUpdate(options)
 	if err != nil {
 		return "", err
 	}
 
-	ip, err := c.doRequest(newReqForUpdateLink(pauseCtrID, options.Ipv4PodCidr, options.Ipv6PodCidr, pid))
+	ip, err := c.doRequest(newReqForUpdateLink(pauseCtrID, options.CidrIpv4, options.CidrIpv6, pid))
 	if err != nil {
 		return "", err
 	}
@@ -206,10 +215,10 @@ func (c *Client) EnsureAddress(pauseCtrID string, pid uint32, options *aranyagop
 	return ip, nil
 }
 
-func (c *Client) doRequestNetworkConfigUpdate(options *aranyagopb.NetworkOptions) error {
+func (c *Client) doRequestNetworkConfigUpdate(options *aranyagopb.NetworkUpdatePodNetworkCmd) error {
 	var (
-		ipv4Subnet = options.Ipv4PodCidr
-		ipv6Subnet = options.Ipv6PodCidr
+		ipv4Subnet = options.CidrIpv4
+		ipv6Subnet = options.CidrIpv6
 	)
 
 	if ipv4Subnet == "" && ipv6Subnet == "" {

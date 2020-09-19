@@ -23,20 +23,15 @@ import (
 	"arhat.dev/pkg/log"
 )
 
-func (b *Agent) handleSessionCmd(sid uint64, data []byte) {
-	cmd := new(aranyagopb.SessionCmd)
+func (b *Agent) handleSessionClose(sid uint64, data []byte) {
+	cmd := new(aranyagopb.SessionCloseCmd)
 
 	err := cmd.Unmarshal(data)
 	if err != nil {
-		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal session cmd: %w", err))
+		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal SessionCloseCmd: %w", err))
 		return
 	}
 
-	switch cmd.Action {
-	case aranyagopb.CLOSE_SESSION:
-		b.logger.D("close session", log.Uint64("sid", sid))
-		b.streams.Close(sid)
-	default:
-		b.handleUnknownCmd(sid, "close", cmd)
-	}
+	b.logger.D("closing session", log.Uint64("sid", sid))
+	b.streams.Close(sid)
 }

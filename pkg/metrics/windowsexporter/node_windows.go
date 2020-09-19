@@ -32,7 +32,7 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-func CreateNodeMetricsGatherer(config *aranyagopb.MetricsConfigOptions) (types.MetricsCollectFunc, error) {
+func CreateNodeMetricsGatherer(config *aranyagopb.MetricsConfigCmd) (types.MetricsCollectFunc, error) {
 	var (
 		collectors        = make(map[string]collector.Collector)
 		enabledCollectors = metricsutils.GetEnabledCollectors(config.Collect)

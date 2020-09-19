@@ -246,15 +246,15 @@ func (r *libpodRuntime) InitRuntime() error {
 }
 
 // EnsureImages ensure container images
-func (r *libpodRuntime) EnsureImages(options *aranyagopb.ImageEnsureOptions) ([]*aranyagopb.Image, error) {
+func (r *libpodRuntime) EnsureImages(options *aranyagopb.ImageEnsureCmd) ([]*aranyagopb.ImageStatusMsg, error) {
 	logger := r.Log().WithFields(log.String("action", "ensureImages"), log.Any("options", options))
 	logger.D("ensuring pod container image(s)")
 
-	allImages := map[string]*aranyagopb.ImagePull{
+	allImages := map[string]*aranyagopb.ImagePullConfig{
 		r.PauseImage: {PullPolicy: aranyagopb.IMAGE_PULL_IF_NOT_PRESENT},
 	}
 
-	for imageName, opt := range options.ImagePull {
+	for imageName, opt := range options.Images {
 		allImages[imageName] = opt
 	}
 	pulledImages, err := r.ensureImages(allImages)
@@ -263,7 +263,7 @@ func (r *libpodRuntime) EnsureImages(options *aranyagopb.ImageEnsureOptions) ([]
 		return nil, err
 	}
 
-	var images []*aranyagopb.Image
+	var images []*aranyagopb.ImageStatusMsg
 	for _, img := range pulledImages {
 		var sha256Hash string
 		digests, err := img.RepoDigests()
@@ -281,7 +281,7 @@ func (r *libpodRuntime) EnsureImages(options *aranyagopb.ImageEnsureOptions) ([]
 			continue
 		}
 
-		images = append(images, &aranyagopb.Image{
+		images = append(images, &aranyagopb.ImageStatusMsg{
 			Sha256: sha256Hash,
 			Names:  []string{img.Tag},
 		})
@@ -292,13 +292,13 @@ func (r *libpodRuntime) EnsureImages(options *aranyagopb.ImageEnsureOptions) ([]
 
 // CreateContainers creates containers
 // nolint:gocyclo
-func (r *libpodRuntime) CreateContainers(options *aranyagopb.CreateOptions) (_ *aranyagopb.PodStatus, err error) {
+func (r *libpodRuntime) CreateContainers(options *aranyagopb.PodEnsureCmd) (_ *aranyagopb.PodStatusMsg, err error) {
 	logger := r.Log().WithFields(log.String("action", "createContainers"), log.String("uid", options.PodUid))
 	ctx, cancelCreate := r.RuntimeActionContext()
 	defer func() {
 		cancelCreate()
 
-		if options.DeletePodOnFailure && err != nil {
+		if err != nil {
 			logger.D("cleaning up pod data")
 			err2 := runtimeutil.CleanupPodData(
 				r.PodDir(options.PodUid),
@@ -421,7 +421,7 @@ func (r *libpodRuntime) CreateContainers(options *aranyagopb.CreateOptions) (_ *
 			}
 		}
 
-		if !options.WaitContainers {
+		if !options.Wait {
 			continue
 		}
 
@@ -434,7 +434,7 @@ func (r *libpodRuntime) CreateContainers(options *aranyagopb.CreateOptions) (_ *
 
 	time.Sleep(5 * time.Second)
 	for _, ctr := range ctrList {
-		if options.WaitContainers {
+		if options.Wait {
 			// container MUST have exited, no more check
 			continue
 		}
@@ -453,7 +453,7 @@ func (r *libpodRuntime) CreateContainers(options *aranyagopb.CreateOptions) (_ *
 	return r.translatePodStatus(podIP, pauseCtr, ctrList)
 }
 
-func (r *libpodRuntime) DeleteContainers(podUID string, containers []string) (*aranyagopb.PodStatus, error) {
+func (r *libpodRuntime) DeleteContainers(podUID string, containers []string) (*aranyagopb.PodStatusMsg, error) {
 	logger := r.Log().WithFields(log.String("action", "deleteContainer"))
 	pod, err := r.findPod(podUID)
 	if err != nil {
@@ -490,7 +490,7 @@ func (r *libpodRuntime) DeleteContainers(podUID string, containers []string) (*a
 	return r.translatePodStatus("", pauseCtr, ctrs)
 }
 
-func (r *libpodRuntime) DeletePod(options *aranyagopb.DeleteOptions) (*aranyagopb.PodStatus, error) {
+func (r *libpodRuntime) DeletePod(options *aranyagopb.PodDeleteCmd) (*aranyagopb.PodStatusMsg, error) {
 	logger := r.Log().WithFields(log.String("action", "deletePod"), log.Any("options", options))
 
 	defer func() {
@@ -523,10 +523,10 @@ func (r *libpodRuntime) DeletePod(options *aranyagopb.DeleteOptions) (*aranyagop
 		}
 	}
 
-	return aranyagopb.NewPodStatus(options.PodUid, "", nil), nil
+	return aranyagopb.NewPodStatusMsg(options.PodUid, "", nil), nil
 }
 
-func (r *libpodRuntime) ListPods(options *aranyagopb.ListOptions) ([]*aranyagopb.PodStatus, error) {
+func (r *libpodRuntime) ListPods(options *aranyagopb.PodListCmd) ([]*aranyagopb.PodStatusMsg, error) {
 	logger := r.Log().WithFields(log.String("action", "list"), log.Any("options", options))
 	filters := make(map[string]string)
 	if !options.All {
@@ -549,7 +549,7 @@ func (r *libpodRuntime) ListPods(options *aranyagopb.ListOptions) ([]*aranyagopb
 	actionCtx, cancel := r.RuntimeActionContext()
 	defer cancel()
 
-	var results []*aranyagopb.PodStatus
+	var results []*aranyagopb.PodStatusMsg
 	for _, pod := range pods {
 		podUID, ok := pod.Labels()[constant.ContainerLabelPodUID]
 		if !ok {
@@ -607,10 +607,10 @@ func (r *libpodRuntime) ExecInContainer(
 	podUID, container string,
 	stdin io.Reader,
 	stdout, stderr io.Writer,
-	resizeCh <-chan *aranyagopb.TtyResizeOptions,
+	resizeCh <-chan *aranyagopb.ContainerTerminalResizeCmd,
 	command []string,
 	tty bool,
-) *aranyagopb.Error {
+) *aranyagopb.ErrorMsg {
 	logger := r.Log().WithFields(
 		log.String("uid", podUID),
 		log.String("container", container),
@@ -630,7 +630,7 @@ func (r *libpodRuntime) AttachContainer(
 	podUID, container string,
 	stdin io.Reader,
 	stdout, stderr io.Writer,
-	resizeCh <-chan *aranyagopb.TtyResizeOptions,
+	resizeCh <-chan *aranyagopb.ContainerTerminalResizeCmd,
 ) error {
 	logger := r.Log().WithFields(
 		log.String("action", "attach"),
@@ -681,7 +681,7 @@ func (r *libpodRuntime) AttachContainer(
 
 func (r *libpodRuntime) GetContainerLogs(
 	podUID string,
-	options *aranyagopb.LogOptions,
+	options *aranyagopb.ContainerLogsCmd,
 	stdout, stderr io.WriteCloser,
 	logCtx context.Context,
 ) error {
@@ -737,7 +737,7 @@ func (r *libpodRuntime) PortForward(
 	return runtimeutil.PortForward(ctx, address, protocol, port, downstream)
 }
 
-func (r *libpodRuntime) UpdateContainerNetwork(options *aranyagopb.NetworkOptions) ([]*aranyagopb.PodStatus, error) {
+func (r *libpodRuntime) UpdateContainerNetwork(options *aranyagopb.NetworkUpdatePodNetworkCmd) ([]*aranyagopb.PodStatusMsg, error) {
 	logger := r.Log().WithFields(log.String("action", "updateContainerNetwork"))
 
 	logger.D("looking up abbot container")
@@ -752,7 +752,7 @@ func (r *libpodRuntime) UpdateContainerNetwork(options *aranyagopb.NetworkOption
 		return nil, fmt.Errorf("failed to get all pods: %w", err)
 	}
 
-	var result []*aranyagopb.PodStatus
+	var result []*aranyagopb.PodStatusMsg
 	for _, pod := range pods {
 		// only select valid pods
 		if podUID, ok := pod.Labels()[constant.ContainerLabelPodUID]; ok {
@@ -771,7 +771,7 @@ func (r *libpodRuntime) UpdateContainerNetwork(options *aranyagopb.NetworkOption
 				if err != nil {
 					return nil, fmt.Errorf("failed to ensure pod address: %w", err)
 				}
-				result = append(result, aranyagopb.NewPodStatus(podUID, podIP, nil))
+				result = append(result, aranyagopb.NewPodStatusMsg(podUID, podIP, nil))
 			}
 		}
 	}

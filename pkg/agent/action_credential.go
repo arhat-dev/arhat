@@ -23,37 +23,22 @@ import (
 	"arhat.dev/pkg/hashhelper"
 )
 
-func (b *Agent) handleCredentialCmd(sid uint64, data []byte) {
-	cmd := new(aranyagopb.CredentialCmd)
+func (b *Agent) handleCredentialEnsure(sid uint64, data []byte) {
+	cmd := new(aranyagopb.CredentialEnsureCmd)
 
 	err := cmd.Unmarshal(data)
 	if err != nil {
-		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal credential cmd: %w", err))
+		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal CredentialEnsureCmd: %w", err))
 		return
 	}
 
-	switch cmd.Action {
-	case aranyagopb.UPDATE_STORAGE_CREDENTIAL:
-		storageCred := cmd.GetStorage()
-		if storageCred == nil {
-			b.handleRuntimeError(sid, errRequiredOptionsNotFound)
-			return
+	b.processInNewGoroutine(sid, "storage.credential.update", func() {
+		b.storage.SetCredentials(cmd)
+
+		msg := aranyagopb.NewCredentialStatusMsg(hashhelper.Sha256SumHex(cmd.SshPrivateKey))
+		if err := b.PostMsg(sid, aranyagopb.MSG_CRED_STATUS, msg); err != nil {
+			b.handleConnectivityError(sid, err)
+			// do not make early return, let server make reject decision
 		}
-
-		b.processInNewGoroutine(sid, "storage.credential.update", func() {
-			b.doStorageCredentialUpdate(sid, storageCred)
-		})
-	default:
-		b.handleUnknownCmd(sid, "credential", cmd)
-	}
-}
-
-func (b *Agent) doStorageCredentialUpdate(sid uint64, cred *aranyagopb.StorageCredentialOptions) {
-	msg := aranyagopb.NewCredentialStatus(sid, hashhelper.Sha256SumHex(cred.SshPrivateKey))
-	if err := b.PostMsg(msg); err != nil {
-		b.handleConnectivityError(sid, err)
-		// do not make early return, let server make reject decision
-	}
-
-	b.storage.SetCredentials(cred)
+	})
 }

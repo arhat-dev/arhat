@@ -10,13 +10,13 @@ import (
 )
 
 func convertNodeExtInfo(extInfo []conf.ArhatNodeExtInfo) ([]*aranyagopb.NodeExtInfo, error) {
-	extInfoValueTypeMap := map[string]aranyagopb.NodeExtInfo_ExtInfoValueType{
+	extInfoValueTypeMap := map[string]aranyagopb.NodeExtInfo_ValueType{
 		"":       aranyagopb.NODE_EXT_INFO_TYPE_STRING,
 		"string": aranyagopb.NODE_EXT_INFO_TYPE_STRING,
 		"int":    aranyagopb.NODE_EXT_INFO_TYPE_INTEGER,
 		"float":  aranyagopb.NODE_EXT_INFO_TYPE_FLOAT,
 	}
-	extInfoOperatorMap := map[string]aranyagopb.NodeExtInfo_ExtInfoOperator{
+	extInfoOperatorMap := map[string]aranyagopb.NodeExtInfo_Operator{
 		"":   aranyagopb.NODE_EXT_INFO_OPERATOR_SET,
 		"=":  aranyagopb.NODE_EXT_INFO_OPERATOR_SET,
 		"+=": aranyagopb.NODE_EXT_INFO_OPERATOR_ADD,
@@ -61,11 +61,28 @@ func convertNodeExtInfo(extInfo []conf.ArhatNodeExtInfo) ([]*aranyagopb.NodeExtI
 			return nil, fmt.Errorf("failed to get value ext info value: %w", err)
 		}
 
+		var (
+			target    aranyagopb.NodeExtInfo_Target
+			targetKey string
+		)
+		switch {
+		case strings.HasPrefix(info.ApplyTo, `metadata.annotations['`):
+			target = aranyagopb.NODE_EXT_INFO_TARGET_ANNOTATION
+			targetKey = strings.TrimPrefix(info.ApplyTo, `metadata.annotations['`)
+		case strings.HasPrefix(info.ApplyTo, `metadata.labels['`):
+			target = aranyagopb.NODE_EXT_INFO_TARGET_LABEL
+			targetKey = strings.TrimPrefix(info.ApplyTo, `metadata.labels['`)
+		default:
+			return nil, fmt.Errorf("invalid ext info target")
+		}
+		targetKey = strings.TrimSuffix(targetKey, `']`)
+
 		result = append(result, &aranyagopb.NodeExtInfo{
 			Value:     value,
 			ValueType: valueType,
 			Operator:  operator,
-			ApplyTo:   info.ApplyTo,
+			Target:    target,
+			TargetKey: targetKey,
 		})
 	}
 

@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"unsafe"
 
+	"github.com/gogo/protobuf/proto"
+
 	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
 
 	"github.com/spf13/cobra"
@@ -187,3 +189,9 @@ type fakeAgent struct{}
 
 func (a *fakeAgent) Context() context.Context      { return context.TODO() }
 func (a *fakeAgent) HandleCmd(cmd *aranyagopb.Cmd) {}
+func (a *fakeAgent) PostMsg(sid uint64, kind aranyagopb.Kind, msg proto.Marshaler) error {
+	return nil
+}
+func (a *fakeAgent) PostData(sid uint64, kind aranyagopb.Kind, seq uint64, completed bool, data []byte) error {
+	return nil
+}

@@ -26,32 +26,24 @@ import (
 	"arhat.dev/arhat/pkg/types"
 )
 
-func (b *Agent) handleNetworkCmd(sid uint64, data []byte) {
-	cmd := new(aranyagopb.NetworkCmd)
-
+func (b *Agent) handleNetworkUpdatePodNet(sid uint64, data []byte) {
+	cmd := new(aranyagopb.NetworkUpdatePodNetworkCmd)
 	err := cmd.Unmarshal(data)
 	if err != nil {
-		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal network cmd: %w", err))
+		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal NetworkUpdatePodNetworkCmd: %w", err))
 		return
 	}
 
-	switch cmd.Action {
-	case aranyagopb.UPDATE_NETWORK:
-		b.processInNewGoroutine(sid, "net.update", func() {
-			b.doNetworkUpdate(sid, cmd.GetNetworkOptions())
-		})
-	default:
-		b.handleUnknownCmd(sid, "net", cmd)
-	}
-}
+	b.processInNewGoroutine(sid, "net.update", func() {
+		result, err := b.runtime.(types.NetworkRuntime).UpdateContainerNetwork(cmd)
+		if err != nil {
+			b.handleRuntimeError(sid, err)
+		}
 
-func (b *Agent) doNetworkUpdate(sid uint64, options *aranyagopb.NetworkOptions) {
-	result, err := b.runtime.(types.NetworkRuntime).UpdateContainerNetwork(options)
-	if err != nil {
-		b.handleRuntimeError(sid, err)
-	}
-
-	if err := b.PostMsg(aranyagopb.NewPodStatusListMsg(sid, result)); err != nil {
-		b.handleConnectivityError(sid, err)
-	}
+		msg := aranyagopb.NewPodStatusListMsg(result)
+		err = b.PostMsg(sid, aranyagopb.MSG_NETWORK_STATUS, msg)
+		if err != nil {
+			b.handleConnectivityError(sid, err)
+		}
+	})
 }

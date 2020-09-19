@@ -55,8 +55,8 @@ func NewMQTTClient(agent types.Agent, config *conf.ArhatMQTTConfig) (_ types.Age
 		return nil, fmt.Errorf("invalid config options for mqtt connect: %w", err)
 	}
 
-	onlineMsgBytes, _ := aranyagopb.NewOnlineMsg(connInfo.ClientID).Marshal()
-	willMsgBytes, _ := aranyagopb.NewOfflineMsg(connInfo.ClientID).Marshal()
+	onlineMsgBytes, _ := aranyagopb.NewOnlineStateMsg(connInfo.ClientID).Marshal()
+	willMsgBytes, _ := aranyagopb.NewOfflineStateMsg(connInfo.ClientID).Marshal()
 
 	if connInfo.TLSConfig != nil {
 		options = append(options, libmqtt.WithCustomTLS(connInfo.TLSConfig))

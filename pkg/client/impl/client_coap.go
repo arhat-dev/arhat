@@ -349,7 +349,9 @@ func (c *CoAPClient) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to observe cmd topic: %w", err)
 	}
 
-	err = c.doPostMsg(c.ctx, aranyagopb.NewOnlineMsg(c.clientID), c.willMsgOpts)
+	payload, _ := aranyagopb.NewOnlineStateMsg(c.clientID).Marshal()
+	msg := aranyagopb.NewMsg(aranyagopb.MSG_STATE, 0, 0, 0, true, payload)
+	err = c.doPostMsg(c.ctx, msg, c.willMsgOpts)
 	if err != nil {
 		return fmt.Errorf("failed to publish online msg ")
 	}
@@ -410,7 +412,9 @@ func (c *CoAPClient) Close() error {
 	if c.client != nil {
 		// TODO: currently we only send offline message with best effort
 		//		 need to ensure the offline message is acknowledged by aranya
-		_ = c.doPostMsg(context.Background(), aranyagopb.NewOfflineMsg(c.clientID), c.willMsgOpts)
+		payload, _ := aranyagopb.NewOfflineStateMsg(c.clientID).Marshal()
+		msg := aranyagopb.NewMsg(aranyagopb.MSG_STATE, 0, 0, 0, true, payload)
+		_ = c.doPostMsg(context.Background(), msg, c.willMsgOpts)
 
 		return c.client.Close()
 	}

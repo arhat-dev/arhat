@@ -27,115 +27,102 @@ import (
 	"arhat.dev/arhat/pkg/metrics"
 )
 
-func (b *Agent) handleMetricsCmd(sid uint64, data []byte) {
-	cmd := new(aranyagopb.MetricsCmd)
-
+func (b *Agent) handleMetricsConfig(sid uint64, data []byte) {
+	cmd := new(aranyagopb.MetricsConfigCmd)
 	err := cmd.Unmarshal(data)
 	if err != nil {
-		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal metrics cmd: %w", err))
+		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal MetricsConfigCmd: %w", err))
 		return
 	}
 
-	switch cmd.Action {
-	case aranyagopb.CONFIGURE_NODE_METRICS_COLLECTION:
-		config := cmd.GetConfig()
-		if config == nil {
-			b.handleRuntimeError(sid, errRequiredOptionsNotFound)
-		}
-
+	switch cmd.Target {
+	case aranyagopb.METRICS_TARGET_NODE:
 		b.processInNewGoroutine(sid, "metrics.config.node", func() {
-			b.doConfigureNodeMetrics(sid, config)
-		})
-	case aranyagopb.CONFIGURE_CONTAINER_METRICS_COLLECTION:
-		config := cmd.GetConfig()
-		if config == nil {
-			b.handleRuntimeError(sid, errRequiredOptionsNotFound)
-		}
+			c, err := metrics.CreateNodeMetricsCollector(cmd)
+			if err != nil {
+				b.handleRuntimeError(sid, err)
+				return
+			}
 
+			err = b.PostMsg(sid, aranyagopb.MSG_DONE, &aranyagopb.Empty{})
+			if err != nil {
+				b.handleConnectivityError(sid, err)
+			} else {
+				b.metricsMU.Lock()
+				b.collectNodeMetrics = c
+				b.metricsMU.Unlock()
+			}
+		})
+	case aranyagopb.METRICS_TARGET_CONTAINER:
 		b.processInNewGoroutine(sid, "metrics.config.container", func() {
-			b.doConfigureContainerMetrics(sid, config)
+			c, err := metrics.CreateContainerMetricsCollector(cmd)
+			if err != nil {
+				b.handleRuntimeError(sid, err)
+				return
+			}
+
+			err = b.PostMsg(sid, aranyagopb.MSG_DONE, &aranyagopb.Empty{})
+			if err != nil {
+				b.handleConnectivityError(sid, err)
+			} else {
+				b.metricsMU.Lock()
+				b.collectContainerMetrics = c
+				b.metricsMU.Unlock()
+			}
 		})
-	case aranyagopb.COLLECT_NODE_METRICS:
+	}
+}
+
+func (b *Agent) handleMetricsCollect(sid uint64, data []byte) {
+	cmd := new(aranyagopb.MetricsCollectCmd)
+	err := cmd.Unmarshal(data)
+	if err != nil {
+		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal MetricsCollectCmd: %w", err))
+		return
+	}
+
+	switch cmd.Target {
+	case aranyagopb.METRICS_TARGET_NODE:
 		b.processInNewGoroutine(sid, "metrics.collect.node", func() {
-			b.doCollectNodeMetrics(sid)
+			b.metricsMU.RLock()
+			defer b.metricsMU.RUnlock()
+
+			if b.collectNodeMetrics == nil {
+				b.handleRuntimeError(sid, wellknownerrors.ErrNotSupported)
+				return
+			}
+
+			metricsData, err := b.collectNodeMetrics()
+			if err != nil {
+				b.handleRuntimeError(sid, err)
+			}
+
+			err = b.PostData(sid, aranyagopb.MSG_DATA_METRICS, 0, true, metricsData)
+			if err != nil {
+				b.handleConnectivityError(sid, err)
+			}
 		})
-	case aranyagopb.COLLECT_CONTAINER_METRICS:
+	case aranyagopb.METRICS_TARGET_CONTAINER:
 		b.processInNewGoroutine(sid, "metrics.collect.container", func() {
-			b.doCollectContainerMetrics(sid)
+			b.metricsMU.RLock()
+			defer b.metricsMU.RUnlock()
+
+			if b.collectContainerMetrics == nil {
+				b.handleRuntimeError(sid, wellknownerrors.ErrNotSupported)
+				return
+			}
+
+			metricsData, err := b.collectContainerMetrics()
+			if err != nil {
+				b.handleRuntimeError(sid, err)
+			}
+
+			err = b.PostData(sid, aranyagopb.MSG_DATA_METRICS, 0, true, metricsData)
+			if err != nil {
+				b.handleConnectivityError(sid, err)
+			}
 		})
 	default:
 		b.handleUnknownCmd(sid, "metrics", cmd)
-	}
-}
-
-func (b *Agent) doConfigureNodeMetrics(sid uint64, config *aranyagopb.MetricsConfigOptions) {
-	c, err := metrics.CreateNodeMetricsCollector(config)
-	if err != nil {
-		b.handleRuntimeError(sid, err)
-		return
-	}
-
-	err = b.PostMsg(aranyagopb.NewMetricsConfigured(sid))
-	if err != nil {
-		b.handleConnectivityError(sid, err)
-	} else {
-		b.metricsMU.Lock()
-		b.collectNodeMetrics = c
-		b.metricsMU.Unlock()
-	}
-}
-
-func (b *Agent) doConfigureContainerMetrics(sid uint64, config *aranyagopb.MetricsConfigOptions) {
-	c, err := metrics.CreateContainerMetricsCollector(config)
-	if err != nil {
-		b.handleRuntimeError(sid, err)
-		return
-	}
-
-	err = b.PostMsg(aranyagopb.NewMetricsConfigured(sid))
-	if err != nil {
-		b.handleConnectivityError(sid, err)
-	} else {
-		b.metricsMU.Lock()
-		b.collectContainerMetrics = c
-		b.metricsMU.Unlock()
-	}
-}
-
-func (b *Agent) doCollectNodeMetrics(sid uint64) {
-	b.metricsMU.RLock()
-	defer b.metricsMU.RUnlock()
-
-	if b.collectNodeMetrics == nil {
-		b.handleRuntimeError(sid, wellknownerrors.ErrNotSupported)
-		return
-	}
-
-	metricsData, err := b.collectNodeMetrics()
-	if err != nil {
-		b.handleRuntimeError(sid, err)
-	}
-
-	if err := b.PostMsg(aranyagopb.NewNodeMetrics(sid, metricsData)); err != nil {
-		b.handleConnectivityError(sid, err)
-	}
-}
-
-func (b *Agent) doCollectContainerMetrics(sid uint64) {
-	b.metricsMU.RLock()
-	defer b.metricsMU.RUnlock()
-
-	if b.collectContainerMetrics == nil {
-		b.handleRuntimeError(sid, wellknownerrors.ErrNotSupported)
-		return
-	}
-
-	metricsData, err := b.collectContainerMetrics()
-	if err != nil {
-		b.handleRuntimeError(sid, err)
-	}
-
-	if err := b.PostMsg(aranyagopb.NewContainerMetrics(sid, metricsData)); err != nil {
-		b.handleConnectivityError(sid, err)
 	}
 }

@@ -13,78 +13,77 @@ import (
 	"arhat.dev/arhat/pkg/types"
 )
 
-func (b *Agent) handleDeviceCmd(sid uint64, data []byte) {
-	cmd := new(aranyagopb.DeviceCmd)
-
+func (b *Agent) handleDeviceList(sid uint64, data []byte) {
+	cmd := new(aranyagopb.DeviceListCmd)
 	err := cmd.Unmarshal(data)
 	if err != nil {
-		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal device cmd: %w", err))
+		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal DeviceListCmd: %w", err))
 		return
 	}
 
-	switch cmd.Action {
-	case aranyagopb.LIST_DEVICES:
-		b.processInNewGoroutine(sid, "device.list", func() {
-			b.doDeviceList(sid)
-		})
-	case aranyagopb.ENSURE_DEVICE:
-		spec := cmd.GetDeviceSpec()
-		if spec == nil {
-			b.handleRuntimeError(sid, errRequiredOptionsNotFound)
+	b.processInNewGoroutine(sid, "device.list", func() {
+		statusList := aranyagopb.NewDeviceStatusListMsg(b.devices.getAllStatuses())
+		err = b.PostMsg(sid, aranyagopb.MSG_DEVICE_STATUS_LIST, statusList)
+		if err != nil {
+			b.handleConnectivityError(sid, err)
+			return
+		}
+	})
+}
+
+func (b *Agent) handleDeviceEnsure(sid uint64, data []byte) {
+	cmd := new(aranyagopb.DeviceEnsureCmd)
+	err := cmd.Unmarshal(data)
+	if err != nil {
+		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal DeviceEnsureCmd: %w", err))
+		return
+	}
+
+	b.processInNewGoroutine(sid, "device.ensure", func() {
+		err = b.devices.ensure(cmd)
+		if err != nil {
+			b.handleRuntimeError(sid, err)
 			return
 		}
 
-		b.processInNewGoroutine(sid, "device.ensure", func() {
-			b.doDeviceEnsure(sid, spec)
-		})
-	case aranyagopb.REMOVE_DEVICE:
-		id := cmd.GetDeviceId()
-		if id == "" {
-			b.handleRuntimeError(sid, errRequiredOptionsNotFound)
+		status := b.devices.getStatus(cmd.DeviceId)
+		err = b.PostMsg(sid, aranyagopb.MSG_DEVICE_STATUS, status)
+		if err != nil {
+			b.handleConnectivityError(sid, err)
 			return
 		}
+	})
+}
 
+func (b *Agent) handleDeviceDelete(sid uint64, data []byte) {
+	cmd := new(aranyagopb.DeviceDeleteCmd)
+	err := cmd.Unmarshal(data)
+	if err != nil {
+		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal DeviceDeleteCmd: %w", err))
+		return
+	}
+
+	if len(cmd.DeviceIds) == 0 {
+		b.handleRuntimeError(sid, errRequiredOptionsNotFound)
+		return
+	}
+
+	for _, id := range cmd.DeviceIds {
+		deviceID := id
 		b.processInNewGoroutine(sid, "device.remove", func() {
-			b.doDeviceRemove(sid, id)
+			var status *aranyagopb.DeviceStatusMsg
+			status, err := b.devices.remove(deviceID)
+			if err != nil {
+				b.handleRuntimeError(sid, err)
+				return
+			}
+
+			err = b.PostMsg(sid, aranyagopb.MSG_DEVICE_STATUS, status)
+			if err != nil {
+				b.handleConnectivityError(sid, err)
+				return
+			}
 		})
-	default:
-		b.handleUnknownCmd(sid, "device", cmd)
-	}
-}
-
-func (b *Agent) doDeviceList(sid uint64) {
-	err := b.PostMsg(aranyagopb.NewDeviceStatusListMsg(sid, b.devices.getAllStatuses()))
-	if err != nil {
-		b.handleConnectivityError(sid, err)
-		return
-	}
-}
-
-func (b *Agent) doDeviceEnsure(sid uint64, spec *aranyagopb.Device) {
-	err := b.devices.ensure(spec.Id, spec)
-	if err != nil {
-		b.handleRuntimeError(sid, err)
-		return
-	}
-
-	deviceMsg := aranyagopb.NewDeviceStatusMsg(sid, b.devices.getStatus(spec.Id))
-	if err := b.PostMsg(deviceMsg); err != nil {
-		b.handleConnectivityError(sid, err)
-		return
-	}
-}
-
-func (b *Agent) doDeviceRemove(sid uint64, deviceID string) {
-	status, err := b.devices.remove(deviceID)
-	if err != nil {
-		b.handleRuntimeError(sid, err)
-		return
-	}
-
-	deviceMsg := aranyagopb.NewDeviceStatusMsg(sid, status)
-	if err := b.PostMsg(deviceMsg); err != nil {
-		b.handleConnectivityError(sid, err)
-		return
 	}
 }
 
@@ -101,7 +100,7 @@ func newDevice(
 
 	ms := make(map[string]*aranyagopb.DeviceMetrics)
 	for i, m := range metrics {
-		ms[m.Id] = metrics[i]
+		ms[m.Name] = metrics[i]
 	}
 
 	return &device{
@@ -126,7 +125,7 @@ type device struct {
 	operations map[string]*aranyagopb.DeviceOperation
 	metrics    map[string]*aranyagopb.DeviceMetrics
 
-	state    aranyagopb.DeviceStatus_State
+	state    aranyagopb.DeviceStatusMsg_State
 	stateMsg string
 
 	mu *sync.RWMutex
@@ -149,11 +148,11 @@ func (d *device) start() error {
 	return nil
 }
 
-func (d *device) status() *aranyagopb.DeviceStatus {
+func (d *device) status() *aranyagopb.DeviceStatusMsg {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
-	return aranyagopb.NewDeviceStatus(d.id, d.state, d.stateMsg)
+	return aranyagopb.NewDeviceStatusMsg(d.id, d.state, d.stateMsg)
 }
 
 // nolint:unused
@@ -202,12 +201,12 @@ type deviceManager struct {
 	mu      *sync.RWMutex
 }
 
-func (m *deviceManager) ensure(id string, spec *aranyagopb.Device) error {
+func (m *deviceManager) ensure(cmd *aranyagopb.DeviceEnsureCmd) error {
 	err := func() error {
 		m.mu.RLock()
 		defer m.mu.RUnlock()
 
-		if _, ok := m.devices[id]; ok {
+		if _, ok := m.devices[cmd.DeviceId]; ok {
 			return wellknownerrors.ErrAlreadyExists
 		}
 		return nil
@@ -216,7 +215,7 @@ func (m *deviceManager) ensure(id string, spec *aranyagopb.Device) error {
 		return err
 	}
 
-	dc := spec.Connectivity
+	dc := cmd.DeviceConnectivity
 	if dc == nil {
 		return errRequiredOptionsNotFound
 	}
@@ -232,7 +231,7 @@ func (m *deviceManager) ensure(id string, spec *aranyagopb.Device) error {
 	}
 
 	var uploadConn types.DeviceConnectivity
-	if uc := spec.UploadConnectivity; uc != nil {
+	if uc := cmd.UploadConnectivity; uc != nil {
 		newConn, ok := types.GetDeviceConnectivityFactory(uc.Transport, uc.Mode)
 		if !ok {
 			return fmt.Errorf("unsupported upload connectivity: %w", wellknownerrors.ErrNotSupported)
@@ -244,22 +243,22 @@ func (m *deviceManager) ensure(id string, spec *aranyagopb.Device) error {
 		}
 	}
 
-	d := newDevice(id, conn, uploadConn, spec.Operations, spec.Metrics)
+	d := newDevice(cmd.DeviceId, conn, uploadConn, cmd.DeviceOperations, cmd.DeviceMetrics)
 
 	err = d.start()
 	if err != nil {
-		return fmt.Errorf("failed to start device %q: %w", id, err)
+		return fmt.Errorf("failed to start device %q: %w", cmd.DeviceId, err)
 	}
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.devices[id] = d
+	m.devices[cmd.DeviceId] = d
 
 	return nil
 }
 
-func (m *deviceManager) remove(id string) (*aranyagopb.DeviceStatus, error) {
+func (m *deviceManager) remove(id string) (*aranyagopb.DeviceStatusMsg, error) {
 	err := func() error {
 		m.mu.RLock()
 		defer m.mu.RUnlock()
@@ -286,10 +285,10 @@ func (m *deviceManager) remove(id string) (*aranyagopb.DeviceStatus, error) {
 
 	delete(m.devices, id)
 
-	return aranyagopb.NewDeviceStatus(id, aranyagopb.DEVICE_STATE_UNKNOWN, "removed"), nil
+	return aranyagopb.NewDeviceStatusMsg(id, aranyagopb.DEVICE_STATE_UNKNOWN, "removed"), nil
 }
 
-func (m *deviceManager) getStatus(id string) *aranyagopb.DeviceStatus {
+func (m *deviceManager) getStatus(id string) *aranyagopb.DeviceStatusMsg {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -300,11 +299,11 @@ func (m *deviceManager) getStatus(id string) *aranyagopb.DeviceStatus {
 	return nil
 }
 
-func (m *deviceManager) getAllStatuses() []*aranyagopb.DeviceStatus {
+func (m *deviceManager) getAllStatuses() []*aranyagopb.DeviceStatusMsg {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	var result []*aranyagopb.DeviceStatus
+	var result []*aranyagopb.DeviceStatusMsg
 	for _, d := range m.devices {
 		result = append(result, d.status())
 	}

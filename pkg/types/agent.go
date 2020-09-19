@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"arhat.dev/aranya-proto/aranyagopb"
+	"github.com/gogo/protobuf/proto"
 )
 
 type Agent interface {
@@ -12,6 +13,11 @@ type Agent interface {
 
 	// HandleCmd received from aranya
 	HandleCmd(cmd *aranyagopb.Cmd)
+
+	// PostMsg upload command execution result to broker/server
+	PostMsg(sid uint64, kind aranyagopb.Kind, msg proto.Marshaler) error
+
+	PostData(sid uint64, kind aranyagopb.Kind, seq uint64, completed bool, data []byte) error
 }
 
 type AgentConnectivity interface {
@@ -30,6 +36,8 @@ type AgentConnectivity interface {
 	// Close this client
 	Close() error
 
-	// MaxDataSize of a single message for this client
-	MaxDataSize() int
+	// MaxPayloadSize of a single message for this client
+	MaxPayloadSize() int
 }
+
+type CmdHandler func(sid uint64, data []byte)

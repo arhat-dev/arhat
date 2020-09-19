@@ -6,17 +6,17 @@ import "arhat.dev/aranya-proto/aranyagopb"
 
 type ContainerRuntime interface {
 	// EnsureImages ensure container images
-	EnsureImages(options *aranyagopb.ImageEnsureOptions) ([]*aranyagopb.Image, error)
+	EnsureImages(options *aranyagopb.ImageEnsureCmd) ([]*aranyagopb.ImageStatusMsg, error)
 
 	// CreateContainers creates containers
-	CreateContainers(options *aranyagopb.CreateOptions) (*aranyagopb.PodStatus, error)
+	CreateContainers(options *aranyagopb.PodEnsureCmd) (*aranyagopb.PodStatusMsg, error)
 
 	// DeleteContainer deletes a single container
-	DeleteContainers(podUID string, containers []string) (*aranyagopb.PodStatus, error)
+	DeleteContainers(podUID string, containers []string) (*aranyagopb.PodStatusMsg, error)
 
 	// DeletePod kills all containers and delete pod related volume data
-	DeletePod(options *aranyagopb.DeleteOptions) (*aranyagopb.PodStatus, error)
+	DeletePod(options *aranyagopb.PodDeleteCmd) (*aranyagopb.PodStatusMsg, error)
 
 	// ListPods show (all) pods we are managing
-	ListPods(options *aranyagopb.ListOptions) ([]*aranyagopb.PodStatus, error)
+	ListPods(options *aranyagopb.PodListCmd) ([]*aranyagopb.PodStatusMsg, error)
 }

@@ -39,7 +39,7 @@ func DoIfTryFailed(
 	ctx context.Context,
 	stdin io.Reader,
 	stdout, stderr io.Writer,
-	resizeCh <-chan *aranyagopb.TtyResizeOptions,
+	resizeCh <-chan *aranyagopb.ContainerTerminalResizeCmd,
 	command []string,
 	tty bool,
 	env map[string]string,

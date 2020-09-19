@@ -25,72 +25,58 @@ import (
 	"arhat.dev/arhat/pkg/util/sysinfo"
 )
 
-func (b *Agent) handleNodeCmd(sid uint64, data []byte) {
-	cmd := new(aranyagopb.NodeCmd)
-
-	err := cmd.Unmarshal(data)
+func (b *Agent) handleNodeInfoGet(sid uint64, cmdBytes []byte) {
+	cmd := new(aranyagopb.NodeInfoGetCmd)
+	err := cmd.Unmarshal(cmdBytes)
 	if err != nil {
-		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal node cmd: %w", err))
+		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal NodeInfoGetCmd: %w", err))
 		return
 	}
 
-	switch cmd.Action {
-	case aranyagopb.GET_NODE_INFO_ALL:
+	switch cmd.Kind {
+	case aranyagopb.NODE_INFO_ALL:
 		b.processInNewGoroutine(sid, "node.info.all", func() {
-			b.doGetNodeInfoAll(sid)
+			capacity := &aranyagopb.NodeResources{
+				CpuCount:     uint64(runtime.NumCPU()),
+				MemoryBytes:  sysinfo.GetTotalMemory(),
+				StorageBytes: sysinfo.GetTotalDiskSpace(),
+			}
+
+			machineID, _ := b.machineIDFrom.Get()
+			if machineID == "" {
+				machineID = sysinfo.GetMachineID()
+			}
+
+			systemInfo := &aranyagopb.NodeSystemInfo{
+				Os:            b.runtime.OS(),
+				Arch:          b.runtime.Arch(),
+				OsImage:       sysinfo.GetOSImage(),
+				KernelVersion: b.runtime.KernelVersion(),
+				MachineId:     machineID,
+				BootId:        sysinfo.GetBootID(),
+				SystemUuid:    sysinfo.GetSystemUUID(),
+				RuntimeInfo: &aranyagopb.NodeContainerRuntimeInfo{
+					Name:    b.runtime.Name(),
+					Version: b.runtime.Version(),
+				},
+			}
+
+			nodeMsg := aranyagopb.NewNodeStatusMsg(systemInfo, capacity, b.getNodeConditions(), b.extInfo)
+			if err := b.PostMsg(sid, aranyagopb.MSG_NODE_STATUS, nodeMsg); err != nil {
+				b.handleConnectivityError(sid, err)
+				return
+			}
 		})
-	case aranyagopb.GET_NODE_INFO_DYN:
+	case aranyagopb.NODE_INFO_DYN:
 		b.processInNewGoroutine(sid, "node.info.dyn", func() {
-			b.doGetNodeInfoDynamic(sid)
-		})
-	case aranyagopb.START_NODE_SYNC_LOOP:
-		b.handleSyncLoop(sid, "node.syncLoop", cmd.GetSyncOptions(), func() {
-			b.doGetNodeInfoDynamic(0)
+			nodeMsg := aranyagopb.NewNodeStatusMsg(nil, nil, b.getNodeConditions(), nil)
+			if err := b.PostMsg(sid, aranyagopb.MSG_NODE_STATUS, nodeMsg); err != nil {
+				b.handleConnectivityError(sid, err)
+				return
+			}
 		})
 	default:
 		b.handleUnknownCmd(sid, "node", cmd)
-	}
-}
-
-func (b *Agent) doGetNodeInfoAll(sid uint64) {
-	capacity := &aranyagopb.NodeResources{
-		CpuCount:     uint64(runtime.NumCPU()),
-		MemoryBytes:  sysinfo.GetTotalMemory(),
-		StorageBytes: sysinfo.GetTotalDiskSpace(),
-		PodCount:     b.maxPodAvail,
-	}
-
-	machineID, _ := b.machineIDFrom.Get()
-	if machineID == "" {
-		machineID = sysinfo.GetMachineID()
-	}
-
-	systemInfo := &aranyagopb.NodeSystemInfo{
-		Os:            b.runtime.OS(),
-		Arch:          b.runtime.Arch(),
-		OsImage:       sysinfo.GetOSImage(),
-		KernelVersion: b.runtime.KernelVersion(),
-		MachineId:     machineID,
-		BootId:        sysinfo.GetBootID(),
-		SystemUuid:    sysinfo.GetSystemUUID(),
-		RuntimeInfo: &aranyagopb.ContainerRuntimeInfo{
-			Name:    b.runtime.Name(),
-			Version: b.runtime.Version(),
-		},
-	}
-
-	nodeMsg := aranyagopb.NewNodeMsg(sid, systemInfo, capacity, b.getNodeConditions(), b.extInfo)
-	if err := b.PostMsg(nodeMsg); err != nil {
-		b.handleConnectivityError(sid, err)
-		return
-	}
-}
-
-func (b *Agent) doGetNodeInfoDynamic(sid uint64) {
-	nodeMsg := aranyagopb.NewNodeMsg(sid, nil, nil, b.getNodeConditions(), nil)
-	if err := b.PostMsg(nodeMsg); err != nil {
-		b.handleConnectivityError(sid, err)
-		return
 	}
 }
 

@@ -9,10 +9,10 @@ import (
 )
 
 // CreateNodeMetricsCollector creates a new node metrics and a new container metrics collector
-func CreateNodeMetricsCollector(config *aranyagopb.MetricsConfigOptions) (types.MetricsCollectFunc, error) {
+func CreateNodeMetricsCollector(config *aranyagopb.MetricsConfigCmd) (types.MetricsCollectFunc, error) {
 	return nil, wellknownerrors.ErrNotSupported
 }
 
-func CreateContainerMetricsCollector(config *aranyagopb.MetricsConfigOptions) (types.MetricsCollectFunc, error) {
+func CreateContainerMetricsCollector(config *aranyagopb.MetricsConfigCmd) (types.MetricsCollectFunc, error) {
 	return nil, wellknownerrors.ErrNotSupported
 }

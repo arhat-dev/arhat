@@ -23,6 +23,6 @@ import (
 	"arhat.dev/arhat/pkg/types"
 )
 
-func CreateContainerMetricsGatherer(config *aranyagopb.MetricsConfigOptions) (types.MetricsCollectFunc, error) {
+func CreateContainerMetricsGatherer(config *aranyagopb.MetricsConfigCmd) (types.MetricsCollectFunc, error) {
 	return nil, wellknownerrors.ErrNotSupported
 }

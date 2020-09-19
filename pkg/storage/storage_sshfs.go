@@ -245,6 +245,6 @@ func (s *sshfsStorage) Unmount(mountPoint string) error {
 	return err
 }
 
-func (s *sshfsStorage) SetCredentials(options *aranyagopb.StorageCredentialOptions) {
+func (s *sshfsStorage) SetCredentials(options *aranyagopb.CredentialEnsureCmd) {
 	s.sshIdentityStore.Store(options.SshPrivateKey)
 }

@@ -25,7 +25,7 @@ import (
 )
 
 // nolint:goconst
-func SharedNamespaces(pauseCtrID string, options *aranyagopb.CreateOptions) map[string]string {
+func SharedNamespaces(pauseCtrID string, options *aranyagopb.PodEnsureCmd) map[string]string {
 	containerNS := fmt.Sprintf("container:%s", pauseCtrID)
 	ns := map[string]string{
 		"net":  containerNS,

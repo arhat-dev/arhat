@@ -24,5 +24,5 @@ type Storage interface {
 	Name() string
 	Mount(remotePath, mountPoint string, onExited StorageFailureHandleFunc) error
 	Unmount(mountPoint string) error
-	SetCredentials(options *aranyagopb.StorageCredentialOptions)
+	SetCredentials(options *aranyagopb.CredentialEnsureCmd)
 }

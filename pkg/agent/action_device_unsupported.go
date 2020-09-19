@@ -2,7 +2,15 @@
 
 package agent
 
-func (b *Agent) handleDeviceCmd(sid uint64, data []byte) {
+func (b *Agent) handleDeviceList(sid uint64, data []byte) {
+	b.handleUnknownCmd(sid, "device", nil)
+}
+
+func (b *Agent) handleDeviceEnsure(sid uint64, data []byte) {
+	b.handleUnknownCmd(sid, "device", nil)
+}
+
+func (b *Agent) handleDeviceDelete(sid uint64, data []byte) {
 	b.handleUnknownCmd(sid, "device", nil)
 }
 
