@@ -42,6 +42,7 @@ arhat:
     # log level
     #
     # can be one of the following:
+    #   - verbose
     #   - debug
     #   - info
     #   - error
@@ -289,6 +290,7 @@ connectivity:
   method: mqtt
 
   grpc:
+    # maxPayloadSize: # size in bytes
     # grpc server address
     endpoint: grpc.example.com
 
@@ -303,6 +305,7 @@ connectivity:
       enabled: true
 
   coap:
+    # maxPayloadSize: # size in bytes
     # coap broker address with port
     endpoint: coap.example.com:5684
 
@@ -349,6 +352,8 @@ connectivity:
         identityHint: aWRlbnRpdHkgaGludA== # `identity hint`
 
   mqtt:
+    # maxPayloadSize: # size in bytes
+
     # variant of mqtt protocol
     #
     # value can be one of the following
@@ -425,6 +430,9 @@ connectivity:
 
     # tls configuration
     tls:
+      # enable tls or not
+      enabled: false
+
       # CA cert file (PEM/ASN.1 format)
       caCert: /path/to/ca.crt
 
