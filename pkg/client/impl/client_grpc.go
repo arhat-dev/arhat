@@ -20,9 +20,8 @@ import (
 	"context"
 	"fmt"
 
-	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
-
 	"arhat.dev/aranya-proto/aranyagopb"
+	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
 	"arhat.dev/pkg/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -65,8 +64,13 @@ func NewGRPCClient(agent types.Agent, config *conf.ArhatGRPCConfig) (types.Agent
 		dialOpts = append(dialOpts, grpc.WithInsecure())
 	}
 
+	maxPayloadSize := config.MaxPayloadSize
+	if maxPayloadSize <= 0 {
+		maxPayloadSize = aranyagoconst.MaxGRPCDataSize
+	}
+
 	return &GRPCClient{
-		baseClient:    newBaseClient(agent, aranyagoconst.MaxGRPCDataSize),
+		baseClient:    newBaseClient(agent, maxPayloadSize),
 		serverAddress: config.Endpoint,
 		dialOpts:      dialOpts,
 	}, nil

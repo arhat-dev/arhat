@@ -91,9 +91,10 @@ func FlagsForArhatConnectivityConfig(prefix string, config *ArhatConnectivityCon
 }
 
 type arhatConnectivityCommonConfig struct {
-	Endpoint string               `json:"endpoint" yaml:"endpoint"`
-	Priority int                  `json:"priority" yaml:"priority"`
-	TLS      confhelper.TLSConfig `json:"tls" yaml:"tls"`
+	Endpoint       string               `json:"endpoint" yaml:"endpoint"`
+	Priority       int                  `json:"priority" yaml:"priority"`
+	MaxPayloadSize int                  `json:"maxPayloadSize" yaml:"maxPayloadSize"`
+	TLS            confhelper.TLSConfig `json:"tls" yaml:"tls"`
 }
 
 func flagsForArhatConnectivityCommonConfig(prefix string, config *arhatConnectivityCommonConfig) *pflag.FlagSet {
@@ -184,17 +185,22 @@ type ArhatMQTTConnectInfo struct {
 	WillPubTopic      string
 	SupportRetain     bool
 
-	MaxDataSize int
-	TLSConfig   *tls.Config
+	MaxPayloadSize int
+	TLSConfig      *tls.Config
 }
 
 func (c *ArhatMQTTConfig) GetConnectInfo() (*ArhatMQTTConnectInfo, error) {
 	result := new(ArhatMQTTConnectInfo)
 
+	result.MaxPayloadSize = c.MaxPayloadSize
+
 	variant := strings.ToLower(c.Variant)
 	switch variant {
 	case aranyagoconst.VariantAzureIoTHub:
-		result.MaxDataSize = aranyagoconst.MaxAzureIoTHubD2CDataSize
+		if result.MaxPayloadSize <= 0 {
+			result.MaxPayloadSize = aranyagoconst.MaxAzureIoTHubD2CDataSize
+		}
+
 		deviceID := c.ClientID
 		result.ClientID = deviceID
 
@@ -222,7 +228,10 @@ func (c *ArhatMQTTConfig) GetConnectInfo() (*ArhatMQTTConnectInfo, error) {
 			return nil, fmt.Errorf("cert file must be empty")
 		}
 
-		result.MaxDataSize = aranyagoconst.MaxGCPIoTCoreD2CDataSize
+		if result.MaxPayloadSize <= 0 {
+			result.MaxPayloadSize = aranyagoconst.MaxGCPIoTCoreD2CDataSize
+		}
+
 		result.ClientID = c.ClientID
 		parts := strings.Split(c.ClientID, "/")
 		if len(parts) != 8 {
@@ -284,12 +293,18 @@ func (c *ArhatMQTTConfig) GetConnectInfo() (*ArhatMQTTConnectInfo, error) {
 			return nil, fmt.Errorf("tls cert key pair must be provided for aws-iot-core")
 		}
 
-		result.MaxDataSize = aranyagoconst.MaxAwsIoTCoreD2CDataSize
+		if result.MaxPayloadSize <= 0 {
+			result.MaxPayloadSize = aranyagoconst.MaxAwsIoTCoreD2CDataSize
+		}
+
 		result.ClientID = c.ClientID
 		result.CmdSubTopic, result.MsgPubTopic, result.WillPubTopic = aranyagoconst.MQTTTopics(c.TopicNamespace)
 		result.CmdSubTopicHandle = result.CmdSubTopic
 	case "", "standard":
-		result.MaxDataSize = aranyagoconst.MaxMQTTDataSize
+		if result.MaxPayloadSize <= 0 {
+			result.MaxPayloadSize = aranyagoconst.MaxMQTTDataSize
+		}
+
 		result.Username = c.Username
 		result.Password = c.Password
 		result.ClientID = c.ClientID

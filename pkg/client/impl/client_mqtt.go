@@ -92,7 +92,7 @@ func NewMQTTClient(agent types.Agent, config *conf.ArhatMQTTConfig) (_ types.Age
 	}
 
 	c := &MQTTClient{
-		baseClient:    newBaseClient(agent, connInfo.MaxDataSize),
+		baseClient:    newBaseClient(agent, connInfo.MaxPayloadSize),
 		client:        client,
 		supportRetain: connInfo.SupportRetain,
 

@@ -11,9 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
-
 	"arhat.dev/aranya-proto/aranyagopb"
+	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
 	"arhat.dev/pkg/log"
 	piondtls "github.com/pion/dtls/v2"
 	"github.com/pion/logging"
@@ -76,8 +75,13 @@ func NewCoAPClient(agent types.Agent, config *conf.ArhatCoAPConfig) (_ types.Age
 	}
 	willMsgOpts, putMsgOpts, obMsgOpts = allOpts[0], allOpts[1], allOpts[2]
 
+	maxPayloadSize := config.MaxPayloadSize
+	if maxPayloadSize <= 0 {
+		maxPayloadSize = aranyagoconst.MaxCoAPDataSize
+	}
+
 	coapClient := &CoAPClient{
-		baseClient: newBaseClient(agent, aranyagoconst.MaxCoAPDataSize),
+		baseClient: newBaseClient(agent, maxPayloadSize),
 
 		willMsgOpts: willMsgOpts,
 		putMsgOpts:  putMsgOpts,
