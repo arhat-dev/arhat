@@ -144,17 +144,17 @@ func (b *Agent) GetClient() types.AgentConnectivity {
 	return nil
 }
 
-func (b *Agent) PostData(sid uint64, kind aranyagopb.Kind, seq uint64, completed bool, data []byte) error {
+func (b *Agent) PostData(sid uint64, kind aranyagopb.Kind, seq uint64, completed bool, data []byte) (uint64, error) {
 	client := b.GetClient()
 	if client == nil {
-		return errClientNotSet
+		return seq, errClientNotSet
 	}
 
 	n := client.MaxPayloadSize()
 	for len(data) > n {
 		err := client.PostMsg(aranyagopb.NewMsg(kind, sid, seq, 0, false, data[:n]))
 		if err != nil {
-			return fmt.Errorf("failed to post msg chunk: %w", err)
+			return seq, fmt.Errorf("failed to post msg chunk: %w", err)
 		}
 		seq++
 		data = data[n:]
@@ -162,9 +162,9 @@ func (b *Agent) PostData(sid uint64, kind aranyagopb.Kind, seq uint64, completed
 
 	err := client.PostMsg(aranyagopb.NewMsg(kind, sid, seq, 0, completed, data))
 	if err != nil {
-		return fmt.Errorf("failed to post msg chunk: %w", err)
+		return seq, fmt.Errorf("failed to post msg chunk: %w", err)
 	}
-	return nil
+	return seq, nil
 }
 
 func (b *Agent) PostMsg(sid uint64, kind aranyagopb.Kind, msg proto.Marshaler) error {
@@ -173,7 +173,8 @@ func (b *Agent) PostMsg(sid uint64, kind aranyagopb.Kind, msg proto.Marshaler) e
 		return fmt.Errorf("failed to marshal msg body: %w", err)
 	}
 
-	return b.PostData(sid, kind, 0, true, data)
+	_, err = b.PostData(sid, kind, 0, true, data)
+	return err
 }
 
 func (b *Agent) Context() context.Context {

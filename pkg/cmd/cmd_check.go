@@ -192,6 +192,6 @@ func (a *fakeAgent) HandleCmd(cmd *aranyagopb.Cmd) {}
 func (a *fakeAgent) PostMsg(sid uint64, kind aranyagopb.Kind, msg proto.Marshaler) error {
 	return nil
 }
-func (a *fakeAgent) PostData(sid uint64, kind aranyagopb.Kind, seq uint64, completed bool, data []byte) error {
-	return nil
+func (a *fakeAgent) PostData(sid uint64, kind aranyagopb.Kind, seq uint64, completed bool, data []byte) (lastSeq uint64, _ error) {
+	return 0, nil
 }

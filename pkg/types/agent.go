@@ -17,7 +17,7 @@ type Agent interface {
 	// PostMsg upload command execution result to broker/server
 	PostMsg(sid uint64, kind aranyagopb.Kind, msg proto.Marshaler) error
 
-	PostData(sid uint64, kind aranyagopb.Kind, seq uint64, completed bool, data []byte) error
+	PostData(sid uint64, kind aranyagopb.Kind, seq uint64, completed bool, data []byte) (lastSeq uint64, _ error)
 }
 
 type AgentConnectivity interface {

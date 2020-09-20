@@ -132,7 +132,7 @@ replace (
 
 require (
 	arhat.dev/abbot-proto v0.0.0-20200908152444-df59421a64d2
-	arhat.dev/aranya-proto v0.0.0-20200918232600-415589a7dc85
+	arhat.dev/aranya-proto v0.0.0-20200920061754-8acfef86f1b3
 	arhat.dev/pkg v0.0.0-20200814094720-eac4d5d5680b
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/containerd/containerd v1.3.3 // indirect
@@ -145,6 +145,7 @@ require (
 	github.com/docker/docker v1.4.2-0.20191219165747-a9416c67da9f
 	github.com/docker/go-connections v0.4.0
 	github.com/fsnotify/fsnotify v1.4.9
+	github.com/gogo/protobuf v1.3.1
 	github.com/goiiot/libmqtt v0.9.5
 	github.com/goiiot/libserial v0.0.0-20200819082916-cd2b4aa0cf09
 	github.com/gorilla/mux v1.8.0 // indirect

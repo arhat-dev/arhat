@@ -305,9 +305,9 @@ func (b *Agent) handlePodPortForward(sid uint64, data []byte) {
 				// send fin msg to close input in aranya
 				if err != nil {
 					data, _ = errconv.ToConnectivityError(err).Marshal()
-					_ = b.PostData(sid, aranyagopb.MSG_ERROR, nextSeq(&seq), true, data)
+					_, _ = b.PostData(sid, aranyagopb.MSG_ERROR, nextSeq(&seq), true, data)
 				} else {
-					_ = b.PostData(sid, aranyagopb.MSG_DATA_STDOUT, nextSeq(&seq), true, nil)
+					_, _ = b.PostData(sid, aranyagopb.MSG_DATA_DEFAULT, nextSeq(&seq), true, nil)
 				}
 			}()
 
@@ -373,9 +373,9 @@ func (b *Agent) handleStreamOperation(
 
 		if err != nil {
 			data, _ := err.Marshal()
-			_ = b.PostData(sid, aranyagopb.MSG_ERROR, nextSeq(&seq), true, data)
+			_, _ = b.PostData(sid, aranyagopb.MSG_ERROR, nextSeq(&seq), true, data)
 		} else {
-			_ = b.PostData(sid, aranyagopb.MSG_DATA_STDOUT, nextSeq(&seq), true, nil)
+			_, _ = b.PostData(sid, aranyagopb.MSG_DATA_DEFAULT, nextSeq(&seq), true, nil)
 		}
 
 		b.streams.Close(sid)
@@ -479,7 +479,8 @@ func (b *Agent) uploadDataOutput(
 			<-timer.C
 		}
 
-		err := b.PostData(sid, kind, nextSeq(pSeq), false, data)
+		lastSeq, err := b.PostData(sid, kind, nextSeq(pSeq), false, data)
+		atomic.StoreUint64(pSeq, lastSeq+1)
 		if err != nil {
 			b.handleConnectivityError(sid, err)
 			return

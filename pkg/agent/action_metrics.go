@@ -97,7 +97,7 @@ func (b *Agent) handleMetricsCollect(sid uint64, data []byte) {
 				b.handleRuntimeError(sid, err)
 			}
 
-			err = b.PostData(sid, aranyagopb.MSG_DATA_METRICS, 0, true, metricsData)
+			_, err = b.PostData(sid, aranyagopb.MSG_DATA_METRICS, 0, true, metricsData)
 			if err != nil {
 				b.handleConnectivityError(sid, err)
 			}
@@ -117,7 +117,7 @@ func (b *Agent) handleMetricsCollect(sid uint64, data []byte) {
 				b.handleRuntimeError(sid, err)
 			}
 
-			err = b.PostData(sid, aranyagopb.MSG_DATA_METRICS, 0, true, metricsData)
+			_, err = b.PostData(sid, aranyagopb.MSG_DATA_METRICS, 0, true, metricsData)
 			if err != nil {
 				b.handleConnectivityError(sid, err)
 			}
