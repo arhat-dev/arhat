@@ -19,8 +19,9 @@ limitations under the License.
 package main
 
 import (
-	"arhat.dev/arhat/pkg/constant"
 	"github.com/spf13/pflag"
+
+	"arhat.dev/arhat/pkg/constant"
 )
 
 func setPlatformSpecificRuntimeFlags(flags *pflag.FlagSet) {

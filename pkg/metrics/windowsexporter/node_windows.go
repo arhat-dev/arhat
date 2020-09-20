@@ -24,12 +24,13 @@ import (
 	"time"
 
 	"arhat.dev/aranya-proto/aranyagopb"
-	"arhat.dev/arhat/pkg/metrics/metricsutils"
-	"arhat.dev/arhat/pkg/types"
 	"github.com/prometheus-community/windows_exporter/collector"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
 	"gopkg.in/alecthomas/kingpin.v2"
+
+	"arhat.dev/arhat/pkg/metrics/metricsutils"
+	"arhat.dev/arhat/pkg/types"
 )
 
 func CreateNodeMetricsGatherer(config *aranyagopb.MetricsConfigCmd) (types.MetricsCollectFunc, error) {

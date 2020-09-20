@@ -4,9 +4,10 @@ package metrics
 
 import (
 	"arhat.dev/aranya-proto/aranyagopb"
+	"arhat.dev/pkg/wellknownerrors"
+
 	"arhat.dev/arhat/pkg/metrics/windowsexporter"
 	"arhat.dev/arhat/pkg/types"
-	"arhat.dev/pkg/wellknownerrors"
 )
 
 // CreateNodeMetricsCollector creates a new node metrics and a new container metrics collector

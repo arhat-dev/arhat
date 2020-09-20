@@ -32,7 +32,6 @@ import (
 	"time"
 
 	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
-
 	"github.com/fsnotify/fsnotify"
 
 	"arhat.dev/aranya-proto/aranyagopb"

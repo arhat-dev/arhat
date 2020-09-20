@@ -25,7 +25,6 @@ import (
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/wellknownerrors"
-
 	"github.com/spf13/cobra"
 )
 

@@ -7,9 +7,8 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/goiiot/libserial"
-
 	"arhat.dev/aranya-proto/aranyagopb"
+	"github.com/goiiot/libserial"
 
 	"arhat.dev/arhat/pkg/devices/deviceutils"
 	"arhat.dev/arhat/pkg/types"

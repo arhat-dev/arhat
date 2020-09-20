@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"arhat.dev/aranya-proto/aranyagopb"
+	"arhat.dev/pkg/log"
 	"arhat.dev/pkg/wellknownerrors"
 	"github.com/containers/image/v5/manifest"
 	"github.com/containers/libpod/v2/libpod"
@@ -40,8 +41,6 @@ import (
 	ociruntimespec "github.com/opencontainers/runtime-spec/specs-go"
 	"go.uber.org/multierr"
 	"k8s.io/client-go/tools/remotecommand"
-
-	"arhat.dev/pkg/log"
 
 	"arhat.dev/arhat/pkg/constant"
 	"arhat.dev/arhat/pkg/runtime/runtimeutil"

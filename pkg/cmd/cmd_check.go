@@ -23,14 +23,11 @@ import (
 	"fmt"
 	"unsafe"
 
-	"github.com/gogo/protobuf/proto"
-
+	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
-
+	"github.com/gogo/protobuf/proto"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
-
-	"arhat.dev/aranya-proto/aranyagopb"
 
 	"arhat.dev/arhat/pkg/client"
 	"arhat.dev/arhat/pkg/client/impl"

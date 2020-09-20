@@ -22,7 +22,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	osexec "os/exec"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -54,7 +54,7 @@ func Lookup(bin string, extraLookupPaths []string) (string, error) {
 		}
 	}
 
-	binPath, err := osexec.LookPath(bin)
+	binPath, err := exec.LookPath(bin)
 	if err != nil {
 		return "", fmt.Errorf("unable to find executable %s: %w", bin, err)
 	}

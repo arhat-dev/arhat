@@ -23,8 +23,9 @@ import (
 	"io"
 
 	"arhat.dev/aranya-proto/aranyagopb"
-	"arhat.dev/arhat/pkg/constant"
 	"arhat.dev/pkg/wellknownerrors"
+
+	"arhat.dev/arhat/pkg/constant"
 )
 
 func DoIfTryFailed(

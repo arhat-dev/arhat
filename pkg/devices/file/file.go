@@ -7,9 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/fsnotify/fsnotify"
-
 	"arhat.dev/aranya-proto/aranyagopb"
+	"github.com/fsnotify/fsnotify"
 
 	"arhat.dev/arhat/pkg/types"
 )

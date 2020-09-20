@@ -20,9 +20,8 @@ import (
 	"bytes"
 	"time"
 
-	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
-
 	"arhat.dev/aranya-proto/aranyagopb"
+	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
 	"arhat.dev/pkg/log"
 	dockertype "github.com/docker/docker/api/types"
 	dockercontainer "github.com/docker/docker/api/types/container"

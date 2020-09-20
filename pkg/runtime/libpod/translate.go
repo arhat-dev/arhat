@@ -22,13 +22,11 @@ import (
 	"io"
 	"os"
 
+	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
-
+	"arhat.dev/pkg/log"
 	"github.com/containers/libpod/v2/libpod"
 	"github.com/containers/libpod/v2/libpod/define"
-
-	"arhat.dev/aranya-proto/aranyagopb"
-	"arhat.dev/pkg/log"
 
 	"arhat.dev/arhat/pkg/constant"
 )
