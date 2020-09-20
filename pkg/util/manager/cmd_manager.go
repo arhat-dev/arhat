@@ -35,7 +35,7 @@ func (m *CmdManager) Process(cmd *aranyagopb.Cmd) (cmdBytes []byte, complete boo
 	}
 
 	if cmd.Header.Completed {
-		sq.SetMaxSeq(cmd.Header.Seq)
+		sq.SetMaxSeq(cmd.Header.Seq + 1)
 	}
 
 	cmdByteChunks, complete := sq.Offer(cmd.Header.Seq, cmd.Body)
