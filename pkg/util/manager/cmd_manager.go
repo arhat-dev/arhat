@@ -34,10 +34,6 @@ func (m *CmdManager) Process(cmd *aranyagopb.Cmd) (cmdBytes []byte, complete boo
 		m.sessionSQ[sid] = sq
 	}
 
-	if cmd.Header.Completed {
-		sq.SetMaxSeq(cmd.Header.Seq + 1)
-	}
-
 	cmdByteChunks, complete := sq.Offer(cmd.Header.Seq, cmd.Body)
 	for _, ck := range cmdByteChunks {
 		if ck == nil {
@@ -45,6 +41,10 @@ func (m *CmdManager) Process(cmd *aranyagopb.Cmd) (cmdBytes []byte, complete boo
 		}
 
 		m.partialCmds[sid] = append(m.partialCmds[sid], ck.([]byte)...)
+	}
+
+	if cmd.Header.Completed {
+		complete = sq.SetMaxSeq(cmd.Header.Seq)
 	}
 
 	if !complete {
