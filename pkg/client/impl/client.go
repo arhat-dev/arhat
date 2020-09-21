@@ -19,6 +19,7 @@ package impl
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"arhat.dev/aranya-proto/aranyagopb"
@@ -35,12 +36,18 @@ var (
 
 func newBaseClient(agent types.Agent, maxPayloadSize int) *baseClient {
 	ctx, cancel := context.WithCancel(agent.Context())
+
+	maxPayloadSize -= aranyagopb.EmptyMsgSize
+	if maxPayloadSize <= 0 {
+		panic(fmt.Errorf("maxPayloadSize must be greater than %d", aranyagopb.EmptyMsgSize))
+	}
+
 	return &baseClient{
 		ctx:  ctx,
 		exit: cancel,
 
 		log:            log.Log.WithName("client"),
-		maxPayloadSize: maxPayloadSize - aranyagopb.EmptyMsgSize,
+		maxPayloadSize: maxPayloadSize,
 		mu:             new(sync.RWMutex),
 
 		parent: agent,
