@@ -316,7 +316,7 @@ func (b *Agent) handlePodPortForward(sid uint64, data []byte) {
 				sid, upstream,
 				aranyagopb.MSG_DATA_STDOUT,
 				constant.DefaultPortForwardStreamReadTimeout,
-				&seq,
+				&seq, nil,
 			)
 		}()
 
@@ -404,10 +404,15 @@ func (b *Agent) createTerminalStream(
 		readStdout  io.ReadCloser
 		readStderr  io.ReadCloser
 		readTimeout = constant.DefaultNonInteractiveStreamReadTimeout
+		seqMu       *sync.Mutex
 	)
 
 	if interactive {
 		readTimeout = constant.DefaultInteractiveStreamReadTimeout
+	}
+
+	if useStdout && useStderr {
+		seqMu = new(sync.Mutex)
 	}
 
 	if useStdout {
@@ -419,7 +424,7 @@ func (b *Agent) createTerminalStream(
 				wg.Done()
 			}()
 
-			b.uploadDataOutput(sid, readStdout, aranyagopb.MSG_DATA_STDOUT, readTimeout, pSeq)
+			b.uploadDataOutput(sid, readStdout, aranyagopb.MSG_DATA_STDOUT, readTimeout, pSeq, seqMu)
 		}()
 	}
 
@@ -432,7 +437,7 @@ func (b *Agent) createTerminalStream(
 				wg.Done()
 			}()
 
-			b.uploadDataOutput(sid, readStderr, aranyagopb.MSG_DATA_STDERR, readTimeout, pSeq)
+			b.uploadDataOutput(sid, readStderr, aranyagopb.MSG_DATA_STDERR, readTimeout, pSeq, seqMu)
 		}()
 	}
 
@@ -453,6 +458,7 @@ func (b *Agent) uploadDataOutput(
 	kind aranyagopb.Kind,
 	readTimeout time.Duration,
 	pSeq *uint64,
+	seqMu *sync.Mutex,
 ) {
 	r := iohelper.NewTimeoutReader(rd, b.GetClient().MaxPayloadSize())
 	go r.StartBackgroundReading()
@@ -479,8 +485,15 @@ func (b *Agent) uploadDataOutput(
 			<-timer.C
 		}
 
+		if seqMu != nil {
+			seqMu.Lock()
+		}
 		lastSeq, err := b.PostData(sid, kind, nextSeq(pSeq), false, data)
 		atomic.StoreUint64(pSeq, lastSeq+1)
+		if seqMu != nil {
+			seqMu.Unlock()
+		}
+
 		if err != nil {
 			b.handleConnectivityError(sid, err)
 			return
