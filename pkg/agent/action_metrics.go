@@ -25,6 +25,7 @@ import (
 	"arhat.dev/pkg/wellknownerrors"
 
 	"arhat.dev/arhat/pkg/metrics"
+	"arhat.dev/arhat/pkg/types"
 )
 
 func (b *Agent) handleMetricsConfig(sid uint64, data []byte) {
@@ -35,42 +36,47 @@ func (b *Agent) handleMetricsConfig(sid uint64, data []byte) {
 		return
 	}
 
-	switch cmd.Target {
-	case aranyagopb.METRICS_TARGET_NODE:
-		b.processInNewGoroutine(sid, "metrics.config.node", func() {
-			c, err := metrics.CreateNodeMetricsCollector(cmd)
-			if err != nil {
-				b.handleRuntimeError(sid, err)
-				return
-			}
-
-			err = b.PostMsg(sid, aranyagopb.MSG_DONE, &aranyagopb.Empty{})
-			if err != nil {
-				b.handleConnectivityError(sid, err)
-			} else {
-				b.metricsMU.Lock()
-				b.collectNodeMetrics = c
-				b.metricsMU.Unlock()
-			}
-		})
-	case aranyagopb.METRICS_TARGET_CONTAINER:
-		b.processInNewGoroutine(sid, "metrics.config.container", func() {
-			c, err := metrics.CreateContainerMetricsCollector(cmd)
-			if err != nil {
-				b.handleRuntimeError(sid, err)
-				return
-			}
-
-			err = b.PostMsg(sid, aranyagopb.MSG_DONE, &aranyagopb.Empty{})
-			if err != nil {
-				b.handleConnectivityError(sid, err)
-			} else {
-				b.metricsMU.Lock()
-				b.collectContainerMetrics = c
-				b.metricsMU.Unlock()
-			}
-		})
+	type opTarget struct {
+		name   string
+		ptr    *types.MetricsCollectFunc
+		create func(*aranyagopb.MetricsConfigCmd) (types.MetricsCollectFunc, error)
 	}
+
+	op, ok := map[aranyagopb.MetricsTarget]*opTarget{
+		aranyagopb.METRICS_TARGET_NODE: {
+			name: "node", ptr: &b.collectNodeMetrics, create: metrics.CreateNodeMetricsCollector,
+		},
+		aranyagopb.METRICS_TARGET_CONTAINER: {
+			name: "container", ptr: &b.collectContainerMetrics, create: metrics.CreateContainerMetricsCollector,
+		},
+	}[cmd.Target]
+
+	if !ok {
+		b.handleUnknownCmd(sid, "metrics.config", cmd)
+		return
+	}
+
+	if op == nil {
+		b.handleRuntimeError(sid, wellknownerrors.ErrNotSupported)
+		return
+	}
+
+	b.processInNewGoroutine(sid, "metrics.config."+op.name, func() {
+		c, err := op.create(cmd)
+		if err != nil {
+			b.handleRuntimeError(sid, err)
+			return
+		}
+
+		err = b.PostMsg(sid, aranyagopb.MSG_DONE, &aranyagopb.Empty{})
+		if err != nil {
+			b.handleConnectivityError(sid, err)
+		} else {
+			b.metricsMU.Lock()
+			*op.ptr = c
+			b.metricsMU.Unlock()
+		}
+	})
 }
 
 func (b *Agent) handleMetricsCollect(sid uint64, data []byte) {
@@ -81,48 +87,41 @@ func (b *Agent) handleMetricsCollect(sid uint64, data []byte) {
 		return
 	}
 
-	switch cmd.Target {
-	case aranyagopb.METRICS_TARGET_NODE:
-		b.processInNewGoroutine(sid, "metrics.collect.node", func() {
-			b.metricsMU.RLock()
-			defer b.metricsMU.RUnlock()
-
-			if b.collectNodeMetrics == nil {
-				b.handleRuntimeError(sid, wellknownerrors.ErrNotSupported)
-				return
-			}
-
-			metricsData, err := b.collectNodeMetrics()
-			if err != nil {
-				b.handleRuntimeError(sid, err)
-			}
-
-			_, err = b.PostData(sid, aranyagopb.MSG_DATA_METRICS, 0, true, metricsData)
-			if err != nil {
-				b.handleConnectivityError(sid, err)
-			}
-		})
-	case aranyagopb.METRICS_TARGET_CONTAINER:
-		b.processInNewGoroutine(sid, "metrics.collect.container", func() {
-			b.metricsMU.RLock()
-			defer b.metricsMU.RUnlock()
-
-			if b.collectContainerMetrics == nil {
-				b.handleRuntimeError(sid, wellknownerrors.ErrNotSupported)
-				return
-			}
-
-			metricsData, err := b.collectContainerMetrics()
-			if err != nil {
-				b.handleRuntimeError(sid, err)
-			}
-
-			_, err = b.PostData(sid, aranyagopb.MSG_DATA_METRICS, 0, true, metricsData)
-			if err != nil {
-				b.handleConnectivityError(sid, err)
-			}
-		})
-	default:
-		b.handleUnknownCmd(sid, "metrics", cmd)
+	type opTarget struct {
+		name    string
+		collect types.MetricsCollectFunc
 	}
+
+	b.metricsMU.RLock()
+
+	op, ok := map[aranyagopb.MetricsTarget]*opTarget{
+		aranyagopb.METRICS_TARGET_NODE:      {name: "node", collect: b.collectNodeMetrics},
+		aranyagopb.METRICS_TARGET_CONTAINER: {name: "container", collect: b.collectContainerMetrics},
+	}[cmd.Target]
+
+	b.metricsMU.RUnlock()
+
+	if !ok {
+		b.handleUnknownCmd(sid, "metrics.collect", cmd)
+		return
+	}
+
+	if op == nil {
+		b.handleRuntimeError(sid, wellknownerrors.ErrNotSupported)
+		return
+	}
+
+	b.processInNewGoroutine(sid, "metrics.collect."+op.name, func() {
+		metricsData, err := op.collect()
+		if err != nil {
+			b.handleRuntimeError(sid, err)
+			return
+		}
+
+		_, err = b.PostData(sid, aranyagopb.MSG_DATA_METRICS, 0, true, metricsData)
+		if err != nil {
+			b.handleConnectivityError(sid, err)
+			return
+		}
+	})
 }
