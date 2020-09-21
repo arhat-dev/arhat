@@ -173,7 +173,7 @@ func (b *Agent) handlePodContainerLogs(sid uint64, data []byte) {
 
 	s := b.streams.NewStream(b.ctx, sid, false, false)
 
-	b.processInNewGoroutine(sid, "ctr.log", func() {
+	b.processInNewGoroutine(sid, "ctr.logs", func() {
 		b.handleStreamOperation(sid, false, true, true, false,
 			// preRun check
 			nil,
@@ -273,7 +273,7 @@ func (b *Agent) handlePodPortForward(sid uint64, data []byte) {
 
 	s := b.streams.NewStream(b.ctx, sid, true, false)
 
-	b.processInNewGoroutine(sid, "ctr.port-forward", func() {
+	b.processInNewGoroutine(sid, "pod.port-forward", func() {
 		var (
 			seq uint64
 			err error
