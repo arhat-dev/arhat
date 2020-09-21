@@ -56,10 +56,10 @@ func NewMQTTClient(agent types.Agent, config *conf.ArhatMQTTConfig) (_ types.Age
 	}
 
 	onlineMsgBytes, _ := aranyagopb.NewOnlineStateMsg(connInfo.ClientID).Marshal()
-	onlineMsgBytes, _ = aranyagopb.NewMsg(aranyagopb.MSG_STATE, 0, 0, 0, true, onlineMsgBytes).Marshal()
+	onlineMsgBytes, _ = aranyagopb.NewMsg(aranyagopb.MSG_STATE, 0, 0, true, onlineMsgBytes).Marshal()
 
 	willMsgBytes, _ := aranyagopb.NewOfflineStateMsg(connInfo.ClientID).Marshal()
-	willMsgBytes, _ = aranyagopb.NewMsg(aranyagopb.MSG_STATE, 0, 0, 0, true, willMsgBytes).Marshal()
+	willMsgBytes, _ = aranyagopb.NewMsg(aranyagopb.MSG_STATE, 0, 0, true, willMsgBytes).Marshal()
 
 	if connInfo.TLSConfig != nil {
 		options = append(options, libmqtt.WithCustomTLS(connInfo.TLSConfig))
@@ -102,7 +102,6 @@ func NewMQTTClient(agent types.Agent, config *conf.ArhatMQTTConfig) (_ types.Age
 		pubTopic:          connInfo.MsgPubTopic,
 		pubWillTopic:      connInfo.WillPubTopic,
 		onlineMsg:         onlineMsgBytes,
-		clientID:          connInfo.ClientID,
 
 		netErrCh:  make(chan error),
 		connErrCh: make(chan error),
@@ -119,7 +118,6 @@ type MQTTClient struct {
 	cmdSubTopic       string
 	pubTopic          string
 	pubWillTopic      string
-	clientID          string
 
 	*baseClient
 	client libmqtt.Client
@@ -193,8 +191,6 @@ func (c *MQTTClient) Start(ctx context.Context) error {
 }
 
 func (c *MQTTClient) PostMsg(msg *aranyagopb.Msg) error {
-	msg.OnlineId = c.clientID
-
 	data, err := msg.Marshal()
 	if err != nil {
 		return err

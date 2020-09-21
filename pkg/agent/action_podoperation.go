@@ -343,7 +343,6 @@ func (b *Agent) handlePodPortForward(sid uint64, data []byte) {
 
 func (b *Agent) handlePodContainerTerminalResize(sid uint64, data []byte) {
 	cmd := new(aranyagopb.ContainerTerminalResizeCmd)
-
 	err := cmd.Unmarshal(data)
 	if err != nil {
 		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal ContainerTerminalResizeCmd: %w", err))

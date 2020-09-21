@@ -153,7 +153,7 @@ func (b *Agent) PostData(sid uint64, kind aranyagopb.Kind, seq uint64, completed
 	n := client.MaxPayloadSize()
 	for len(data) > n {
 		buf := data
-		err := client.PostMsg(aranyagopb.NewMsg(kind, sid, seq, 0, false, buf[:n]))
+		err := client.PostMsg(aranyagopb.NewMsg(kind, sid, seq, false, buf[:n]))
 		if err != nil {
 			return seq, fmt.Errorf("failed to post msg chunk: %w", err)
 		}
@@ -161,7 +161,7 @@ func (b *Agent) PostData(sid uint64, kind aranyagopb.Kind, seq uint64, completed
 		data = data[n:]
 	}
 
-	err := client.PostMsg(aranyagopb.NewMsg(kind, sid, seq, 0, completed, data))
+	err := client.PostMsg(aranyagopb.NewMsg(kind, sid, seq, completed, data))
 	if err != nil {
 		return seq, fmt.Errorf("failed to post msg chunk: %w", err)
 	}
