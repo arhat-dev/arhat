@@ -141,7 +141,7 @@ func (b *Agent) SetClient(client types.ConnectivityClient) {
 
 	b.client = client
 
-	for atomic.CompareAndSwapUint32(&b.settingClient, 1, 0) {
+	for !atomic.CompareAndSwapUint32(&b.settingClient, 1, 0) {
 		goruntime.Gosched()
 	}
 }
@@ -152,7 +152,7 @@ func (b *Agent) GetClient() types.ConnectivityClient {
 	}
 
 	defer func() {
-		for atomic.CompareAndSwapUint32(&b.settingClient, 1, 0) {
+		for !atomic.CompareAndSwapUint32(&b.settingClient, 1, 0) {
 			goruntime.Gosched()
 		}
 	}()

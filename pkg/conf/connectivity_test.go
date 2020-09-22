@@ -82,7 +82,7 @@ func TestConnectivityConfig_UnmarshalJSON(t *testing.T) {
 	}
 
 	actualConfig := new(ConnectivityConfig)
-	assert.Error(t, json.Unmarshal(data, actualConfig))
+	assert.NoError(t, json.Unmarshal(data, actualConfig))
 
 	RegisterConnectivityConfig("test", func() interface{} {
 		return newTestConnectivityMethod("")
@@ -108,7 +108,7 @@ func TestConnectivityConfig_UnmarshalYAML(t *testing.T) {
 	}
 
 	actualConfig := new(ConnectivityConfig)
-	assert.Error(t, yaml.UnmarshalStrict(data, actualConfig))
+	assert.NoError(t, yaml.UnmarshalStrict(data, actualConfig))
 
 	RegisterConnectivityConfig("test", func() interface{} {
 		return newTestConnectivityMethod("")
