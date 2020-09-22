@@ -24,13 +24,10 @@ import (
 	"unsafe"
 
 	"arhat.dev/aranya-proto/aranyagopb"
-	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
 	"github.com/gogo/protobuf/proto"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
-	"arhat.dev/arhat/pkg/client"
-	"arhat.dev/arhat/pkg/client/impl"
 	"arhat.dev/arhat/pkg/conf"
 	"arhat.dev/arhat/pkg/constant"
 	"arhat.dev/arhat/pkg/runtime"
@@ -150,32 +147,32 @@ func runCheck(appCtx context.Context, config *conf.ArhatConfig, opts *checkOpts)
 			showResult("storage", s.Name())
 		case opts.connectivity:
 			opts.connectivity = false
-			c, err := client.NewClient(new(fakeAgent), &config.Connectivity.ArhatConnectivityMethods)
-			if err != nil {
-				showResult("connectivity", err)
-				continue
-			}
-
-			method := "unknown"
-			switch c.(type) {
-			case *impl.GRPCClient:
-				method = aranyagoconst.ConnectivityMethodGRPC
-			case *impl.MQTTClient:
-				method = aranyagoconst.ConnectivityMethodMQTT
-			case *impl.CoAPClient:
-				method = aranyagoconst.ConnectivityMethodCoAP
-			}
-			showResult("connectivity.method", method)
-
-			func() {
-				defer func() { _ = c.Close() }()
-				err := c.Connect(context.TODO())
-				if err != nil {
-					showResult("connectivity.conn", err)
-				} else {
-					showResult("connectivity.conn", "ok")
-				}
-			}()
+			//c, err := client.NewConnectivityClient(new(fakeAgent), &config.Connectivity.ConnectivityMethod)
+			//if err != nil {
+			//	showResult("connectivity", err)
+			//	continue
+			//}
+			//
+			//method := "unknown"
+			//switch c.(type) {
+			//case *grpc.GRPCClient:
+			//	method = aranyagoconst.ConnectivityMethodGRPC
+			//case *mqtt.MQTTClient:
+			//	method = aranyagoconst.ConnectivityMethodMQTT
+			//case *coap.CoAPClient:
+			//	method = aranyagoconst.ConnectivityMethodCoAP
+			//}
+			//showResult("connectivity.method", method)
+			//
+			//func() {
+			//	defer func() { _ = c.Close() }()
+			//	err := c.Connect(context.TODO())
+			//	if err != nil {
+			//		showResult("connectivity.conn", err)
+			//	} else {
+			//		showResult("connectivity.conn", "ok")
+			//	}
+			//}()
 		}
 	}
 

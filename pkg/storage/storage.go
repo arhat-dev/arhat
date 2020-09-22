@@ -25,7 +25,7 @@ import (
 	"arhat.dev/arhat/pkg/types"
 )
 
-func NewStorage(appCtx context.Context, config *conf.ArhatStorageConfig) (types.Storage, error) {
+func NewStorage(appCtx context.Context, config *conf.StorageConfig) (types.Storage, error) {
 	switch config.Backend {
 	case constant.StorageBackendSSHFS:
 		return NewSSHFSStorage(appCtx, config)

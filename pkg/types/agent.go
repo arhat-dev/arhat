@@ -7,6 +7,19 @@ import (
 	"github.com/gogo/protobuf/proto"
 )
 
+type (
+	ConnectivityConfigFactoryFunc func() interface{}
+	ConnectivityClientFactoryFunc func(agent Agent, clientConfig interface{}) (ConnectivityClient, error)
+)
+
+type RawCmdHandleFunc func(sid uint64, data []byte)
+
+type (
+	CmdHandleFunc func(cmd *aranyagopb.Cmd)
+	DataPostFunc  func(sid uint64, kind aranyagopb.Kind, seq uint64, completed bool, data []byte) (uint64, error)
+	MsgPostFunc   func(sid uint64, kind aranyagopb.Kind, msg proto.Marshaler) error
+)
+
 type Agent interface {
 	// Context of the agent
 	Context() context.Context
@@ -20,7 +33,7 @@ type Agent interface {
 	PostData(sid uint64, kind aranyagopb.Kind, seq uint64, completed bool, data []byte) (lastSeq uint64, _ error)
 }
 
-type AgentConnectivity interface {
+type ConnectivityClient interface {
 	// Context of this client
 	Context() context.Context
 
@@ -39,5 +52,3 @@ type AgentConnectivity interface {
 	// MaxPayloadSize of a single message for this client
 	MaxPayloadSize() int
 }
-
-type CmdHandler func(sid uint64, data []byte)

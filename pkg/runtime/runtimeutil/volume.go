@@ -58,7 +58,7 @@ func CleanupPodData(podDir, remoteVolumeDir, tmpfsVolumeDir string, storage type
 func ResolveHostPathMountSource(
 	path, podUID, volName string,
 	remote bool,
-	config *conf.ArhatRuntimeConfig,
+	config *conf.RuntimeConfig,
 ) (string, error) {
 	var mountSource string
 	switch {

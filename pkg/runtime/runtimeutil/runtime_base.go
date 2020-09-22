@@ -27,11 +27,11 @@ import (
 
 func NewBaseRuntime(
 	ctx context.Context,
-	config *conf.ArhatRuntimeConfig,
+	config *conf.RuntimeConfig,
 	name, version, os, arch, kernelVersion string,
 ) *BaseRuntime {
 	return &BaseRuntime{
-		ArhatRuntimeConfig: config,
+		RuntimeConfig: config,
 
 		ctx:           ctx,
 		name:          name,
@@ -47,7 +47,7 @@ func NewBaseRuntime(
 }
 
 type BaseRuntime struct {
-	*conf.ArhatRuntimeConfig
+	*conf.RuntimeConfig
 
 	ctx    context.Context
 	logger log.Interface
@@ -93,14 +93,14 @@ func (b *BaseRuntime) ImageActionContext() (context.Context, context.CancelFunc)
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
-	return context.WithTimeout(b.ctx, b.ArhatRuntimeConfig.EndPoints.Image.ActionTimeout)
+	return context.WithTimeout(b.ctx, b.RuntimeConfig.EndPoints.Image.ActionTimeout)
 }
 
 func (b *BaseRuntime) RuntimeActionContext() (context.Context, context.CancelFunc) {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
-	return context.WithTimeout(b.ctx, b.ArhatRuntimeConfig.EndPoints.Container.ActionTimeout)
+	return context.WithTimeout(b.ctx, b.RuntimeConfig.EndPoints.Container.ActionTimeout)
 }
 
 func (b *BaseRuntime) ActionContext() (context.Context, context.CancelFunc) {

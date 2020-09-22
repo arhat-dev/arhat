@@ -14,11 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package impl
+package grpc
 
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
@@ -28,6 +29,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 
+	"arhat.dev/arhat/pkg/client/clientutil"
 	"arhat.dev/arhat/pkg/conf"
 	"arhat.dev/arhat/pkg/types"
 )
@@ -38,16 +40,19 @@ var (
 	}
 )
 
-type GRPCClient struct {
-	*baseClient
+type Client struct {
+	*clientutil.BaseClient
+
 	serverAddress string
 	dialOpts      []grpc.DialOption
 	conn          *grpc.ClientConn
 	client        aranyagopb.ConnectivityClient
 	syncClient    aranyagopb.Connectivity_SyncClient
+
+	mu *sync.RWMutex
 }
 
-func NewGRPCClient(agent types.Agent, config *conf.ArhatGRPCConfig) (types.AgentConnectivity, error) {
+func NewGRPCClient(agent types.Agent, config *conf.ConnectivityGRPC) (types.ConnectivityClient, error) {
 	dialOpts := []grpc.DialOption{
 		grpc.WithBlock(),
 		grpc.WithAuthority(config.Endpoint),
@@ -69,14 +74,22 @@ func NewGRPCClient(agent types.Agent, config *conf.ArhatGRPCConfig) (types.Agent
 		maxPayloadSize = aranyagoconst.MaxGRPCDataSize
 	}
 
-	return &GRPCClient{
-		baseClient:    newBaseClient(agent, maxPayloadSize),
+	c := &Client{
 		serverAddress: config.Endpoint,
 		dialOpts:      dialOpts,
-	}, nil
+
+		mu: new(sync.RWMutex),
+	}
+
+	c.BaseClient, err = clientutil.NewBaseClient(agent, maxPayloadSize)
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
 }
 
-func (c *GRPCClient) Connect(dialCtx context.Context) error {
+func (c *Client) Connect(dialCtx context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -91,13 +104,13 @@ func (c *GRPCClient) Connect(dialCtx context.Context) error {
 	return nil
 }
 
-func (c *GRPCClient) Start(ctx context.Context) error {
+func (c *Client) Start(ctx context.Context) error {
 	if err := func() error {
 		c.mu.Lock()
 		defer c.mu.Unlock()
 
 		if c.syncClient != nil {
-			return ErrClientAlreadyConnected
+			return clientutil.ErrClientAlreadyConnected
 		}
 
 		syncClient, err := c.client.Sync(ctx, defaultCallOptions...)
@@ -121,7 +134,7 @@ func (c *GRPCClient) Start(ctx context.Context) error {
 				switch s.Code() {
 				case codes.Canceled, codes.OK:
 				default:
-					c.log.I("exception happened when client recv", log.Error(err))
+					c.Log.I("exception happened when client recv", log.Error(err))
 				}
 
 				return
@@ -148,33 +161,37 @@ func (c *GRPCClient) Start(ctx context.Context) error {
 			return nil
 		case cmd, more := <-cmdCh:
 			if !more {
-				return ErrCmdRecvClosed
+				return clientutil.ErrCmdRecvClosed
 			}
-			c.parent.HandleCmd(cmd)
+			c.HandleCmd(cmd)
 		}
 	}
 }
 
-func (c *GRPCClient) PostMsg(msg *aranyagopb.Msg) error {
+func (c *Client) PostMsg(msg *aranyagopb.Msg) error {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	if c.syncClient == nil {
-		return ErrClientNotConnected
+		return clientutil.ErrClientNotConnected
 	}
 
 	return c.syncClient.Send(msg)
 }
 
-func (c *GRPCClient) Close() error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+func (c *Client) Close() error {
+	return c.OnClose(func() error {
+		c.mu.Lock()
+		defer c.mu.Unlock()
 
-	if c.syncClient != nil {
-		_ = c.syncClient.CloseSend()
-	}
+		if c.syncClient != nil {
+			_ = c.syncClient.CloseSend()
+		}
 
-	c.exit()
+		if c.conn != nil {
+			return c.conn.Close()
+		}
 
-	return c.conn.Close()
+		return nil
+	})
 }

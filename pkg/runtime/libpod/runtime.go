@@ -49,7 +49,7 @@ import (
 func NewLibpodRuntime(
 	ctx context.Context,
 	storage types.Storage,
-	config *conf.ArhatRuntimeConfig,
+	config *conf.RuntimeConfig,
 ) (types.Runtime, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()

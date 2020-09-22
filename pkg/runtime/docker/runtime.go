@@ -48,7 +48,7 @@ import (
 func NewDockerRuntime(
 	ctx context.Context,
 	storage types.Storage,
-	config *conf.ArhatRuntimeConfig,
+	config *conf.RuntimeConfig,
 ) (types.Runtime, error) {
 	dialCtxFunc := func(timeout time.Duration) func(
 		ctx context.Context, network, addr string,

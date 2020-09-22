@@ -35,7 +35,7 @@ import (
 	"arhat.dev/arhat/pkg/types"
 )
 
-func NewSSHFSStorage(appCtx context.Context, config *conf.ArhatStorageConfig) (types.Storage, error) {
+func NewSSHFSStorage(appCtx context.Context, config *conf.StorageConfig) (types.Storage, error) {
 	sshfsPath, err := storageutil.Lookup("sshfs", config.LookupPaths)
 	if err != nil {
 		return nil, err

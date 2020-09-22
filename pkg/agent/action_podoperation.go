@@ -487,8 +487,10 @@ func (b *Agent) uploadDataOutput(
 		if seqMu != nil {
 			seqMu.Lock()
 		}
+
 		lastSeq, err := b.PostData(sid, kind, nextSeq(pSeq), false, data)
 		atomic.StoreUint64(pSeq, lastSeq+1)
+
 		if seqMu != nil {
 			seqMu.Unlock()
 		}

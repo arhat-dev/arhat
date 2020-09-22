@@ -32,7 +32,7 @@ import (
 	"arhat.dev/arhat/pkg/version"
 )
 
-func NewNoneRuntime(ctx context.Context, _ types.Storage, config *conf.ArhatRuntimeConfig) (types.Runtime, error) {
+func NewNoneRuntime(ctx context.Context, _ types.Storage, config *conf.RuntimeConfig) (types.Runtime, error) {
 	return &noneRuntime{
 		BaseRuntime: runtimeutil.NewBaseRuntime(
 			ctx, config, "none", version.Tag(),

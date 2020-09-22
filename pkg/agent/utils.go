@@ -9,7 +9,7 @@ import (
 	"arhat.dev/arhat/pkg/conf"
 )
 
-func convertNodeExtInfo(extInfo []conf.ArhatNodeExtInfo) ([]*aranyagopb.NodeExtInfo, error) {
+func convertNodeExtInfo(extInfo []conf.NodeExtInfo) ([]*aranyagopb.NodeExtInfo, error) {
 	extInfoValueTypeMap := map[string]aranyagopb.NodeExtInfo_ValueType{
 		"":       aranyagopb.NODE_EXT_INFO_TYPE_STRING,
 		"string": aranyagopb.NODE_EXT_INFO_TYPE_STRING,

@@ -32,16 +32,11 @@ import (
 	"arhat.dev/arhat/pkg/constant"
 )
 
-type Config interface {
-	GetLogConfig() log.ConfigSet
-	SetLogConfig(log.ConfigSet)
-}
-
 func ReadConfig(
 	cmd *cobra.Command,
 	configFile *string,
 	cliLogConfig *log.Config,
-	config Config,
+	config *ArhatConfig,
 ) (context.Context, error) {
 	flags := cmd.Flags()
 	configBytes, err := ioutil.ReadFile(*configFile)
@@ -63,34 +58,32 @@ func ReadConfig(
 			}
 		})
 
-		if err = yaml.Unmarshal([]byte(configStr), config); err != nil {
+		if err = yaml.UnmarshalStrict([]byte(configStr), config); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal config file %s: %v", *configFile, err)
 		}
 	}
 
-	logConfigSet := config.GetLogConfig()
-	if len(logConfigSet) > 0 {
+	if len(config.Arhat.Log) > 0 {
 		if flags.Changed("log.format") {
-			logConfigSet[0].Format = cliLogConfig.Format
+			config.Arhat.Log[0].Format = cliLogConfig.Format
 		}
 
 		if flags.Changed("log.level") {
-			logConfigSet[0].Level = cliLogConfig.Level
+			config.Arhat.Log[0].Level = cliLogConfig.Level
 		}
 
 		if flags.Changed("log.file") {
-			logConfigSet[0].File = cliLogConfig.File
+			config.Arhat.Log[0].File = cliLogConfig.File
 		}
 	} else {
-		logConfigSet = append(logConfigSet, *cliLogConfig)
+		config.Arhat.Log = append(config.Arhat.Log, *cliLogConfig)
 	}
-	config.SetLogConfig(logConfigSet)
 
 	if err = cmd.ParseFlags(os.Args); err != nil {
 		return nil, err
 	}
 
-	err = log.SetDefaultLogger(logConfigSet)
+	err = log.SetDefaultLogger(config.Arhat.Log)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set default logger: %w", err)
 	}
@@ -110,7 +103,7 @@ func ReadConfig(
 				} else {
 					os.Exit(1)
 				}
-				//case syscall.SIGHUP:
+				// case syscall.SIGHUP:
 				//	// force reload
 			}
 		}

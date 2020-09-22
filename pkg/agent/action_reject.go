@@ -21,8 +21,6 @@ import (
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/log"
-
-	"arhat.dev/arhat/pkg/types"
 )
 
 func (b *Agent) handleRejectCmd(sid uint64, data []byte) {
@@ -46,7 +44,7 @@ func (b *Agent) handleRejectCmd(sid uint64, data []byte) {
 		b.handleUnknownCmd(sid, "reject", cmd)
 	}
 
-	if c := b.clientStore.Load(); c != nil {
-		_ = c.(types.AgentConnectivity).Close()
+	if c := b.GetClient(); c != nil {
+		_ = c.Close()
 	}
 }

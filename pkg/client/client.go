@@ -1,5 +1,3 @@
-// +build coap
-
 /*
 Copyright 2020 The arhat.dev Authors.
 
@@ -19,11 +17,22 @@ limitations under the License.
 package client
 
 import (
-	"arhat.dev/arhat/pkg/client/impl"
-	"arhat.dev/arhat/pkg/conf"
+	"fmt"
+
 	"arhat.dev/arhat/pkg/types"
 )
 
-func NewClient(agent types.Agent, clientConfig *conf.ArhatConnectivityMethods) (types.AgentConnectivity, error) {
-	return impl.NewCoAPClient(agent, &clientConfig.CoAPConfig)
+var supportedConnectivityClients = make(map[string]types.ConnectivityClientFactoryFunc)
+
+func RegisterConnectivityConfig(name string, newClient types.ConnectivityClientFactoryFunc) {
+	supportedConnectivityClients[name] = newClient
+}
+
+func NewConnectivityClient(name string, agent types.Agent, config interface{}) (types.ConnectivityClient, error) {
+	newClient, ok := supportedConnectivityClients[name]
+	if !ok {
+		return nil, fmt.Errorf("unsupported connectivity method: %s", name)
+	}
+
+	return newClient(agent, config)
 }

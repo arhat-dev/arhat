@@ -26,6 +26,6 @@ import (
 	"arhat.dev/arhat/pkg/types"
 )
 
-func NewRuntime(ctx context.Context, storage types.Storage, config *conf.ArhatRuntimeConfig) (types.Runtime, error) {
+func NewRuntime(ctx context.Context, storage types.Storage, config *conf.RuntimeConfig) (types.Runtime, error) {
 	return docker.NewDockerRuntime(ctx, storage, config)
 }

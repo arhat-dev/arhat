@@ -153,6 +153,7 @@ func (s *Stream) close() {
 		case <-s.ctx.Done():
 		default:
 			close(s.resizeCh)
+			s.resizeCh = nil
 		}
 	}
 

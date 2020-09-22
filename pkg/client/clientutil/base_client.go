@@ -14,13 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package impl
+package clientutil
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/log"
@@ -34,41 +33,55 @@ var (
 	ErrCmdRecvClosed          = errors.New("cmd recv closed")
 )
 
-func newBaseClient(agent types.Agent, maxPayloadSize int) *baseClient {
-	ctx, cancel := context.WithCancel(agent.Context())
+func NewBaseClient(ag types.Agent, maxPayloadSize int) (*BaseClient, error) {
+	ctx, cancel := context.WithCancel(ag.Context())
 
 	maxPayloadSize -= aranyagopb.EmptyMsgSize
 	if maxPayloadSize <= 0 {
-		panic(fmt.Errorf("maxPayloadSize must be greater than %d", aranyagopb.EmptyMsgSize))
+		cancel()
+		return nil, fmt.Errorf("maxPayloadSize must be greater than %d", aranyagopb.EmptyMsgSize)
 	}
 
-	return &baseClient{
+	return &BaseClient{
 		ctx:  ctx,
 		exit: cancel,
 
-		log:            log.Log.WithName("client"),
+		Log:            log.Log.WithName("client"),
 		maxPayloadSize: maxPayloadSize,
-		mu:             new(sync.RWMutex),
 
-		parent: agent,
-	}
+		agent: ag,
+	}, nil
 }
 
-type baseClient struct {
+type BaseClient struct {
 	ctx  context.Context
 	exit context.CancelFunc
 
-	log            log.Interface
 	maxPayloadSize int
-	mu             *sync.RWMutex
 
-	parent types.Agent
+	Log   log.Interface
+	agent types.Agent
+	//HandleCmd types.CmdHandleFunc
 }
 
-func (b *baseClient) Context() context.Context {
+func (b *BaseClient) HandleCmd(cmd *aranyagopb.Cmd) {
+	b.agent.HandleCmd(cmd)
+}
+
+func (b *BaseClient) OnClose(doExit func() error) error {
+	b.exit()
+
+	if doExit != nil {
+		return doExit()
+	}
+
+	return nil
+}
+
+func (b *BaseClient) Context() context.Context {
 	return b.ctx
 }
 
-func (b *baseClient) MaxPayloadSize() int {
+func (b *BaseClient) MaxPayloadSize() int {
 	return b.maxPayloadSize
 }

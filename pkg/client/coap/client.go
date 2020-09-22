@@ -1,4 +1,4 @@
-package impl
+package coap
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -27,12 +28,13 @@ import (
 	coapudpclient "github.com/plgd-dev/go-coap/v2/udp/client"
 	coapudpmsgpool "github.com/plgd-dev/go-coap/v2/udp/message/pool"
 
+	"arhat.dev/arhat/pkg/client/clientutil"
 	"arhat.dev/arhat/pkg/conf"
 	"arhat.dev/arhat/pkg/types"
 )
 
 // nolint:gocyclo
-func NewCoAPClient(agent types.Agent, config *conf.ArhatCoAPConfig) (_ types.AgentConnectivity, err error) {
+func NewCoAPClient(agent types.Agent, config *conf.ConnectivityCoAP) (_ types.ConnectivityClient, err error) {
 	var (
 		tlsCfg         *tls.Config
 		connectActions []func(dialCtx context.Context) (*coapudpclient.ClientConn, error)
@@ -80,12 +82,17 @@ func NewCoAPClient(agent types.Agent, config *conf.ArhatCoAPConfig) (_ types.Age
 		maxPayloadSize = aranyagoconst.MaxCoAPDataSize
 	}
 
-	coapClient := &CoAPClient{
-		baseClient: newBaseClient(agent, maxPayloadSize),
-
+	coapClient := &Client{
 		willMsgOpts: willMsgOpts,
 		putMsgOpts:  putMsgOpts,
 		obMsgOpts:   obMsgOpts,
+
+		mu: new(sync.Mutex),
+	}
+
+	coapClient.BaseClient, err = clientutil.NewBaseClient(agent, maxPayloadSize)
+	if err != nil {
+		return nil, err
 	}
 
 	transport := config.Transport
@@ -160,7 +167,7 @@ func NewCoAPClient(agent types.Agent, config *conf.ArhatCoAPConfig) (_ types.Age
 			coaptcp.WithMaxMessageSize(aranyagoconst.MaxCoAPDataSize),
 			coaptcp.WithKeepAlive(keepaliveOpt),
 			coaptcp.WithErrors(func(err error) {
-				coapClient.log.I("internal coap client error", log.Error(err))
+				coapClient.Log.I("internal coap client error", log.Error(err))
 			}),
 		}
 
@@ -188,7 +195,7 @@ func NewCoAPClient(agent types.Agent, config *conf.ArhatCoAPConfig) (_ types.Age
 					coapudp.WithContext(dialCtx),
 					coapudp.WithKeepAlive(keepaliveOpt),
 					coapudp.WithErrors(func(err error) {
-						coapClient.log.I("internal coap client error", log.Error(err))
+						coapClient.Log.I("internal coap client error", log.Error(err))
 					}),
 				}
 
@@ -208,7 +215,7 @@ func NewCoAPClient(agent types.Agent, config *conf.ArhatCoAPConfig) (_ types.Age
 				ClientCAs:          tlsCfg.ClientCAs,
 				InsecureHashes:     config.TLS.AllowInsecureHashes,
 				ServerName:         tlsCfg.ServerName,
-				LoggerFactory:      &loggerFactory{coapClient.log.WithName("dtls")},
+				LoggerFactory:      &loggerFactory{coapClient.Log.WithName("dtls")},
 			}
 
 			var (
@@ -275,7 +282,7 @@ func NewCoAPClient(agent types.Agent, config *conf.ArhatCoAPConfig) (_ types.Age
 					coapdtls.WithContext(dialCtx),
 					coapdtls.WithKeepAlive(keepaliveOpt),
 					coapdtls.WithErrors(func(err error) {
-						coapClient.log.I("internal coap client error", log.Error(err))
+						coapClient.Log.I("internal coap client error", log.Error(err))
 					}),
 				}
 
@@ -310,8 +317,8 @@ func NewCoAPClient(agent types.Agent, config *conf.ArhatCoAPConfig) (_ types.Age
 	return coapClient, nil
 }
 
-type CoAPClient struct {
-	*baseClient
+type Client struct {
+	*clientutil.BaseClient
 
 	connected, started uint32
 
@@ -324,11 +331,13 @@ type CoAPClient struct {
 
 	clientID          string
 	cancelObservation func(ctx context.Context) error
+
+	mu *sync.Mutex
 }
 
-func (c *CoAPClient) Connect(dialCtx context.Context) error {
+func (c *Client) Connect(dialCtx context.Context) error {
 	if !atomic.CompareAndSwapUint32(&c.connected, 0, 1) {
-		return ErrClientAlreadyConnected
+		return clientutil.ErrClientAlreadyConnected
 	}
 
 	c.mu.Lock()
@@ -340,9 +349,9 @@ func (c *CoAPClient) Connect(dialCtx context.Context) error {
 	return err
 }
 
-func (c *CoAPClient) Start(ctx context.Context) error {
+func (c *Client) Start(ctx context.Context) error {
 	if !atomic.CompareAndSwapUint32(&c.started, 0, 1) {
-		return ErrClientNotConnected
+		return clientutil.ErrClientNotConnected
 	}
 
 	c.mu.Lock()
@@ -355,7 +364,7 @@ func (c *CoAPClient) Start(ctx context.Context) error {
 
 	payload, _ := aranyagopb.NewOnlineStateMsg(c.clientID).Marshal()
 	msg := aranyagopb.NewMsg(aranyagopb.MSG_STATE, 0, 0, true, payload)
-	err = c.doPostMsg(c.ctx, msg, c.willMsgOpts)
+	err = c.doPostMsg(c.Context(), msg, c.willMsgOpts)
 	if err != nil {
 		return fmt.Errorf("failed to publish online msg ")
 	}
@@ -364,12 +373,12 @@ func (c *CoAPClient) Start(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		return nil
-	case <-c.ctx.Done():
+	case <-c.Context().Done():
 		return nil
 	}
 }
 
-func (c *CoAPClient) doPostMsg(ctx context.Context, msg *aranyagopb.Msg, msgOpts coapmsg.Options) error {
+func (c *Client) doPostMsg(ctx context.Context, msg *aranyagopb.Msg, msgOpts coapmsg.Options) error {
 	data, err := msg.Marshal()
 	if err != nil {
 		return fmt.Errorf("failed to marshal msg: %w", err)
@@ -402,52 +411,55 @@ func (c *CoAPClient) doPostMsg(ctx context.Context, msg *aranyagopb.Msg, msgOpts
 	return nil
 }
 
-func (c *CoAPClient) PostMsg(msg *aranyagopb.Msg) error {
-	return c.doPostMsg(c.ctx, msg, c.putMsgOpts)
+func (c *Client) PostMsg(msg *aranyagopb.Msg) error {
+	return c.doPostMsg(c.Context(), msg, c.putMsgOpts)
 }
 
-func (c *CoAPClient) Close() error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+func (c *Client) Close() error {
+	return c.OnClose(func() error {
+		c.mu.Lock()
+		defer c.mu.Unlock()
 
-	if c.cancelObservation != nil {
-		_ = c.cancelObservation(context.TODO())
-	}
-	if c.client != nil {
-		// TODO: currently we only send offline message with best effort
-		//		 need to ensure the offline message is acknowledged by aranya
-		payload, _ := aranyagopb.NewOfflineStateMsg(c.clientID).Marshal()
-		msg := aranyagopb.NewMsg(aranyagopb.MSG_STATE, 0, 0, true, payload)
-		_ = c.doPostMsg(context.Background(), msg, c.willMsgOpts)
+		if c.cancelObservation != nil {
+			_ = c.cancelObservation(context.TODO())
+		}
 
-		return c.client.Close()
-	}
+		if c.client != nil {
+			// TODO: currently we only send offline message with best effort
+			//		 need to ensure the offline message is acknowledged by aranya
+			payload, _ := aranyagopb.NewOfflineStateMsg(c.clientID).Marshal()
+			msg := aranyagopb.NewMsg(aranyagopb.MSG_STATE, 0, 0, true, payload)
+			_ = c.doPostMsg(context.Background(), msg, c.willMsgOpts)
 
-	return nil
+			return c.client.Close()
+		}
+
+		return nil
+	})
 }
 
-func (c *CoAPClient) handleCmdRecv(notification *coapmsg.Message) {
+func (c *Client) handleCmdRecv(notification *coapmsg.Message) {
 	if notification == nil || notification.Body == nil {
 		return
 	}
 
 	if notification.Code != coapmsgcodes.Content {
-		c.log.I("unexpected cmd msg", log.StringError(notification.Code.String()))
+		c.Log.I("unexpected cmd data", log.StringError(notification.Code.String()))
 		return
 	}
 
 	cmdData, err := ioutil.ReadAll(notification.Body)
 	if err != nil {
-		c.log.I("failed to read cmd data", log.Error(err))
+		c.Log.I("failed to read cmd data", log.Error(err))
 		return
 	}
 
 	cmd := new(aranyagopb.Cmd)
 	err = cmd.Unmarshal(cmdData)
 	if err != nil {
-		c.log.I("failed to unmarshal cmd data", log.Error(err))
+		c.Log.I("failed to unmarshal cmd data", log.Error(err))
 	} else {
-		c.parent.HandleCmd(cmd)
+		c.HandleCmd(cmd)
 	}
 }
 

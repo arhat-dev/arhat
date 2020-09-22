@@ -15,4 +15,4 @@ limitations under the License.
 */
 
 // Package client
-package client // import "arhat.dev/arhat/pkg/agent/client"
+package client

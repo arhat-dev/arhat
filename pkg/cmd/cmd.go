@@ -22,14 +22,17 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"sort"
 	"time"
 
+	"arhat.dev/pkg/backoff"
 	"arhat.dev/pkg/confhelper"
 	"arhat.dev/pkg/log"
 	"github.com/spf13/cobra"
 
 	"arhat.dev/arhat/pkg/agent"
 	"arhat.dev/arhat/pkg/client"
+	_ "arhat.dev/arhat/pkg/client/clientadd"
 	"arhat.dev/arhat/pkg/conf"
 	"arhat.dev/arhat/pkg/constant"
 	"arhat.dev/arhat/pkg/util/manager"
@@ -78,9 +81,6 @@ func NewArhatCmd() *cobra.Command {
 	flags.AddFlagSet(conf.FlagsForArhatNodeConfig("node.", &config.Arhat.Node))
 	// runtime flags
 	flags.AddFlagSet(conf.FlagsForArhatRuntimeConfig("runtime.", &config.Runtime))
-	// connectivity flags
-	flags.AddFlagSet(conf.FlagsForArhatConnectivityConfig("conn.", &config.Connectivity))
-	keepNecessaryConnectivityFlags(flags)
 
 	// storage flags
 	flags.DurationVar(
@@ -132,60 +132,74 @@ func run(appCtx context.Context, config *conf.ArhatConfig) error {
 		}
 	}
 
-	wait, maxWait := config.Connectivity.InitialBackoff, config.Connectivity.MaxBackoff
-	factor := config.Connectivity.BackoffFactor
-
+	bs := backoff.NewStrategy(
+		config.Connectivity.InitialBackoff,
+		config.Connectivity.MaxBackoff,
+		config.Connectivity.BackoffFactor,
+		1,
+	)
 	backoffTimer := time.NewTimer(0)
 	if !backoffTimer.Stop() {
 		<-backoffTimer.C
 	}
 	defer backoffTimer.Stop()
 
-	for !exiting() {
-		cl, err := client.NewClient(ag, &config.Connectivity.ArhatConnectivityMethods)
-		if err != nil {
-			logger.I("failed to create connectivity client", log.Error(err))
-		} else {
-			ag.SetClient(cl)
+	sort.SliceStable(config.Connectivity.Methods, func(i, j int) bool {
+		return config.Connectivity.Methods[i].Priority < config.Connectivity.Methods[j].Priority
+	})
 
-			err = func() error {
-				dialCtx, cancelDial := context.WithTimeout(appCtx, config.Connectivity.DialTimeout)
-				defer cancelDial()
-				return cl.Connect(dialCtx)
-			}()
+	for !exiting() {
+		for i := 0; i < len(config.Connectivity.Methods) && !exiting(); i++ {
+			name := config.Connectivity.Methods[i].Name
+			id := fmt.Sprintf("%s@%d", name, i)
+
+			logger.I("creating client", log.String("id", id))
+			cl, err := client.NewConnectivityClient(
+				name, ag, config.Connectivity.Methods[i].Config,
+			)
+			if err != nil {
+				logger.I("failed to create client", log.Error(err))
+			} else {
+				logger.D("client created")
+				ag.SetClient(cl)
+
+				err = func() error {
+					dialCtx, cancelDial := context.WithTimeout(appCtx, config.Connectivity.DialTimeout)
+					defer cancelDial()
+
+					logger.I("establishing connectivity")
+					return cl.Connect(dialCtx)
+				}()
+
+				if err != nil {
+					logger.I("failed to establish connectivity", log.Error(err))
+				} else {
+					// start to sync
+					logger.I("connected, starting communication")
+					err = cl.Start(appCtx)
+					if err != nil {
+						logger.I("failed to communicate", log.Error(err))
+					}
+				}
+
+				_ = cl.Close()
+				logger.I("connectivity lost")
+			}
 
 			if err != nil {
-				logger.I("failed to establish connection", log.Error(err))
-			} else {
-				// start to sync
-				logger.I("connected, starting communication with aranya")
-				err = cl.Start(appCtx)
-				if err != nil {
-					logger.I("failed to communicate with aranya", log.Error(err))
+				wait := bs.Next(id)
+
+				logger.I("connectivity backoff", log.Duration("wait", wait))
+
+				backoffTimer.Reset(wait)
+				select {
+				case <-appCtx.Done():
+					return nil
+				case <-backoffTimer.C:
 				}
+			} else {
+				bs.Reset(id)
 			}
-
-			_ = cl.Close()
-		}
-
-		logger.I("lost connection")
-		backoffTimer.Reset(wait)
-		select {
-		case <-appCtx.Done():
-			return nil
-		case <-backoffTimer.C:
-			logger.I("reconnect backoff", log.Duration("wait", wait))
-		}
-
-		if err != nil {
-			// backoff when error happened
-			wait = time.Duration(float64(wait) * factor)
-			if wait > maxWait {
-				wait = maxWait
-			}
-		} else {
-			// reset backoff
-			wait = config.Connectivity.InitialBackoff
 		}
 	}
 

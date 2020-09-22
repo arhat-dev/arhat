@@ -410,7 +410,7 @@ func (r *libpodRuntime) createContainer(
 			var err error
 			source, err = runtimeutil.ResolveHostPathMountSource(
 				hostPath, options.PodUid, volName,
-				volMountSpec.Remote, r.ArhatRuntimeConfig,
+				volMountSpec.Remote, r.RuntimeConfig,
 			)
 			if err != nil {
 				return nil, err

@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	goruntime "runtime"
 	"sync"
 	"sync/atomic"
 
@@ -97,12 +98,11 @@ func NewAgent(appCtx context.Context, config *conf.ArhatConfig) (*Agent, error) 
 
 		metricsMU: new(sync.RWMutex),
 
-		cmdMgr:      manager.NewCmdManager(),
-		clientStore: new(atomic.Value),
-		runtime:     rt,
-		storage:     st,
-		devices:     newDeviceManager(),
-		streams:     manager.NewStreamManager(),
+		cmdMgr:  manager.NewCmdManager(),
+		runtime: rt,
+		storage: st,
+		devices: newDeviceManager(),
+		streams: manager.NewStreamManager(),
 	}
 	agent.streams.Start(ctx.Done())
 
@@ -110,8 +110,8 @@ func NewAgent(appCtx context.Context, config *conf.ArhatConfig) (*Agent, error) 
 }
 
 type Agent struct {
-	hostConfig    *conf.ArhatHostConfig
-	machineIDFrom *conf.ArhatValueFromSpec
+	hostConfig    *conf.HostConfig
+	machineIDFrom *conf.ValueFromSpec
 	kubeLogFile   string
 	extInfo       []*aranyagopb.NodeExtInfo
 
@@ -124,24 +124,40 @@ type Agent struct {
 	collectNodeMetrics      types.MetricsCollectFunc
 	collectContainerMetrics types.MetricsCollectFunc
 
-	cmdMgr      *manager.CmdManager
-	clientStore *atomic.Value
-	runtime     types.Runtime
-	storage     types.Storage
-	devices     *deviceManager
-	streams     *manager.StreamManager
+	cmdMgr  *manager.CmdManager
+	runtime types.Runtime
+	storage types.Storage
+	devices *deviceManager
+	streams *manager.StreamManager
+
+	settingClient uint32
+	client        types.ConnectivityClient
 }
 
-func (b *Agent) SetClient(client types.AgentConnectivity) {
-	b.clientStore.Store(client)
-}
-
-func (b *Agent) GetClient() types.AgentConnectivity {
-	if c := b.clientStore.Load(); c != nil {
-		return c.(types.AgentConnectivity)
+func (b *Agent) SetClient(client types.ConnectivityClient) {
+	for !atomic.CompareAndSwapUint32(&b.settingClient, 0, 1) {
+		goruntime.Gosched()
 	}
 
-	return nil
+	b.client = client
+
+	for atomic.CompareAndSwapUint32(&b.settingClient, 1, 0) {
+		goruntime.Gosched()
+	}
+}
+
+func (b *Agent) GetClient() types.ConnectivityClient {
+	for !atomic.CompareAndSwapUint32(&b.settingClient, 0, 1) {
+		goruntime.Gosched()
+	}
+
+	defer func() {
+		for atomic.CompareAndSwapUint32(&b.settingClient, 1, 0) {
+			goruntime.Gosched()
+		}
+	}()
+
+	return b.client
 }
 
 func (b *Agent) PostData(sid uint64, kind aranyagopb.Kind, seq uint64, completed bool, data []byte) (uint64, error) {
@@ -210,7 +226,7 @@ func (b *Agent) HandleCmd(cmd *aranyagopb.Cmd) {
 		return
 	}
 
-	handleCmd, ok := map[aranyagopb.Kind]types.CmdHandler{
+	handleCmd, ok := map[aranyagopb.Kind]types.RawCmdHandleFunc{
 		aranyagopb.CMD_SESSION_CLOSE: b.handleSessionClose,
 
 		aranyagopb.CMD_NODE_INFO_GET: b.handleNodeInfoGet,

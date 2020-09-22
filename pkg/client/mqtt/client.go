@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package impl
+package mqtt
 
 import (
 	"context"
@@ -26,11 +26,12 @@ import (
 	"arhat.dev/pkg/log"
 	"github.com/goiiot/libmqtt"
 
+	"arhat.dev/arhat/pkg/client/clientutil"
 	"arhat.dev/arhat/pkg/conf"
 	"arhat.dev/arhat/pkg/types"
 )
 
-func NewMQTTClient(agent types.Agent, config *conf.ArhatMQTTConfig) (_ types.AgentConnectivity, err error) {
+func NewMQTTClient(agent types.Agent, config *conf.ConnectivityMQTT) (_ types.ConnectivityClient, err error) {
 	var options []libmqtt.Option
 	switch config.Version {
 	case "5":
@@ -91,8 +92,7 @@ func NewMQTTClient(agent types.Agent, config *conf.ArhatMQTTConfig) (_ types.Age
 		return nil, err
 	}
 
-	c := &MQTTClient{
-		baseClient:    newBaseClient(agent, connInfo.MaxPayloadSize),
+	c := &Client{
 		client:        client,
 		supportRetain: connInfo.SupportRetain,
 
@@ -108,10 +108,15 @@ func NewMQTTClient(agent types.Agent, config *conf.ArhatMQTTConfig) (_ types.Age
 		subErrCh:  make(chan error),
 	}
 
+	c.BaseClient, err = clientutil.NewBaseClient(agent, connInfo.MaxPayloadSize)
+	if err != nil {
+		return nil, err
+	}
+
 	return c, nil
 }
 
-type MQTTClient struct {
+type Client struct {
 	onlineMsg         []byte
 	brokerAddress     string
 	cmdSubTopicHandle string
@@ -119,7 +124,7 @@ type MQTTClient struct {
 	pubTopic          string
 	pubWillTopic      string
 
-	*baseClient
+	*clientutil.BaseClient
 	client libmqtt.Client
 
 	netErrCh  chan error
@@ -130,12 +135,12 @@ type MQTTClient struct {
 	supportRetain bool
 }
 
-func (c *MQTTClient) Connect(dialCtx context.Context) error {
+func (c *Client) Connect(dialCtx context.Context) error {
 	dialOpts := []libmqtt.Option{
 		libmqtt.WithRouter(libmqtt.NewRegexRouter()),
 		libmqtt.WithAutoReconnect(false),
-		libmqtt.WithConnHandleFunc(c.handleConn(c.ctx.Done())),
-		libmqtt.WithSubHandleFunc(c.handleSub(c.ctx.Done())),
+		libmqtt.WithConnHandleFunc(c.handleConn(c.Context().Done())),
+		libmqtt.WithSubHandleFunc(c.handleSub(c.Context().Done())),
 		libmqtt.WithPubHandleFunc(c.handlePub),
 		libmqtt.WithNetHandleFunc(c.handleNet),
 	}
@@ -165,7 +170,7 @@ func (c *MQTTClient) Connect(dialCtx context.Context) error {
 	return nil
 }
 
-func (c *MQTTClient) Start(ctx context.Context) error {
+func (c *Client) Start(ctx context.Context) error {
 	c.client.HandleTopic(c.cmdSubTopicHandle, c.handleTopicMsg)
 	c.client.Subscribe(&libmqtt.Topic{Name: c.cmdSubTopic, Qos: libmqtt.Qos1})
 
@@ -179,7 +184,7 @@ func (c *MQTTClient) Start(ctx context.Context) error {
 	}
 
 	// publish a packet to notify aranya we are online
-	c.log.D("publishing online message")
+	c.Log.D("publishing online message")
 	c.pubOnline()
 
 	select {
@@ -190,7 +195,7 @@ func (c *MQTTClient) Start(ctx context.Context) error {
 	}
 }
 
-func (c *MQTTClient) PostMsg(msg *aranyagopb.Msg) error {
+func (c *Client) PostMsg(msg *aranyagopb.Msg) error {
 	data, err := msg.Marshal()
 	if err != nil {
 		return err
@@ -201,18 +206,19 @@ func (c *MQTTClient) PostMsg(msg *aranyagopb.Msg) error {
 	return nil
 }
 
-func (c *MQTTClient) Close() error {
-	c.client.Destroy(true)
+func (c *Client) Close() error {
+	return c.OnClose(func() error {
+		c.client.Destroy(true)
 
-	if atomic.CompareAndSwapInt32(&c.exited, 0, 1) {
-		close(c.netErrCh)
-	}
+		if atomic.CompareAndSwapInt32(&c.exited, 0, 1) {
+			close(c.netErrCh)
+		}
 
-	c.exit()
-	return nil
+		return nil
+	})
 }
 
-func (c *MQTTClient) pubOnline() {
+func (c *Client) pubOnline() {
 	c.client.Publish(&libmqtt.PublishPacket{
 		TopicName: c.pubWillTopic,
 		Qos:       libmqtt.Qos1,
@@ -221,9 +227,9 @@ func (c *MQTTClient) pubOnline() {
 	})
 }
 
-func (c *MQTTClient) handleNet(client libmqtt.Client, server string, err error) {
+func (c *Client) handleNet(client libmqtt.Client, server string, err error) {
 	if err != nil {
-		c.log.I("network error happened", log.String("server", server), log.Error(err))
+		c.Log.I("network error happened", log.String("server", server), log.Error(err))
 
 		// exit client on network error
 		if atomic.CompareAndSwapInt32(&c.exited, 0, 1) {
@@ -234,7 +240,7 @@ func (c *MQTTClient) handleNet(client libmqtt.Client, server string, err error) 
 }
 
 // nolint:gocritic
-func (c *MQTTClient) handleConn(dialExitSig <-chan struct{}) libmqtt.ConnHandleFunc {
+func (c *Client) handleConn(dialExitSig <-chan struct{}) libmqtt.ConnHandleFunc {
 	return func(client libmqtt.Client, server string, code byte, err error) {
 		if err != nil {
 			select {
@@ -262,7 +268,7 @@ func (c *MQTTClient) handleConn(dialExitSig <-chan struct{}) libmqtt.ConnHandleF
 	}
 }
 
-func (c *MQTTClient) handleSub(dialExitSig <-chan struct{}) libmqtt.SubHandleFunc {
+func (c *Client) handleSub(dialExitSig <-chan struct{}) libmqtt.SubHandleFunc {
 	return func(client libmqtt.Client, topics []*libmqtt.Topic, err error) {
 		select {
 		case <-dialExitSig:
@@ -273,23 +279,23 @@ func (c *MQTTClient) handleSub(dialExitSig <-chan struct{}) libmqtt.SubHandleFun
 	}
 }
 
-func (c *MQTTClient) handlePub(client libmqtt.Client, topic string, err error) {
+func (c *Client) handlePub(client libmqtt.Client, topic string, err error) {
 	if err != nil {
-		c.log.I("failed to publish message", log.String("topic", topic), log.Error(err))
+		c.Log.I("failed to publish message", log.String("topic", topic), log.Error(err))
 		if topic == c.pubWillTopic {
-			c.log.D("republishing online message")
+			c.Log.D("republishing online message")
 			c.pubOnline()
 		}
 	}
 }
 
-func (c *MQTTClient) handleTopicMsg(client libmqtt.Client, topic string, qos libmqtt.QosLevel, cmdBytes []byte) {
+func (c *Client) handleTopicMsg(client libmqtt.Client, topic string, qos libmqtt.QosLevel, cmdBytes []byte) {
 	cmd := new(aranyagopb.Cmd)
 	err := cmd.Unmarshal(cmdBytes)
 	if err != nil {
-		c.log.I("failed to unmarshal cmd", log.Binary("cmdBytes", cmdBytes), log.Error(err))
+		c.Log.I("failed to unmarshal cmd", log.Binary("cmdBytes", cmdBytes), log.Error(err))
 		return
 	}
 
-	c.parent.HandleCmd(cmd)
+	c.HandleCmd(cmd)
 }

@@ -388,7 +388,7 @@ func (r *dockerRuntime) createContainer(
 		if isHostVol {
 			source, err = runtimeutil.ResolveHostPathMountSource(
 				hostPath, options.PodUid, volName,
-				volMountSpec.Remote, r.ArhatRuntimeConfig,
+				volMountSpec.Remote, r.RuntimeConfig,
 			)
 			if err != nil {
 				return "", err
