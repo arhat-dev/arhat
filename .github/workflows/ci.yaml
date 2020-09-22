@@ -18,6 +18,10 @@ on:
 env:
   GO111MODULE: "on"
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   stylecheck:
     runs-on: ubuntu-latest

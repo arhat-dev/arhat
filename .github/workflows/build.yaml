@@ -15,6 +15,9 @@ on:
     tags:
     - v*
 
+env:
+  GO111MODULE: "on"
+
 defaults:
   run:
     shell: bash
