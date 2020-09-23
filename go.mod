@@ -132,7 +132,7 @@ replace (
 
 require (
 	arhat.dev/abbot-proto v0.0.0-20200908152444-df59421a64d2
-	arhat.dev/aranya-proto v0.0.0-20200921173915-1c2ff9206e7d
+	arhat.dev/aranya-proto v0.0.0-20200923000120-7097a702cf8b
 	arhat.dev/pkg v0.0.0-20200922111851-9707225a9ad0
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/containerd/containerd v1.3.3 // indirect

@@ -7,7 +7,6 @@ import (
 	"arhat.dev/aranya-proto/aranyagopb"
 )
 
-// nolint:lll
 type Runtime interface {
 	// Name of the runtime name
 	Name() string
@@ -34,13 +33,27 @@ type Runtime interface {
 	InitRuntime() error
 
 	// ExecInContainer execute a command in a running container
-	ExecInContainer(podUID, container string, stdin io.Reader, stdout, stderr io.Writer, resizeCh <-chan *aranyagopb.ContainerTerminalResizeCmd, command []string, tty bool) *aranyagopb.ErrorMsg
+	ExecInContainer(
+		podUID, container string,
+		stdin io.Reader, stdout, stderr io.Writer,
+		resizeCh <-chan *aranyagopb.ContainerTerminalResizeCmd,
+		command []string, tty bool,
+	) *aranyagopb.ErrorMsg
 
 	// AttachContainer to attach a running container's stdin/stdout/stderr
-	AttachContainer(podUID, container string, stdin io.Reader, stdout, stderr io.Writer, resizeCh <-chan *aranyagopb.ContainerTerminalResizeCmd) error
+	AttachContainer(
+		podUID, container string,
+		stdin io.Reader, stdout, stderr io.Writer,
+		resizeCh <-chan *aranyagopb.ContainerTerminalResizeCmd,
+	) error
 
 	// GetContainerLogs retrieve
-	GetContainerLogs(podUID string, options *aranyagopb.ContainerLogsCmd, stdout, stderr io.WriteCloser, logCtx context.Context) error
+	GetContainerLogs(
+		podUID string,
+		options *aranyagopb.ContainerLogsCmd,
+		stdout, stderr io.WriteCloser,
+		logCtx context.Context,
+	) error
 
 	// PortForward establish temporary tcp reverse proxy to cloud
 	PortForward(podUID string, protocol string, port int32, downstream io.ReadWriter) error

@@ -26,6 +26,34 @@ import (
 	"arhat.dev/arhat/pkg/types"
 )
 
+func (b *Agent) handleContainerNetworkEnsure(sid uint64, data []byte) {
+	cmd := new(aranyagopb.ContainerNetworkEnsureCmd)
+	err := cmd.Unmarshal(data)
+	if err != nil {
+		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal ContainerNetworkEnsureCmd: %w", err))
+		return
+	}
+
+	rcn, ok := b.runtime.(types.RuntimeContainerNetwork)
+	if !ok {
+		b.handleUnknownCmd(sid, "ctr_net.ensure", cmd)
+		return
+	}
+
+	b.processInNewGoroutine(sid, "ctr_net.ensure", func() {
+		result, err := rcn.UpdateContainerNetwork(cmd)
+		if err != nil {
+			b.handleRuntimeError(sid, err)
+		}
+
+		msg := aranyagopb.NewPodStatusListMsg(result)
+		err = b.PostMsg(sid, aranyagopb.MSG_POD_STATUS_LIST, msg)
+		if err != nil {
+			b.handleConnectivityError(sid, err)
+		}
+	})
+}
+
 func (b *Agent) handleImageEnsure(sid uint64, data []byte) {
 	cmd := new(aranyagopb.ImageEnsureCmd)
 
@@ -35,8 +63,14 @@ func (b *Agent) handleImageEnsure(sid uint64, data []byte) {
 		return
 	}
 
-	b.processInNewGoroutine(sid, "pod.ensureImage", func() {
-		pulledImages, err := b.runtime.(types.ContainerRuntime).EnsureImages(cmd)
+	ri, ok := b.runtime.(types.RuntimeImage)
+	if !ok {
+		b.handleUnknownCmd(sid, "image.ensure", cmd)
+		return
+	}
+
+	b.processInNewGoroutine(sid, "image.ensure", func() {
+		pulledImages, err := ri.EnsureImages(cmd)
 		if err != nil {
 			b.handleRuntimeError(sid, err)
 			return
@@ -59,8 +93,14 @@ func (b *Agent) handlePodList(sid uint64, data []byte) {
 		return
 	}
 
+	rc, ok := b.runtime.(types.RuntimeContainer)
+	if !ok {
+		b.handleUnknownCmd(sid, "pod.list", cmd)
+		return
+	}
+
 	b.processInNewGoroutine(sid, "pod.list", func() {
-		pods, err := b.runtime.(types.ContainerRuntime).ListPods(cmd)
+		pods, err := rc.ListPods(cmd)
 		if err != nil {
 			b.handleRuntimeError(sid, err)
 			return
@@ -83,8 +123,14 @@ func (b *Agent) handlePodEnsure(sid uint64, data []byte) {
 		return
 	}
 
+	rc, ok := b.runtime.(types.RuntimeContainer)
+	if !ok {
+		b.handleUnknownCmd(sid, "pod.ensure", cmd)
+		return
+	}
+
 	b.processInNewGoroutine(sid, "pod.ensure", func() {
-		podStatus, err := b.runtime.(types.ContainerRuntime).CreateContainers(cmd)
+		podStatus, err := rc.EnsurePod(cmd)
 		if err != nil {
 			b.handleRuntimeError(sid, err)
 			return
@@ -106,8 +152,14 @@ func (b *Agent) handlePodDelete(sid uint64, data []byte) {
 		return
 	}
 
+	rc, ok := b.runtime.(types.RuntimeContainer)
+	if !ok {
+		b.handleUnknownCmd(sid, "pod.delete", cmd)
+		return
+	}
+
 	b.processInNewGoroutine(sid, "pod.delete", func() {
-		podDeleted, err := b.runtime.(types.ContainerRuntime).DeletePod(cmd)
+		podDeleted, err := rc.DeletePod(cmd)
 		if err != nil {
 			b.handleRuntimeError(sid, err)
 			return

@@ -89,18 +89,21 @@ func (r *libpodRuntime) findContainer(podUID, container string) (*libpod.Contain
 }
 
 func (r *libpodRuntime) findPod(podUID string) (*libpod.Pod, error) {
-	containers, err := r.runtimeClient.Pods(podLabelFilterFunc(map[string]string{
+	pods, err := r.runtimeClient.Pods(podLabelFilterFunc(map[string]string{
 		constant.ContainerLabelPodUID: podUID,
 	}))
 	if err != nil {
 		return nil, err
 	}
 
-	if len(containers) != 1 {
+	switch len(pods) {
+	case 0:
 		return nil, wellknownerrors.ErrNotFound
+	case 1:
+		return pods[0], nil
+	default:
+		return nil, fmt.Errorf("unexpected multiple pods for single pod uid")
 	}
-
-	return containers[0], nil
 }
 
 // nolint:unused
@@ -108,7 +111,7 @@ func (r *libpodRuntime) startPod(
 	logger log.Interface,
 	ctx context.Context,
 	pod *libpod.Pod,
-	containers map[*libpod.Container]*aranyagopb.ActionMethod,
+	containers map[*libpod.Container]*aranyagopb.ContainerAction,
 ) error {
 	errMap, err := pod.Start(ctx)
 	if err != nil {
@@ -190,7 +193,7 @@ func (r *libpodRuntime) execInContainer(
 func (r *libpodRuntime) createPauseContainer(
 	ctx context.Context,
 	options *aranyagopb.PodEnsureCmd,
-) (_ *libpod.Pod, _ *libpod.Container, podIP string, err error) {
+) (_ *libpod.Pod, _ *libpod.Container, podIPv4, podIPv6 string, err error) {
 	logger := r.Log().WithFields(log.String("action", "createPauseContainer"))
 	podName := fmt.Sprintf("%s.%s", options.Namespace, options.Name)
 
@@ -200,7 +203,7 @@ func (r *libpodRuntime) createPauseContainer(
 		logger.V("found previously created pod, deleting", log.String("name", podName))
 		if err = r.deletePod(prevPod); err != nil {
 			logger.I("failed to delete previously created pod", log.Error(err))
-			return nil, nil, "", err
+			return nil, nil, "", "", err
 		}
 	}
 
@@ -208,19 +211,19 @@ func (r *libpodRuntime) createPauseContainer(
 	if !options.HostNetwork {
 		_, err = r.findAbbotContainer()
 		if err != nil {
-			return nil, nil, "", fmt.Errorf("abbot container required but not found: %w", err)
+			return nil, nil, "", "", fmt.Errorf("abbot container required but not found: %w", err)
 		}
 	}
 
 	var hosts []string
 	image, err := r.imageClient.NewFromLocal(r.PauseImage)
 	if err != nil {
-		return nil, nil, "", err
+		return nil, nil, "", "", err
 	}
 
 	imageConfig, err := r.getImageConfig(ctx, image)
 	if err != nil {
-		return nil, nil, "", err
+		return nil, nil, "", "", err
 	}
 
 	podLabels := runtimeutil.ContainerLabels(options, constant.ContainerNamePause)
@@ -236,7 +239,7 @@ func (r *libpodRuntime) createPauseContainer(
 	pod, err := r.runtimeClient.NewPod(ctx, podOpts...)
 	if err != nil {
 		logger.I("failed to create new pod", log.Error(err))
-		return nil, nil, "", err
+		return nil, nil, "", "", err
 	}
 	defer func() {
 		if err != nil {
@@ -315,12 +318,12 @@ func (r *libpodRuntime) createPauseContainer(
 
 	runtimeSpec, opts, err := config.MakeContainerConfig(r.runtimeClient, pod)
 	if err != nil {
-		return nil, nil, "", err
+		return nil, nil, "", "", err
 	}
 
 	pauseCtr, err := r.runtimeClient.NewContainer(ctx, runtimeSpec, opts...)
 	if err != nil {
-		return nil, nil, "", err
+		return nil, nil, "", "", err
 	}
 	defer func() {
 		if err != nil {
@@ -335,30 +338,32 @@ func (r *libpodRuntime) createPauseContainer(
 	err = pauseCtr.Start(ctx, true)
 	if err != nil {
 		logger.I("failed to start pause container", log.Error(err))
-		return nil, nil, "", err
+		return nil, nil, "", "", err
 	}
 
 	logger.D("checking pause container running")
 	code, exited, err := pauseCtr.ExitCode()
 	if err != nil {
 		logger.I("failed to check pause container running", log.Error(err))
-		return nil, nil, "", err
+		return nil, nil, "", "", err
 	}
 
 	if exited {
 		logger.I("pause container exited", log.Int32("code", code))
-		return nil, nil, "", fmt.Errorf("pause container exited with code %d", code)
+		return nil, nil, "", "", fmt.Errorf("pause container exited with code %d", code)
 	}
 
 	if !options.HostNetwork {
 		pid, _ := pauseCtr.PID()
-		podIP, err = r.networkClient.CreateLink(pauseCtr.ID(), uint32(pid), options)
+		podIPv4, podIPv6, err = r.networkClient.EnsurePodNetwork(
+			options.Namespace, options.Name, pauseCtr.ID(), uint32(pid), options.Network,
+		)
 		if err != nil {
-			return nil, nil, "", err
+			return nil, nil, "", "", err
 		}
 	}
 
-	return pod, pauseCtr, podIP, nil
+	return pod, pauseCtr, podIPv4, podIPv6, nil
 }
 
 // nolint:gocyclo
@@ -374,8 +379,8 @@ func (r *libpodRuntime) createContainer(
 		useSystemd    bool
 		userAndGroup  string
 		mounts        []ociruntimespec.Mount
-		hostPaths     = options.HostPaths
-		volumeData    = options.VolumeData
+		hostPaths     = options.GetVolumes().GetHostPaths()
+		volumeData    = options.GetVolumes().GetVolumeData()
 		containerName = runtimeutil.GetContainerName(options.Namespace, options.Name, spec.Name)
 		healthCheck   *manifest.Schema2HealthConfig
 		entrypoint    = spec.Command
@@ -455,13 +460,13 @@ func (r *libpodRuntime) createContainer(
 		})
 	}
 
-	if len(options.NameServers) != 0 {
+	if netOpts := options.Network; len(netOpts.NameServers) != 0 {
 		resolvConfFile := r.PodResolvConfFile(options.PodUid)
 		if err := os.MkdirAll(filepath.Dir(resolvConfFile), 0750); err != nil {
 			return nil, err
 		}
 
-		data, err := r.networkClient.CreateResolvConf(options.NameServers, options.SearchDomains, options.DnsOptions)
+		data, err := r.networkClient.CreateResolvConf(netOpts.NameServers, netOpts.SearchDomains, netOpts.DnsOptions)
 		if err != nil {
 			return nil, err
 		}
@@ -479,7 +484,7 @@ func (r *libpodRuntime) createContainer(
 
 	if probe := spec.LivenessCheck; probe != nil && probe.Method != nil {
 		switch action := spec.LivenessCheck.Method.Action.(type) {
-		case *aranyagopb.ActionMethod_Exec:
+		case *aranyagopb.ContainerAction_Exec_:
 			healthCheck = &manifest.Schema2HealthConfig{
 				Test:        append([]string{"CMD"}, action.Exec.Command...),
 				Interval:    time.Duration(probe.ProbeInterval),
@@ -488,9 +493,9 @@ func (r *libpodRuntime) createContainer(
 				Retries:     int(probe.FailureThreshold),
 				// TODO: implement success threshold
 			}
-		case *aranyagopb.ActionMethod_Socket:
+		case *aranyagopb.ContainerAction_Socket_:
 			// TODO: implement
-		case *aranyagopb.ActionMethod_Http:
+		case *aranyagopb.ContainerAction_Http:
 			// TODO: implement
 		}
 	}
@@ -644,7 +649,7 @@ func (r *libpodRuntime) createContainer(
 			// TODO: apply seccomp profile when kubernetes make it GA
 			SeccompProfilePath: "unconfined",
 			ReadOnlyTmpfs:      false,
-			Sysctl:             options.Sysctls,
+			Sysctl:             options.GetSecurity().GetSysctls(),
 		},
 
 		// security options
@@ -724,7 +729,7 @@ func (r *libpodRuntime) deletePod(pod *libpod.Pod) error {
 		labels := pauseCtr.Labels()
 		if !runtimeutil.IsHostNetwork(labels) {
 			pid, _ := pauseCtr.PID()
-			if err := r.networkClient.DeleteLink(pauseCtr.ID(), uint32(pid)); err != nil {
+			if err := r.networkClient.DeletePodNetwork(pauseCtr.ID(), uint32(pid)); err != nil {
 				// refuse to delete pod if network not deleted
 				return err
 			}

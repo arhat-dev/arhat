@@ -17,33 +17,3 @@ limitations under the License.
 */
 
 package agent
-
-import (
-	"fmt"
-
-	"arhat.dev/aranya-proto/aranyagopb"
-
-	"arhat.dev/arhat/pkg/types"
-)
-
-func (b *Agent) handleNetworkUpdatePodNet(sid uint64, data []byte) {
-	cmd := new(aranyagopb.NetworkUpdatePodNetworkCmd)
-	err := cmd.Unmarshal(data)
-	if err != nil {
-		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal NetworkUpdatePodNetworkCmd: %w", err))
-		return
-	}
-
-	b.processInNewGoroutine(sid, "net.update", func() {
-		result, err := b.runtime.(types.NetworkRuntime).UpdateContainerNetwork(cmd)
-		if err != nil {
-			b.handleRuntimeError(sid, err)
-		}
-
-		msg := aranyagopb.NewPodStatusListMsg(result)
-		err = b.PostMsg(sid, aranyagopb.MSG_NETWORK_STATUS, msg)
-		if err != nil {
-			b.handleConnectivityError(sid, err)
-		}
-	})
-}

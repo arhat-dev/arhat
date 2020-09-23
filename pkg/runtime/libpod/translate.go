@@ -50,18 +50,18 @@ func (r *libpodRuntime) translateStreams(stdin io.Reader, stdout, stderr io.Writ
 	}
 }
 
-func (r *libpodRuntime) doHookAction(logger log.Interface, ctr *libpod.Container, hook *aranyagopb.ActionMethod) error {
+func (r *libpodRuntime) doHookAction(logger log.Interface, ctr *libpod.Container, hook *aranyagopb.ContainerAction) error {
 	_ = logger
 	switch action := hook.Action.(type) {
-	case *aranyagopb.ActionMethod_Exec:
+	case *aranyagopb.ContainerAction_Exec_:
 		if cmd := action.Exec.Command; len(cmd) > 0 {
 			err := r.execInContainer(ctr, nil, os.Stdout, os.Stderr, nil, cmd, false)
 			if err != nil {
 				return fmt.Errorf("failed to execute exec hook, code %d: %s", err.Code, err.Description)
 			}
 		}
-	case *aranyagopb.ActionMethod_Http:
-	case *aranyagopb.ActionMethod_Socket:
+	case *aranyagopb.ContainerAction_Http:
+	case *aranyagopb.ContainerAction_Socket_:
 	}
 	return nil
 }
@@ -80,7 +80,7 @@ func (r *libpodRuntime) translateRestartPolicy(policy aranyagopb.RestartPolicy) 
 }
 
 func (r *libpodRuntime) translatePodStatus(
-	podIP string,
+	podIPv4, podIPv6 string,
 	pauseCtr *libpod.Container,
 	containers []*libpod.Container,
 ) (*aranyagopb.PodStatusMsg, error) {
@@ -104,7 +104,7 @@ func (r *libpodRuntime) translatePodStatus(
 		ctrStatus[name] = status
 	}
 
-	return aranyagopb.NewPodStatusMsg(podUID, podIP, ctrStatus), nil
+	return aranyagopb.NewPodStatusMsg(podUID, podIPv4, podIPv6, ctrStatus), nil
 }
 
 func (r *libpodRuntime) translateContainerStatus(ctr *libpod.Container) (*aranyagopb.ContainerStatus, error) {

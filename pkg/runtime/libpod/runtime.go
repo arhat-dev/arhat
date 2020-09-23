@@ -110,7 +110,7 @@ type libpodRuntime struct {
 
 	runtimeClient *libpod.Runtime
 	imageClient   *libpodimage.Runtime
-	networkClient *network.Client
+	networkClient types.ContainerNetworkClient
 	storage       types.Storage
 }
 
@@ -231,7 +231,7 @@ func (r *libpodRuntime) InitRuntime() error {
 
 				_ = ctr.Sync()
 				pid, _ := ctr.PID()
-				err := r.networkClient.RestoreLink(ctr.ID(), uint32(pid))
+				err := r.networkClient.RestorePodNetwork(ctr.ID(), uint32(pid))
 				if err != nil {
 					logger.I("failed to restore container network", log.Error(err))
 				}
@@ -248,7 +248,7 @@ func (r *libpodRuntime) EnsureImages(options *aranyagopb.ImageEnsureCmd) ([]*ara
 	logger := r.Log().WithFields(log.String("action", "ensureImages"), log.Any("options", options))
 	logger.D("ensuring pod container image(s)")
 
-	allImages := map[string]*aranyagopb.ImagePullConfig{
+	allImages := map[string]*aranyagopb.ImagePullSpec{
 		r.PauseImage: {PullPolicy: aranyagopb.IMAGE_PULL_IF_NOT_PRESENT},
 	}
 
@@ -290,7 +290,7 @@ func (r *libpodRuntime) EnsureImages(options *aranyagopb.ImageEnsureCmd) ([]*ara
 
 // CreateContainers creates containers
 // nolint:gocyclo
-func (r *libpodRuntime) CreateContainers(options *aranyagopb.PodEnsureCmd) (_ *aranyagopb.PodStatusMsg, err error) {
+func (r *libpodRuntime) EnsurePod(options *aranyagopb.PodEnsureCmd) (_ *aranyagopb.PodStatusMsg, err error) {
 	logger := r.Log().WithFields(log.String("action", "createContainers"), log.String("uid", options.PodUid))
 	ctx, cancelCreate := r.RuntimeActionContext()
 	defer func() {
@@ -311,9 +311,9 @@ func (r *libpodRuntime) CreateContainers(options *aranyagopb.PodEnsureCmd) (_ *a
 	}()
 
 	var (
-		pod      *libpod.Pod
-		pauseCtr *libpod.Container
-		podIP    string
+		pod              *libpod.Pod
+		pauseCtr         *libpod.Container
+		podIPv4, podIPv6 string
 	)
 
 	logger.V("looking up previously created pod")
@@ -326,7 +326,7 @@ func (r *libpodRuntime) CreateContainers(options *aranyagopb.PodEnsureCmd) (_ *a
 		err = nil
 		// need to create pause container
 		logger.V("creating pod and pause container")
-		pod, pauseCtr, podIP, err = r.createPauseContainer(ctx, options)
+		pod, pauseCtr, podIPv4, podIPv6, err = r.createPauseContainer(ctx, options)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create pod for containers: %w", err)
 		}
@@ -388,7 +388,7 @@ func (r *libpodRuntime) CreateContainers(options *aranyagopb.PodEnsureCmd) (_ *a
 
 	var (
 		ctrList           []*libpod.Container
-		ctrPostStartHooks []*aranyagopb.ActionMethod
+		ctrPostStartHooks []*aranyagopb.ContainerAction
 	)
 
 	for _, spec := range options.Containers {
@@ -448,44 +448,7 @@ func (r *libpodRuntime) CreateContainers(options *aranyagopb.PodEnsureCmd) (_ *a
 		}
 	}
 
-	return r.translatePodStatus(podIP, pauseCtr, ctrList)
-}
-
-func (r *libpodRuntime) DeleteContainers(podUID string, containers []string) (*aranyagopb.PodStatusMsg, error) {
-	logger := r.Log().WithFields(log.String("action", "deleteContainer"))
-	pod, err := r.findPod(podUID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find pod: %w", err)
-	}
-
-	for _, ctrName := range containers {
-		logger.V("looking up container", log.String("name", ctrName))
-		ctr, err := r.findContainer(podUID, ctrName)
-		if err != nil && !errors.Is(err, wellknownerrors.ErrNotFound) {
-			return nil, fmt.Errorf("failed to do container find: %w", err)
-		}
-
-		logger.V("deleting container", log.String("name", ctrName))
-		err = r.deleteContainer(ctr)
-		if err != nil {
-			return nil, fmt.Errorf("failed to delete container %q: %w", ctrName, err)
-		}
-	}
-
-	var pauseCtr *libpod.Container
-	ctrs, _ := pod.AllContainers()
-	for _, c := range ctrs {
-		if runtimeutil.IsPauseContainer(c.Labels()) {
-			pauseCtr = c
-			break
-		}
-	}
-
-	if pauseCtr == nil {
-		return nil, fmt.Errorf("no pause container in pod")
-	}
-
-	return r.translatePodStatus("", pauseCtr, ctrs)
+	return r.translatePodStatus(podIPv4, podIPv6, pauseCtr, ctrList)
 }
 
 func (r *libpodRuntime) DeletePod(options *aranyagopb.PodDeleteCmd) (*aranyagopb.PodStatusMsg, error) {
@@ -505,23 +468,50 @@ func (r *libpodRuntime) DeletePod(options *aranyagopb.PodDeleteCmd) (*aranyagopb
 	}()
 
 	logger.D("looking up pod to be deleted")
-	pods, err := r.runtimeClient.Pods(podLabelFilterFunc(map[string]string{
-		constant.ContainerLabelPodUID: options.PodUid,
-	}))
+
+	pod, err := r.findPod(options.PodUid)
 	if err != nil {
-		logger.I("failed to find the pod to be deleted", log.Error(err))
-		return nil, err
+		return nil, fmt.Errorf("failed to find pod: %w", err)
 	}
 
-	for _, pod := range pods {
+	if len(options.Containers) == 0 {
 		logger.D("deleting target pod")
 		if err := r.deletePod(pod); err != nil {
 			logger.I("failed to delete target pod", log.Error(err))
 			return nil, err
 		}
-	}
 
-	return aranyagopb.NewPodStatusMsg(options.PodUid, "", nil), nil
+		return aranyagopb.NewPodStatusMsg(options.PodUid, "", "", nil), nil
+	} else {
+		var pauseCtr *libpod.Container
+		ctrs, _ := pod.AllContainers()
+		for _, c := range ctrs {
+			if runtimeutil.IsPauseContainer(c.Labels()) {
+				pauseCtr = c
+				break
+			}
+		}
+
+		if pauseCtr == nil {
+			return nil, fmt.Errorf("no pause container in pod")
+		}
+
+		for _, ctrName := range options.Containers {
+			logger.V("looking up container", log.String("name", ctrName))
+			ctr, err := r.findContainer(options.PodUid, ctrName)
+			if err != nil && !errors.Is(err, wellknownerrors.ErrNotFound) {
+				return nil, fmt.Errorf("failed to do container find: %w", err)
+			}
+
+			logger.V("deleting container", log.String("name", ctrName))
+			err = r.deleteContainer(ctr)
+			if err != nil {
+				return nil, fmt.Errorf("failed to delete container %q: %w", ctrName, err)
+			}
+		}
+
+		return r.translatePodStatus("", "", pauseCtr, ctrs)
+	}
 }
 
 func (r *libpodRuntime) ListPods(options *aranyagopb.PodListCmd) ([]*aranyagopb.PodStatusMsg, error) {
@@ -571,13 +561,15 @@ func (r *libpodRuntime) ListPods(options *aranyagopb.PodListCmd) ([]*aranyagopb.
 			continue
 		}
 
-		var podIP string
+		var (
+			podIPv4, podIPv6 string
+		)
 		// force sync
 		_ = pauseCtr.Sync()
 		if runtimeutil.IsHostNetwork(pauseCtr.Labels()) {
 			logger.D("looking up pod ip for non-host network pod")
 			pid, _ := pauseCtr.PID()
-			podIP, err = r.networkClient.GetAddress(uint32(pid))
+			podIPv4, podIPv6, err = r.networkClient.GetPodIPAddresses(uint32(pid))
 			if err != nil {
 				logger.I("failed to get pod ip address", log.Error(err))
 			}
@@ -590,7 +582,7 @@ func (r *libpodRuntime) ListPods(options *aranyagopb.PodListCmd) ([]*aranyagopb.
 		}
 
 		logger.D("translating pod status", log.String("podUID", podUID))
-		status, err := r.translatePodStatus(podIP, pauseCtr, ctrList)
+		status, err := r.translatePodStatus(podIPv4, podIPv6, pauseCtr, ctrList)
 		if err != nil {
 			return nil, fmt.Errorf("failed to translate pod status: %w", err)
 		}
@@ -735,7 +727,7 @@ func (r *libpodRuntime) PortForward(
 	return runtimeutil.PortForward(ctx, address, protocol, port, downstream)
 }
 
-func (r *libpodRuntime) UpdateContainerNetwork(options *aranyagopb.NetworkUpdatePodNetworkCmd) ([]*aranyagopb.PodStatusMsg, error) {
+func (r *libpodRuntime) UpdateContainerNetwork(options *aranyagopb.ContainerNetworkEnsureCmd) ([]*aranyagopb.PodStatusMsg, error) {
 	logger := r.Log().WithFields(log.String("action", "updateContainerNetwork"))
 
 	logger.D("looking up abbot container")
@@ -750,10 +742,15 @@ func (r *libpodRuntime) UpdateContainerNetwork(options *aranyagopb.NetworkUpdate
 		return nil, fmt.Errorf("failed to get all pods: %w", err)
 	}
 
+	err = r.networkClient.EnsureContainerNetwork(options)
+	if err != nil {
+		return nil, fmt.Errorf("failed to ensure container network")
+	}
 	var result []*aranyagopb.PodStatusMsg
 	for _, pod := range pods {
 		// only select valid pods
-		if podUID, ok := pod.Labels()[constant.ContainerLabelPodUID]; ok {
+		labels := pod.Labels()
+		if podUID, ok := labels[constant.ContainerLabelPodUID]; ok {
 			logger.I("looking up pause container in pod", log.String("podUID", podUID))
 			pauseCtr, err := r.findContainer(podUID, constant.ContainerNamePause)
 			if err != nil {
@@ -765,11 +762,16 @@ func (r *libpodRuntime) UpdateContainerNetwork(options *aranyagopb.NetworkUpdate
 			if status == define.ContainerStateRunning && !runtimeutil.IsHostNetwork(pauseCtr.Labels()) {
 				pid, _ := pauseCtr.PID()
 				logger.D("ensuring pod address", log.String("name", pauseCtr.Name()))
-				podIP, err := r.networkClient.EnsureAddress(pauseCtr.ID(), uint32(pid), options)
+				podIPv4, podIPv6, err := r.networkClient.EnsurePodNetwork(
+					labels[constant.ContainerLabelPodNamespace],
+					labels[constant.ContainerLabelPodName],
+					pauseCtr.ID(), uint32(pid),
+					&aranyagopb.PodNetworkSpec{CidrIpv4: options.CidrIpv4, CidrIpv6: options.CidrIpv6},
+				)
 				if err != nil {
 					return nil, fmt.Errorf("failed to ensure pod address: %w", err)
 				}
-				result = append(result, aranyagopb.NewPodStatusMsg(podUID, podIP, nil))
+				result = append(result, aranyagopb.NewPodStatusMsg(podUID, podIPv4, podIPv6, nil))
 			}
 		}
 	}

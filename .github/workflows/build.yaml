@@ -56,16 +56,16 @@ jobs:
           TAGS='noboottime nofilesystem nointerrupts nonetdev noloadavg nomeminfo'
 
         CGO_ENABLED=0 make -j$(nproc --all) arhat-none.plan9.all \
-          TAGS='nometrics nodev_serial nodev_file nodev_modbus_serial'
+          TAGS='nometrics nodev_serial nodev_file nodev_modbus'
 
         CGO_ENABLED=0 make -j$(nproc --all) arhat-none.solaris.amd64 \
-          TAGS='nometrics nodev_serial nodev_modbus_serial'
+          TAGS='nometrics nodev_serial nodev_modbus'
 
         CGO_ENABLED=0 make -j$(nproc --all) arhat-none.aix.ppc64 \
-          TAGS='nometrics nodev_serial nodev_file nodev_modbus_serial'
+          TAGS='nometrics nodev_serial nodev_file nodev_modbus'
 
         CGO_ENABLED=0 make -j$(nproc --all) arhat-none.dragonfly.amd64 \
-          TAGS='nometrics nodev_serial nodev_file nodev_modbus_serial'
+          TAGS='nometrics nodev_serial nodev_file nodev_modbus'
 
     - name: Package
       run: |
@@ -74,38 +74,14 @@ jobs:
 
     - name: Hash
       run: |
+        os_list="linux freebsd netbsd openbsd plan9 aix solaris dragonfly"
+
         cd build
-        sha256sum arhat-*.linux* > sha256.linux.txt
-        sha512sum arhat-*.linux* > sha512.linux.txt
-        md5sum arhat-*.linux* > md5.linux.txt
-
-        sha256sum arhat-*.freebsd* > sha256.freebsd.txt
-        sha512sum arhat-*.freebsd* > sha512.freebsd.txt
-        md5sum arhat-*.freebsd* > md5.freebsd.txt
-
-        sha256sum arhat-*.openbsd* > sha256.openbsd.txt
-        sha512sum arhat-*.openbsd* > sha512.openbsd.txt
-        md5sum arhat-*.openbsd* > md5.openbsd.txt
-
-        sha256sum arhat-*.netbsd* > sha256.netbsd.txt
-        sha512sum arhat-*.netbsd* > sha512.netbsd.txt
-        md5sum arhat-*.netbsd* > md5.netbsd.txt
-
-        sha256sum arhat-*.plan9* > sha256.plan9.txt
-        sha512sum arhat-*.plan9* > sha512.plan9.txt
-        md5sum arhat-*.plan9* > md5.plan9.txt
-
-        sha256sum arhat-*.aix* > sha256.aix.txt
-        sha512sum arhat-*.aix* > sha512.aix.txt
-        md5sum arhat-*.aix* > md5.aix.txt
-
-        sha256sum arhat-*.solaris* > sha256.solaris.txt
-        sha512sum arhat-*.solaris* > sha512.solaris.txt
-        md5sum arhat-*.solaris* > md5.solaris.txt
-
-        sha256sum arhat-*.dragonfly* > sha256.dragonfly.txt
-        sha512sum arhat-*.dragonfly* > sha512.dragonfly.txt
-        md5sum arhat-*.dragonfly* > md5.dragonfly.txt
+        for os in ${os_list}; do
+          sha256sum arhat-*.${os}* > sha256.${os}.txt
+          sha512sum arhat-*.${os}* > sha512.${os}.txt
+          md5sum arhat-*.${os}* > md5.${os}.txt
+        done
         cd -
 
     - name: Upload Artifact

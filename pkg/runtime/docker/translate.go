@@ -49,7 +49,7 @@ func (r *dockerRuntime) translateRestartPolicy(policy aranyagopb.RestartPolicy) 
 }
 
 func (r *dockerRuntime) translatePodStatus(
-	podIP string,
+	podIPv4, podIPv6 string,
 	pauseContainer *dockertype.ContainerJSON,
 	containers []*dockertype.ContainerJSON,
 ) *aranyagopb.PodStatusMsg {
@@ -68,7 +68,7 @@ func (r *dockerRuntime) translatePodStatus(
 		ctrStatus[name] = status
 	}
 
-	return aranyagopb.NewPodStatusMsg(podUID, podIP, ctrStatus)
+	return aranyagopb.NewPodStatusMsg(podUID, podIPv4, podIPv6, ctrStatus)
 }
 
 func (r *dockerRuntime) translateContainerStatus(
@@ -97,10 +97,10 @@ func (r *dockerRuntime) translateContainerStatus(
 func (r *dockerRuntime) doHookActions(
 	logger log.Interface,
 	ctrID string,
-	hook *aranyagopb.ActionMethod,
+	hook *aranyagopb.ContainerAction,
 ) *aranyagopb.ErrorMsg {
 	switch action := hook.Action.(type) {
-	case *aranyagopb.ActionMethod_Exec:
+	case *aranyagopb.ContainerAction_Exec_:
 		if cmd := action.Exec.Command; len(cmd) > 0 {
 			buf := new(bytes.Buffer)
 			err := r.execInContainer(logger, ctrID, nil, buf, buf, nil, cmd, false)
@@ -108,8 +108,8 @@ func (r *dockerRuntime) doHookActions(
 				return err
 			}
 		}
-	case *aranyagopb.ActionMethod_Http:
-	case *aranyagopb.ActionMethod_Socket:
+	case *aranyagopb.ContainerAction_Http:
+	case *aranyagopb.ContainerAction_Socket_:
 	}
 
 	return nil

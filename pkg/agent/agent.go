@@ -252,9 +252,10 @@ func (b *Agent) HandleCmd(cmd *aranyagopb.Cmd) {
 		aranyagopb.CMD_POD_CTR_TTY_RESIZE: b.handlePodContainerTerminalResize,
 		aranyagopb.CMD_POD_PORT_FORWARD:   b.handlePodPortForward,
 
-		aranyagopb.CMD_CRED_ENSURE:        b.handleCredentialEnsure,
-		aranyagopb.CMD_REJECT:             b.handleRejectCmd,
-		aranyagopb.CMD_NET_UPDATE_POD_NET: b.handleNetworkUpdatePodNet,
+		aranyagopb.CMD_CRED_ENSURE: b.handleCredentialEnsure,
+		aranyagopb.CMD_REJECT:      b.handleRejectCmd,
+
+		aranyagopb.CMD_CTR_NET_ENSURE: b.handleContainerNetworkEnsure,
 	}[cmd.Header.Kind]
 
 	if handleCmd == nil || !ok {

@@ -23,8 +23,6 @@ import (
 	"fmt"
 	"unsafe"
 
-	"arhat.dev/aranya-proto/aranyagopb"
-	"github.com/gogo/protobuf/proto"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
@@ -179,13 +177,15 @@ func runCheck(appCtx context.Context, config *conf.ArhatConfig, opts *checkOpts)
 	return nil
 }
 
-type fakeAgent struct{}
+// type fakeAgent struct{}
 
-func (a *fakeAgent) Context() context.Context      { return context.TODO() }
-func (a *fakeAgent) HandleCmd(cmd *aranyagopb.Cmd) {}
-func (a *fakeAgent) PostMsg(sid uint64, kind aranyagopb.Kind, msg proto.Marshaler) error {
-	return nil
-}
-func (a *fakeAgent) PostData(sid uint64, kind aranyagopb.Kind, seq uint64, completed bool, data []byte) (lastSeq uint64, _ error) {
-	return 0, nil
-}
+// func (a *fakeAgent) Context() context.Context      { return context.TODO() }
+// func (a *fakeAgent) HandleCmd(cmd *aranyagopb.Cmd) {}
+// func (a *fakeAgent) PostMsg(sid uint64, kind aranyagopb.Kind, msg proto.Marshaler) error {
+// 	return nil
+// }
+// func (a *fakeAgent) PostData(
+// 	sid uint64, kind aranyagopb.Kind, seq uint64, completed bool, data []byte,
+// ) (lastSeq uint64, _ error) {
+// 	return 0, nil
+// }

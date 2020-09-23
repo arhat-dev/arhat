@@ -146,7 +146,7 @@ type dockerRuntime struct {
 
 	runtimeClient dockerclient.ContainerAPIClient
 	imageClient   dockerclient.ImageAPIClient
-	networkClient *network.Client
+	networkClient types.ContainerNetworkClient
 	storage       types.Storage
 }
 
@@ -217,7 +217,7 @@ func (r *dockerRuntime) InitRuntime() error {
 			return err
 		}
 
-		err = r.networkClient.RestoreLink(pauseCtr.ID, uint32(pauseCtr.State.Pid))
+		err = r.networkClient.RestorePodNetwork(pauseCtr.ID, uint32(pauseCtr.State.Pid))
 		if err != nil {
 			logger.I("failed to restore container network")
 			return err
@@ -239,7 +239,7 @@ func (r *dockerRuntime) EnsureImages(options *aranyagopb.ImageEnsureCmd) ([]*ara
 	logger := r.Log().WithFields(log.String("action", "ensureImages"), log.Any("options", options))
 	logger.D("ensuring pod container image(s)")
 
-	allImages := map[string]*aranyagopb.ImagePullConfig{
+	allImages := map[string]*aranyagopb.ImagePullSpec{
 		r.PauseImage: {PullPolicy: aranyagopb.IMAGE_PULL_IF_NOT_PRESENT},
 	}
 
@@ -287,7 +287,7 @@ func (r *dockerRuntime) CreateInitContainers(options *aranyagopb.PodEnsureCmd) (
 	ctx, cancelCreate := r.RuntimeActionContext()
 	defer cancelCreate()
 
-	pauseCtr, podIP, err := r.createPauseContainer(ctx, options)
+	pauseCtr, podIPv4, podIPv6, err := r.createPauseContainer(ctx, options)
 	if err != nil {
 		logger.I("failed to create pause container", log.Error(err))
 		return nil, err
@@ -315,7 +315,7 @@ func (r *dockerRuntime) CreateInitContainers(options *aranyagopb.PodEnsureCmd) (
 	}()
 
 	// create and wait for init containers
-	containers := make(map[string]*aranyagopb.ActionMethod)
+	containers := make(map[string]*aranyagopb.ContainerAction)
 	for _, spec := range options.Containers {
 		var ctrID string
 		ctrID, err = r.createContainer(ctx, options, spec, runtimeutil.SharedNamespaces(pauseCtr.ID, options))
@@ -415,10 +415,10 @@ func (r *dockerRuntime) CreateInitContainers(options *aranyagopb.PodEnsureCmd) (
 		allCtrInfo = append(allCtrInfo, &info)
 	}
 
-	return r.translatePodStatus(podIP, pauseCtr, allCtrInfo), nil
+	return r.translatePodStatus(podIPv4, podIPv6, pauseCtr, allCtrInfo), nil
 }
 
-func (r *dockerRuntime) CreateContainers(options *aranyagopb.PodEnsureCmd) (_ *aranyagopb.PodStatusMsg, err error) {
+func (r *dockerRuntime) EnsurePod(options *aranyagopb.PodEnsureCmd) (_ *aranyagopb.PodStatusMsg, err error) {
 	logger := r.Log().WithFields(
 		log.String("action", "create"),
 		log.String("namespace", options.Namespace),
@@ -446,15 +446,15 @@ func (r *dockerRuntime) CreateContainers(options *aranyagopb.PodEnsureCmd) (_ *a
 	}()
 
 	var (
-		pauseCtrInfo *dockertype.ContainerJSON
-		podIP        string
+		pauseCtrInfo     *dockertype.ContainerJSON
+		podIPv4, podIPv6 string
 	)
 
 	pauseCtr, err := r.findContainer(options.PodUid, constant.ContainerNamePause)
 	if err != nil {
 		if errors.Is(err, wellknownerrors.ErrNotFound) {
 			// need to create pause container
-			pauseCtrInfo, podIP, err = r.createPauseContainer(ctx, options)
+			pauseCtrInfo, podIPv4, podIPv6, err = r.createPauseContainer(ctx, options)
 			if err != nil {
 				logger.I("failed to create pause container", log.Error(err))
 				return nil, err
@@ -481,7 +481,7 @@ func (r *dockerRuntime) CreateContainers(options *aranyagopb.PodEnsureCmd) (_ *a
 		pauseCtrInfo = &oldPauseCtrInfo
 	}
 
-	containers := make(map[string]*aranyagopb.ActionMethod)
+	containers := make(map[string]*aranyagopb.ContainerAction)
 	for _, spec := range options.Containers {
 		ctrLogger := logger.WithFields(log.String("container", spec.Name))
 		ctrLogger.D("creating container")
@@ -528,12 +528,7 @@ func (r *dockerRuntime) CreateContainers(options *aranyagopb.PodEnsureCmd) (_ *a
 		allCtrInfo = append(allCtrInfo, &ctrInfo)
 	}
 
-	return r.translatePodStatus(podIP, pauseCtrInfo, allCtrInfo), nil
-}
-
-func (r *dockerRuntime) DeleteContainers(podUID string, containers []string) (*aranyagopb.PodStatusMsg, error) {
-	// TODO: implement
-	return nil, wellknownerrors.ErrNotSupported
+	return r.translatePodStatus(podIPv4, podIPv6, pauseCtrInfo, allCtrInfo), nil
 }
 
 func (r *dockerRuntime) DeletePod(options *aranyagopb.PodDeleteCmd) (_ *aranyagopb.PodStatusMsg, err error) {
@@ -609,7 +604,7 @@ func (r *dockerRuntime) DeletePod(options *aranyagopb.PodDeleteCmd) (_ *aranyago
 	}
 
 	logger.D("pod deleted")
-	return aranyagopb.NewPodStatusMsg(options.PodUid, "", nil), nil
+	return aranyagopb.NewPodStatusMsg(options.PodUid, "", "", nil), nil
 }
 
 func (r *dockerRuntime) ListPods(options *aranyagopb.PodListCmd) ([]*aranyagopb.PodStatusMsg, error) {
@@ -685,14 +680,14 @@ func (r *dockerRuntime) ListPods(options *aranyagopb.PodListCmd) ([]*aranyagopb.
 			containersInfo = append(containersInfo, &ctrInfo)
 		}
 
-		var podIP string
+		var podIPv4, podIPv6 string
 		if !runtimeutil.IsHostNetwork(pauseCtrSpec.Config.Labels) {
-			podIP, err = r.networkClient.GetAddress(uint32(pauseCtrSpec.State.Pid))
+			podIPv4, podIPv6, err = r.networkClient.GetPodIPAddresses(uint32(pauseCtrSpec.State.Pid))
 			if err != nil {
 				return nil, err
 			}
 		}
-		results = append(results, r.translatePodStatus(podIP, &pauseCtrSpec, containersInfo))
+		results = append(results, r.translatePodStatus(podIPv4, podIPv6, &pauseCtrSpec, containersInfo))
 	}
 
 	return results, nil
@@ -881,7 +876,7 @@ func (r *dockerRuntime) PortForward(podUID string, protocol string, port int32, 
 }
 
 func (r *dockerRuntime) UpdateContainerNetwork(
-	options *aranyagopb.NetworkUpdatePodNetworkCmd,
+	options *aranyagopb.ContainerNetworkEnsureCmd,
 ) ([]*aranyagopb.PodStatusMsg, error) {
 	logger := r.Log().WithFields(log.String("action", "updateContainerNetwork"))
 
@@ -918,6 +913,11 @@ func (r *dockerRuntime) UpdateContainerNetwork(
 		return nil, err
 	}
 
+	err = r.networkClient.EnsureContainerNetwork(options)
+	if err != nil {
+		return nil, fmt.Errorf("failed to ensure container network: %w", err)
+	}
+
 	var result []*aranyagopb.PodStatusMsg
 	for _, ctr := range pauseCtrs {
 		podUID, ok := ctr.Labels[constant.ContainerLabelPodUID]
@@ -929,17 +929,24 @@ func (r *dockerRuntime) UpdateContainerNetwork(
 			logger.D("inspecting pause container with cluster network")
 			ctrSpec, err := r.runtimeClient.ContainerInspect(ctx, ctr.ID)
 			if err != nil {
-				logger.I("failed to inspect container")
+				logger.I("failed to inspect container", log.Error(err))
 				return nil, err
 			}
 
 			logger.D("ensuring pause container network", log.String("name", ctrSpec.Name))
-			ip, err := r.networkClient.EnsureAddress(ctrSpec.ID, uint32(ctrSpec.State.Pid), options)
+			ipv4, ipv6, err := r.networkClient.EnsurePodNetwork(
+				ctr.Labels[constant.ContainerLabelPodNamespace],
+				ctr.Labels[constant.ContainerLabelPodName],
+				ctrSpec.ID, uint32(ctrSpec.State.Pid),
+				&aranyagopb.PodNetworkSpec{CidrIpv4: options.CidrIpv4, CidrIpv6: options.CidrIpv6},
+			)
+
 			if err != nil {
+				logger.I("failed to ensure pod network", log.Error(err))
 				return nil, err
 			}
 
-			result = append(result, aranyagopb.NewPodStatusMsg(podUID, ip, nil))
+			result = append(result, aranyagopb.NewPodStatusMsg(podUID, ipv4, ipv6, nil))
 		}
 	}
 	return result, nil
