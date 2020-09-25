@@ -29,12 +29,16 @@ import (
 	coapudpmsgpool "github.com/plgd-dev/go-coap/v2/udp/message/pool"
 
 	"arhat.dev/arhat/pkg/client/clientutil"
-	"arhat.dev/arhat/pkg/conf"
 	"arhat.dev/arhat/pkg/types"
 )
 
 // nolint:gocyclo
-func NewCoAPClient(agent types.Agent, config *conf.ConnectivityCoAP) (_ types.ConnectivityClient, err error) {
+func NewCoAPClient(agent types.Agent, cfg interface{}) (_ types.ConnectivityClient, err error) {
+	config, ok := cfg.(*ConnectivityCoAP)
+	if !ok {
+		return nil, fmt.Errorf("unepxected non coap config")
+	}
+
 	var (
 		tlsCfg         *tls.Config
 		connectActions []func(dialCtx context.Context) (*coapudpclient.ClientConn, error)

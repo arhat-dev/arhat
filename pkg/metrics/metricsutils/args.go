@@ -32,7 +32,7 @@ func GetEnabledCollectors(list []string) map[string]struct{} {
 	return enabledCollectors
 }
 
-func GetExtraArgs(enabledCollectors map[string]struct{}, args []string) ([]string, error) {
+func GetCollectorExtraArgs(enabledCollectors map[string]struct{}, args []string) ([]string, error) {
 	var result []string
 	for _, a := range args {
 		parts := strings.SplitN(strings.SplitN(a, "=", 2)[0], ".", 3)

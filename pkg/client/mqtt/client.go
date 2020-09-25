@@ -27,11 +27,15 @@ import (
 	"github.com/goiiot/libmqtt"
 
 	"arhat.dev/arhat/pkg/client/clientutil"
-	"arhat.dev/arhat/pkg/conf"
 	"arhat.dev/arhat/pkg/types"
 )
 
-func NewMQTTClient(agent types.Agent, config *conf.ConnectivityMQTT) (_ types.ConnectivityClient, err error) {
+func NewMQTTClient(agent types.Agent, cfg interface{}) (_ types.ConnectivityClient, err error) {
+	config, ok := cfg.(*ConnectivityMQTT)
+	if !ok {
+		return nil, fmt.Errorf("unexpected non mqtt config")
+	}
+
 	var options []libmqtt.Option
 	switch config.Version {
 	case "5":

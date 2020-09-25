@@ -1,7 +1,7 @@
 # arhat.dev/abbot-proto v0.0.0-20200908152444-df59421a64d2
 ## explicit
 arhat.dev/abbot-proto/abbotgopb
-# arhat.dev/aranya-proto v0.0.0-20200923000120-7097a702cf8b
+# arhat.dev/aranya-proto v0.0.0-20200925143507-0cad559235e1
 ## explicit
 arhat.dev/aranya-proto/aranyagopb
 arhat.dev/aranya-proto/aranyagopb/aranyagoconst
@@ -626,6 +626,7 @@ github.com/prometheus/client_golang/prometheus
 github.com/prometheus/client_golang/prometheus/internal
 github.com/prometheus/client_golang/prometheus/promhttp
 # github.com/prometheus/client_model v0.2.0 => github.com/prometheus/client_model v0.2.0
+## explicit
 github.com/prometheus/client_model/go
 # github.com/prometheus/common v0.13.0 => github.com/prometheus/common v0.13.0
 ## explicit

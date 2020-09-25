@@ -132,7 +132,7 @@ replace (
 
 require (
 	arhat.dev/abbot-proto v0.0.0-20200908152444-df59421a64d2
-	arhat.dev/aranya-proto v0.0.0-20200923000120-7097a702cf8b
+	arhat.dev/aranya-proto v0.0.0-20200925143507-0cad559235e1
 	arhat.dev/pkg v0.0.0-20200922111851-9707225a9ad0
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/containerd/containerd v1.3.3 // indirect
@@ -162,6 +162,7 @@ require (
 	github.com/plgd-dev/go-coap/v2 v2.0.4
 	github.com/prometheus-community/windows_exporter v0.14.0
 	github.com/prometheus/client_golang v1.7.1
+	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.13.0
 	github.com/prometheus/node_exporter v1.0.1
 	github.com/spf13/cobra v1.0.0

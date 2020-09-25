@@ -19,10 +19,9 @@ package windowsexporter
 import (
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/wellknownerrors"
-
-	"arhat.dev/arhat/pkg/types"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
-func CreateContainerMetricsGatherer(config *aranyagopb.MetricsConfigCmd) (types.MetricsCollectFunc, error) {
+func CreateContainerMetricsGatherer(config *aranyagopb.MetricsConfigCmd) (prometheus.Gatherer, error) {
 	return nil, wellknownerrors.ErrNotSupported
 }

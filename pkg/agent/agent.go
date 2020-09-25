@@ -17,12 +17,16 @@ limitations under the License.
 package agent
 
 import (
+	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	goruntime "runtime"
 	"sync"
 	"sync/atomic"
+
+	"arhat.dev/arhat/pkg/device"
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/log"
@@ -101,9 +105,17 @@ func NewAgent(appCtx context.Context, config *conf.ArhatConfig) (*Agent, error) 
 		cmdMgr:  manager.NewCmdManager(),
 		runtime: rt,
 		storage: st,
-		devices: newDeviceManager(),
+		devices: device.NewManager(ctx, config.Arhat.MaxMetricsCacheTime),
 		streams: manager.NewStreamManager(),
+
+		gzipPool: &sync.Pool{
+			New: func() interface{} {
+				w, _ := gzip.NewWriterLevel(nil, gzip.BestCompression)
+				return w
+			},
+		},
 	}
+
 	agent.streams.Start(ctx.Done())
 
 	return agent, nil
@@ -127,8 +139,10 @@ type Agent struct {
 	cmdMgr  *manager.CmdManager
 	runtime types.Runtime
 	storage types.Storage
-	devices *deviceManager
+	devices *device.Manager
 	streams *manager.StreamManager
+
+	gzipPool *sync.Pool
 
 	settingClient uint32
 	client        types.ConnectivityClient
@@ -158,6 +172,12 @@ func (b *Agent) GetClient() types.ConnectivityClient {
 	}()
 
 	return b.client
+}
+
+func (b *Agent) GetGzipWriter(w io.Writer) *gzip.Writer {
+	gw := b.gzipPool.Get().(*gzip.Writer)
+	gw.Reset(w)
+	return gw
 }
 
 func (b *Agent) PostData(sid uint64, kind aranyagopb.Kind, seq uint64, completed bool, data []byte) (uint64, error) {
@@ -231,9 +251,11 @@ func (b *Agent) HandleCmd(cmd *aranyagopb.Cmd) {
 
 		aranyagopb.CMD_NODE_INFO_GET: b.handleNodeInfoGet,
 
-		aranyagopb.CMD_DEVICE_LIST:   b.handleDeviceList,
-		aranyagopb.CMD_DEVICE_ENSURE: b.handleDeviceEnsure,
-		aranyagopb.CMD_DEVICE_DELETE: b.handleDeviceDelete,
+		aranyagopb.CMD_DEVICE_LIST:            b.handleDeviceList,
+		aranyagopb.CMD_DEVICE_ENSURE:          b.handleDeviceEnsure,
+		aranyagopb.CMD_DEVICE_DELETE:          b.handleDeviceDelete,
+		aranyagopb.CMD_DEVICE_OPERATE:         b.handleDeviceOperation,
+		aranyagopb.CMD_DEVICE_COLLECT_METRICS: b.handleDeviceMetricsCollect,
 
 		aranyagopb.CMD_METRICS_CONFIG:  b.handleMetricsConfig,
 		aranyagopb.CMD_METRICS_COLLECT: b.handleMetricsCollect,

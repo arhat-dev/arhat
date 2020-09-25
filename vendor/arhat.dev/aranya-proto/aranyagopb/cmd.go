@@ -1,4 +1,4 @@
-// +build !arhat,!abbot
+// +build !arhat
 
 /*
 Copyright 2020 The arhat.dev Authors.
@@ -19,7 +19,11 @@ limitations under the License.
 package aranyagopb
 
 import (
+	"crypto/sha256"
+	"encoding/binary"
+	"encoding/hex"
 	"math"
+	"sort"
 	"time"
 
 	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
@@ -193,20 +197,67 @@ func NewDeviceListCmd() *DeviceListCmd {
 }
 
 func NewDeviceEnsureCmd(
-	deviceID string,
-	deviceConnectivity, uploadConnectivity *DeviceConnectivity,
-	deviceOperations []*DeviceOperation,
-	deviceMetrics []*DeviceMetrics,
+	kind DeviceType,
+	connectorHashHex, deviceID string,
+	connector *Connectivity,
+	operations []*DeviceOperation,
+	metrics []*DeviceMetric,
 ) *DeviceEnsureCmd {
 	return &DeviceEnsureCmd{
-		DeviceId:           deviceID,
-		DeviceConnectivity: deviceConnectivity,
-		UploadConnectivity: uploadConnectivity,
-		DeviceOperations:   deviceOperations,
-		DeviceMetrics:      deviceMetrics,
+		Kind:             kind,
+		ConnectorHashHex: connectorHashHex,
+		Connector:        connector,
+
+		DeviceId:   deviceID,
+		Operations: operations,
+		Metrics:    metrics,
 	}
 }
 
 func NewDeviceDeleteCmd(ids ...string) *DeviceDeleteCmd {
 	return &DeviceDeleteCmd{DeviceIds: ids}
+}
+
+func HexHashOfConnectivity(c *Connectivity) string {
+	h := sha256.New()
+	modeBuf := make([]byte, 4)
+	binary.BigEndian.PutUint32(modeBuf, uint32(c.Mode))
+	_, _ = h.Write(modeBuf)
+
+	_, _ = h.Write([]byte(c.Method))
+	_, _ = h.Write([]byte(c.Target))
+
+	if tls := c.Tls; tls != nil {
+		_, _ = h.Write(tls.CaCert)
+		_, _ = h.Write(tls.Cert)
+		_, _ = h.Write(tls.Key)
+	}
+
+	var keys []string
+	for k := range c.Params {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+	for _, k := range keys {
+		_, _ = h.Write([]byte(k))
+		_, _ = h.Write([]byte(c.Params[k]))
+	}
+
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func NewDeviceOperateCmd(deviceID, operationID string, data []byte) *DeviceOperateCmd {
+	return &DeviceOperateCmd{
+		DeviceId:    deviceID,
+		OperationId: operationID,
+		Data:        data,
+	}
+}
+
+func NewDeviceMetricsCollectCmd(all bool, deviceIDs ...string) *DeviceMetricsCollectCmd {
+	return &DeviceMetricsCollectCmd{
+		All:       all,
+		DeviceIds: deviceIDs,
+	}
 }

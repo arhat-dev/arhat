@@ -1,4 +1,4 @@
-// +build !arhat,!abbot
+// +build !arhat
 
 /*
 Copyright 2020 The arhat.dev Authors.

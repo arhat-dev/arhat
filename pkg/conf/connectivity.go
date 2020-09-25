@@ -5,26 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"arhat.dev/pkg/confhelper"
+	"arhat.dev/arhat/pkg/client"
+
 	"gopkg.in/yaml.v2"
-
-	"arhat.dev/arhat/pkg/types"
 )
-
-var supportedConnectivityMethods = make(map[string]types.ConnectivityConfigFactoryFunc)
-
-func RegisterConnectivityConfig(name string, newConfig types.ConnectivityConfigFactoryFunc) {
-	supportedConnectivityMethods[name] = newConfig
-}
-
-func NewConnectivityConfig(name string) (interface{}, error) {
-	newConfig, ok := supportedConnectivityMethods[name]
-	if !ok {
-		return nil, fmt.Errorf("unsupported connectivity method: %s", name)
-	}
-
-	return newConfig(), nil
-}
 
 // ConnectivityConfig configuration for connectivity part in arhat
 type ConnectivityConfig struct {
@@ -34,12 +18,6 @@ type ConnectivityConfig struct {
 	BackoffFactor  float64       `json:"backoffFactor" yaml:"backoffFactor"`
 
 	Methods []ConnectivityMethod `json:"methods" yaml:"methods"`
-}
-
-type ConnectivityCommonConfig struct {
-	Endpoint       string               `json:"endpoint" yaml:"endpoint"`
-	MaxPayloadSize int                  `json:"maxPayloadSize" yaml:"maxPayloadSize"`
-	TLS            confhelper.TLSConfig `json:"tls" yaml:"tls"`
 }
 
 type ConnectivityMethod struct {
@@ -94,7 +72,7 @@ func unmarshalConnectivityMethod(m map[string]interface{}) (name string, priorit
 		return
 	}
 
-	config, err = NewConnectivityConfig(name)
+	config, err = client.NewConfig(name)
 	if err != nil {
 		return name, 0, nil, nil
 	}

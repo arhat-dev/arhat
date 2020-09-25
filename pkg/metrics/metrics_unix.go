@@ -4,6 +4,8 @@
 package metrics
 
 import (
+	"fmt"
+
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/wellknownerrors"
 
@@ -17,7 +19,12 @@ func CreateNodeMetricsCollector(config *aranyagopb.MetricsConfigCmd) (types.Metr
 		return nil, wellknownerrors.ErrInvalidOperation
 	}
 
-	return unixexporter.CreateNodeMetricsGatherer(config)
+	g, err := unixexporter.CreateNodeMetricsGatherer(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create node metrics gatherer: %w", err)
+	}
+
+	return g.Gather, nil
 }
 
 func CreateContainerMetricsCollector(config *aranyagopb.MetricsConfigCmd) (types.MetricsCollectFunc, error) {
@@ -25,5 +32,10 @@ func CreateContainerMetricsCollector(config *aranyagopb.MetricsConfigCmd) (types
 		return nil, wellknownerrors.ErrInvalidOperation
 	}
 
-	return unixexporter.CreateContainerMetricsGatherer(config)
+	g, err := unixexporter.CreateContainerMetricsGatherer(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create container metrics gatherer: %w", err)
+	}
+
+	return g.Gather, nil
 }

@@ -19,12 +19,15 @@ limitations under the License.
 package agent
 
 import (
+	"bytes"
 	"fmt"
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/wellknownerrors"
+	dto "github.com/prometheus/client_model/go"
 
 	"arhat.dev/arhat/pkg/metrics"
+	"arhat.dev/arhat/pkg/metrics/metricsutils"
 	"arhat.dev/arhat/pkg/types"
 )
 
@@ -79,49 +82,19 @@ func (b *Agent) handleMetricsConfig(sid uint64, data []byte) {
 	})
 }
 
-func (b *Agent) handleMetricsCollect(sid uint64, data []byte) {
-	cmd := new(aranyagopb.MetricsCollectCmd)
-	err := cmd.Unmarshal(data)
+func (b *Agent) encodeMetrics(metrics []*dto.MetricFamily) ([]byte, error) {
+	buf := new(bytes.Buffer)
+	gw := b.GetGzipWriter(buf)
+
+	defer func() {
+		_ = gw.Close()
+		b.gzipPool.Put(gw)
+	}()
+
+	err := metricsutils.EncodeMetrics(gw, metrics)
 	if err != nil {
-		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal MetricsCollectCmd: %w", err))
-		return
+		return nil, err
 	}
 
-	type opTarget struct {
-		name    string
-		collect types.MetricsCollectFunc
-	}
-
-	b.metricsMU.RLock()
-
-	op, ok := map[aranyagopb.MetricsTarget]*opTarget{
-		aranyagopb.METRICS_TARGET_NODE:      {name: "node", collect: b.collectNodeMetrics},
-		aranyagopb.METRICS_TARGET_CONTAINER: {name: "container", collect: b.collectContainerMetrics},
-	}[cmd.Target]
-
-	b.metricsMU.RUnlock()
-
-	if !ok {
-		b.handleUnknownCmd(sid, "metrics.collect", cmd)
-		return
-	}
-
-	if op == nil {
-		b.handleRuntimeError(sid, wellknownerrors.ErrNotSupported)
-		return
-	}
-
-	b.processInNewGoroutine(sid, "metrics.collect."+op.name, func() {
-		metricsData, err := op.collect()
-		if err != nil {
-			b.handleRuntimeError(sid, err)
-			return
-		}
-
-		_, err = b.PostData(sid, aranyagopb.MSG_DATA_METRICS, 0, true, metricsData)
-		if err != nil {
-			b.handleConnectivityError(sid, err)
-			return
-		}
-	})
+	return buf.Bytes(), nil
 }

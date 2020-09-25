@@ -30,10 +30,9 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 
 	"arhat.dev/arhat/pkg/metrics/metricsutils"
-	"arhat.dev/arhat/pkg/types"
 )
 
-func CreateNodeMetricsGatherer(config *aranyagopb.MetricsConfigCmd) (types.MetricsCollectFunc, error) {
+func CreateNodeMetricsGatherer(config *aranyagopb.MetricsConfigCmd) (prometheus.Gatherer, error) {
 	var (
 		collectors        = make(map[string]collector.Collector)
 		enabledCollectors = metricsutils.GetEnabledCollectors(config.Collect)
@@ -49,7 +48,7 @@ func CreateNodeMetricsGatherer(config *aranyagopb.MetricsConfigCmd) (types.Metri
 		collectors[name] = c
 	}
 
-	extraArgs, err := metricsutils.GetExtraArgs(enabledCollectors, config.ExtraArgs)
+	extraArgs, err := metricsutils.GetCollectorExtraArgs(enabledCollectors, config.ExtraArgs)
 	if err != nil {
 		return nil, err
 	}
@@ -77,5 +76,5 @@ func CreateNodeMetricsGatherer(config *aranyagopb.MetricsConfigCmd) (types.Metri
 		return nil, err
 	}
 
-	return metricsutils.CreateMetricsCollectingFunc(prometheus.Gatherers{registry}), nil
+	return registry, nil
 }

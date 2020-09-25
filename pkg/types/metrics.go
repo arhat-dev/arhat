@@ -1,3 +1,5 @@
+// +build !nometrics
+
 /*
 Copyright 2020 The arhat.dev Authors.
 
@@ -16,4 +18,6 @@ limitations under the License.
 
 package types
 
-type MetricsCollectFunc func() ([]byte, error)
+import dto "github.com/prometheus/client_model/go"
+
+type MetricsCollectFunc func() ([]*dto.MetricFamily, error)

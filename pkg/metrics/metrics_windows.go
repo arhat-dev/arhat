@@ -16,7 +16,12 @@ func CreateNodeMetricsCollector(config *aranyagopb.MetricsConfigCmd) (types.Metr
 		return nil, wellknownerrors.ErrInvalidOperation
 	}
 
-	return windowsexporter.CreateNodeMetricsGatherer(config)
+	g, err := windowsexporter.CreateNodeMetricsGatherer(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create node metrics gatherer: %w", err)
+	}
+
+	return g.Gather, nil
 }
 
 func CreateContainerMetricsCollector(config *aranyagopb.MetricsConfigCmd) (types.MetricsCollectFunc, error) {
@@ -24,5 +29,10 @@ func CreateContainerMetricsCollector(config *aranyagopb.MetricsConfigCmd) (types
 		return nil, wellknownerrors.ErrInvalidOperation
 	}
 
-	return windowsexporter.CreateContainerMetricsGatherer(config)
+	g, err := windowsexporter.CreateContainerMetricsGatherer(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create container metrics gatherer: %w", err)
+	}
+
+	return g.Gather, nil
 }

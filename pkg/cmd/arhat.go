@@ -36,8 +36,8 @@ import (
 	"arhat.dev/arhat/pkg/constant"
 	"arhat.dev/arhat/pkg/util/manager"
 
-	_ "arhat.dev/arhat/pkg/client/clientadd" // add devices
-	_ "arhat.dev/arhat/pkg/device/deviceadd" // add clients
+	_ "arhat.dev/arhat/pkg/client/clientadd"             // add devices
+	_ "arhat.dev/arhat/pkg/connectivity/connectivityadd" // add clients
 )
 
 func NewArhatCmd() *cobra.Command {
@@ -79,8 +79,6 @@ func NewArhatCmd() *cobra.Command {
 	// optimization options
 	flags.AddFlagSet(confhelper.FlagsForPProfConfig("opt.pprof.", &config.Arhat.Optimization.PProf))
 	flags.IntVar(&config.Arhat.Optimization.MaxProcessors, "opt.maxProcessors", 0, "set GOMAXPROCS")
-	// agent node options
-	flags.AddFlagSet(conf.FlagsForArhatNodeConfig("node.", &config.Arhat.Node))
 	// runtime flags
 	flags.AddFlagSet(conf.FlagsForArhatRuntimeConfig("runtime.", &config.Runtime))
 

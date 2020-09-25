@@ -30,7 +30,6 @@ import (
 	"google.golang.org/grpc/status"
 
 	"arhat.dev/arhat/pkg/client/clientutil"
-	"arhat.dev/arhat/pkg/conf"
 	"arhat.dev/arhat/pkg/types"
 )
 
@@ -46,13 +45,18 @@ type Client struct {
 	serverAddress string
 	dialOpts      []grpc.DialOption
 	conn          *grpc.ClientConn
-	client        aranyagopb.ConnectivityClient
-	syncClient    aranyagopb.Connectivity_SyncClient
+	client        aranyagopb.EdgeDeviceClient
+	syncClient    aranyagopb.EdgeDevice_SyncClient
 
 	mu *sync.RWMutex
 }
 
-func NewGRPCClient(agent types.Agent, config *conf.ConnectivityGRPC) (types.ConnectivityClient, error) {
+func NewGRPCClient(agent types.Agent, cfg interface{}) (types.ConnectivityClient, error) {
+	config, ok := cfg.(*ConnectivityGRPC)
+	if !ok {
+		return nil, fmt.Errorf("unexpected non grpc config")
+	}
+
 	dialOpts := []grpc.DialOption{
 		grpc.WithBlock(),
 		grpc.WithAuthority(config.Endpoint),
@@ -99,7 +103,7 @@ func (c *Client) Connect(dialCtx context.Context) error {
 	}
 
 	c.conn = conn
-	c.client = aranyagopb.NewConnectivityClient(conn)
+	c.client = aranyagopb.NewEdgeDeviceClient(conn)
 
 	return nil
 }

@@ -19,13 +19,27 @@ package metricsutils
 import (
 	"bytes"
 	"compress/gzip"
+	"io"
 	"sync"
+
+	dto "github.com/prometheus/client_model/go"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/expfmt"
 )
 
-func CreateMetricsCollectingFunc(g prometheus.Gatherer) func() ([]byte, error) {
+func EncodeMetrics(w io.Writer, mfs []*dto.MetricFamily) error {
+	enc := expfmt.NewEncoder(w, expfmt.FmtProtoDelim)
+	for _, mf := range mfs {
+		if err := enc.Encode(mf); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func CreateMetricsCollectFunc(g prometheus.Gatherer) func() ([]byte, error) {
 	var (
 		gzipWriter = gzip.NewWriter(nil)
 		gzipMu     = new(sync.Mutex)
@@ -44,11 +58,9 @@ func CreateMetricsCollectingFunc(g prometheus.Gatherer) func() ([]byte, error) {
 		gzipWriter.Reset(buf)
 		defer func() { _ = gzipWriter.Close() }()
 
-		encoder := expfmt.NewEncoder(gzipWriter, expfmt.FmtProtoDelim)
-		for _, mf := range mfs {
-			if err := encoder.Encode(mf); err != nil {
-				return nil, err
-			}
+		err = EncodeMetrics(gzipWriter, mfs)
+		if err != nil {
+			return nil, err
 		}
 
 		_ = gzipWriter.Close()

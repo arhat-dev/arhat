@@ -19,6 +19,7 @@ package conf
 import (
 	"context"
 	"io/ioutil"
+	"time"
 
 	"arhat.dev/pkg/confhelper"
 	"arhat.dev/pkg/exechelper"
@@ -40,6 +41,8 @@ type AppConfig struct {
 
 	Host HostConfig `json:"host" yaml:"host"`
 	Node NodeConfig `json:"node" yaml:"node"`
+
+	MaxMetricsCacheTime time.Duration `json:"maxMetricsCacheTime" yaml:"maxMetricsCacheTime"`
 
 	Optimization struct {
 		PProf         confhelper.PProfConfig `json:"pprof" yaml:"pprof"`
@@ -68,12 +71,6 @@ func FlagsForArhatHostConfig(prefix string, config *HostConfig) *pflag.FlagSet {
 type NodeConfig struct {
 	MachineIDFrom ValueFromSpec `json:"machineIDFrom" yaml:"machineIDFrom"`
 	ExtInfo       []NodeExtInfo `json:"extInfo" yaml:"extInfo"`
-}
-
-func FlagsForArhatNodeConfig(prefix string, config *NodeConfig) *pflag.FlagSet {
-	fs := pflag.NewFlagSet("arhat.node", pflag.ExitOnError)
-
-	return fs
 }
 
 type ValueFromSpec struct {
