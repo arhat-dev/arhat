@@ -8,7 +8,7 @@ arhat.dev/aranya-proto/aranyagopb/aranyagoconst
 # arhat.dev/arhat-proto v0.0.0-20200929144101-812c7dd3a0a8
 ## explicit
 arhat.dev/arhat-proto/arhatgopb
-# arhat.dev/pkg v0.0.0-20200922111851-9707225a9ad0
+# arhat.dev/pkg v0.0.0-20200922193124-416462163776
 ## explicit
 arhat.dev/pkg/backoff
 arhat.dev/pkg/confhelper

@@ -89,6 +89,8 @@ func NewArhatCmd() *cobra.Command {
 		"assume command execution successful after this time period",
 	)
 
+	flags.AddFlagSet(conf.FlagsForExtensionConfig("ext.", &config.Extension))
+
 	arhatCmd.AddCommand(newCheckCmd(&appCtx))
 
 	return arhatCmd

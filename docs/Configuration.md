@@ -14,7 +14,7 @@ The configuration of `arhat` is defined in a `yaml` file
 
 ## Config
 
-The `arhat` configuration file contains four major sections (`arhat`, `runtime`, `storage` and `connectivity`):
+The `arhat` configuration file contains four major sections (`arhat`, `runtime`, `storage`, `connectivity` and `extension`):
 
 ```yaml
 arhat:
@@ -24,6 +24,8 @@ runtime:
 storage:
   # ...
 connectivity:
+  # ...
+extension:
   # ...
 ```
 
@@ -477,6 +479,25 @@ connectivity:
           - a2V5:dmFsdWU=
           # the client hint provided to server, base64 encoded value
           identityHint: aWRlbnRpdHkgaGludA== # `identity hint`
+```
+
+### Section `extension`
+
+This section defines the functionality of [extension api](https://github.com/arhat-dev/arhat-proto) server
+
+```yaml
+extension:
+  # enable extension service or not
+  enabled: true
+  # listen address, support tcp/unixsock
+  listen: unix:///var/run/arhat.sock
+  tls:
+    enabled: false
+
+  # configuration for device extension
+  devices:
+    # cache unhandled metrics for at most this time
+    maxMetricsCacheTime: 1h
 ```
 
 ## Appendix.A: List of supported cipher suites

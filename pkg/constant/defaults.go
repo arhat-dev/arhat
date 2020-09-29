@@ -32,6 +32,9 @@ const (
 	DefaultDockerWindowsEndpoint = "tcp://docker.for.win.localhost:2375"
 	DefaultRuntimeDialTimeout    = time.Minute
 	DefaultRuntimeActionTimeout  = 10 * time.Minute
+
+	DefaultArhatExtensionListen      = "unix:///var/run/arhat.sock"
+	DefaultDeviceMetricsMaxCacheTime = 30 * time.Minute
 )
 
 const (

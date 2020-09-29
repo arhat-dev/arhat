@@ -3,14 +3,21 @@
 package device
 
 import (
-	"arhat.dev/arhat-proto/arhatgopb"
 	"context"
 	"fmt"
-	"github.com/gogo/protobuf/proto"
 	"sync"
+
+	"arhat.dev/arhat-proto/arhatgopb"
+	"github.com/gogo/protobuf/proto"
 )
 
-func NewConnectivity(ctx context.Context, id uint64, srv arhatgopb.DeviceExtension_SyncServer, msgCh <-chan *arhatgopb.DeviceMsg, onClosed func()) *Connectivity {
+func NewConnectivity(
+	ctx context.Context,
+	id uint64,
+	srv arhatgopb.DeviceExtension_SyncServer,
+	msgCh <-chan *arhatgopb.DeviceMsg,
+	onClosed func(),
+) *Connectivity {
 	c := &Connectivity{
 		ctx: ctx,
 		id:  id,
@@ -56,6 +63,7 @@ func (c *Connectivity) handleMsgs() {
 			if !ok {
 				// TODO: handle unexpected ack
 				// discard
+				continue
 			}
 
 			msg := m
@@ -85,12 +93,12 @@ func (c *Connectivity) sendCmd(ctx context.Context, p proto.Marshaler) (*arhatgo
 		return nil, fmt.Errorf("failed to create device cmd: %w", err)
 	}
 
-	ch, ok := c.expecting[seq]
+	_, ok := c.expecting[seq]
 	if ok {
 		return nil, fmt.Errorf("unexpected used ack")
 	}
 
-	ch = make(chan *arhatgopb.DeviceMsg, 1)
+	ch := make(chan *arhatgopb.DeviceMsg, 1)
 	c.mu.Lock()
 	c.expecting[seq] = ch
 	c.mu.Unlock()
@@ -140,14 +148,17 @@ func (c *Connectivity) Operate(ctx context.Context, params map[string]string, da
 	m := new(arhatgopb.DeviceOperateResultMsg)
 	err = m.Unmarshal(msg.Payload)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unamrshal device operation result: %w", err)
+		return nil, fmt.Errorf(
+			"failed to unamrshal device operation result: %w", err)
 	}
 
 	return m.Result, nil
 }
 
 // CollectMetrics collects all existing metrics for one metric kind
-func (c *Connectivity) CollectMetrics(ctx context.Context, params map[string]string) ([]*arhatgopb.DeviceMetricsMsg_Value, error) {
+func (c *Connectivity) CollectMetrics(
+	ctx context.Context, params map[string]string,
+) ([]*arhatgopb.DeviceMetricsMsg_Value, error) {
 	msg, err := c.sendCmd(ctx, &arhatgopb.DeviceMetricsCollectCmd{
 		Params: params,
 	})

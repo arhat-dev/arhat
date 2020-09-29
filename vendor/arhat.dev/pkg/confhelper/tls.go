@@ -3,6 +3,7 @@ package confhelper
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"io"
@@ -206,7 +207,10 @@ func (c TLSConfig) GetTLSConfig() (_ *tls.Config, err error) {
 			return nil, fmt.Errorf("failed to load cert: %w", err)
 		}
 	} else if c.CertData != "" {
-		certBytes = []byte(c.CertData)
+		certBytes, err = base64.StdEncoding.DecodeString(c.CertData)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode cert data (base64): %w", err)
+		}
 	}
 
 	if c.Key != "" {
@@ -215,7 +219,10 @@ func (c TLSConfig) GetTLSConfig() (_ *tls.Config, err error) {
 			return nil, fmt.Errorf("failed to load key: %w", err)
 		}
 	} else {
-		keyBytes = []byte(c.KeyData)
+		keyBytes, err = base64.StdEncoding.DecodeString(c.KeyData)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode key data (base64): %w", err)
+		}
 	}
 
 	if len(keyBytes) != 0 && len(certBytes) != 0 {

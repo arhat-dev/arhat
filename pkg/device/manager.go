@@ -3,14 +3,16 @@
 package device
 
 import (
-	"arhat.dev/aranya-proto/aranyagopb"
-	"arhat.dev/arhat-proto/arhatgopb"
-	"arhat.dev/arhat/pkg/conf"
-	"arhat.dev/pkg/wellknownerrors"
 	"context"
 	"fmt"
-	"google.golang.org/grpc"
 	"sync"
+
+	"arhat.dev/aranya-proto/aranyagopb"
+	"arhat.dev/arhat-proto/arhatgopb"
+	"arhat.dev/pkg/wellknownerrors"
+	"google.golang.org/grpc"
+
+	"arhat.dev/arhat/pkg/conf"
 )
 
 type FactoryFunc func(
@@ -152,7 +154,8 @@ func (m *Manager) Sync(srv arhatgopb.DeviceExtension_SyncServer) error {
 						tlsConfig *aranyagopb.TLSConfig,
 					) (*Connectivity, error) {
 						deviceID := nextDeviceID()
-						cmd, err := arhatgopb.NewDeviceCmd(deviceID, 0, &arhatgopb.DeviceConnectCmd{
+						var cmd *arhatgopb.DeviceCmd
+						cmd, err = arhatgopb.NewDeviceCmd(deviceID, 0, &arhatgopb.DeviceConnectCmd{
 							Target: target,
 							Params: params,
 							Tls: &arhatgopb.TLSConfig{

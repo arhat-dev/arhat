@@ -1,8 +1,12 @@
 package conf
 
 import (
-	"arhat.dev/pkg/confhelper"
 	"time"
+
+	"arhat.dev/pkg/confhelper"
+	"github.com/spf13/pflag"
+
+	"arhat.dev/arhat/pkg/constant"
 )
 
 type ExtensionConfig struct {
@@ -15,4 +19,19 @@ type ExtensionConfig struct {
 
 type DeviceExtensionConfig struct {
 	MaxMetricsCacheTime time.Duration `json:"maxMetricsCacheTime" yaml:"maxMetricsCacheTime"`
+}
+
+func FlagsForExtensionConfig(prefix string, config *ExtensionConfig) *pflag.FlagSet {
+	fs := pflag.NewFlagSet("extension", pflag.ExitOnError)
+
+	fs.BoolVar(&config.Enabled, prefix+"enable",
+		false, "enable extension server")
+	fs.StringVar(&config.Listen, prefix+"listen",
+		constant.DefaultArhatExtensionListen, "extension server listen address")
+	fs.AddFlagSet(confhelper.FlagsForTLSConfig(prefix+"tls.", &config.TLS))
+
+	fs.DurationVar(&config.Devices.MaxMetricsCacheTime, prefix+"maxMetricsCacheTime",
+		constant.DefaultDeviceMetricsMaxCacheTime, "device metrics cache timeout")
+
+	return fs
 }

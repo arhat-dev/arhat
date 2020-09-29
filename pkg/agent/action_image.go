@@ -3,9 +3,11 @@
 package agent
 
 import (
-	"arhat.dev/aranya-proto/aranyagopb"
-	"arhat.dev/arhat/pkg/types"
 	"fmt"
+
+	"arhat.dev/aranya-proto/aranyagopb"
+
+	"arhat.dev/arhat/pkg/types"
 )
 
 func (b *Agent) handleImageList(sid uint64, data []byte) {

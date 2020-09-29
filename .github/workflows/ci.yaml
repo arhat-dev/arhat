@@ -67,7 +67,7 @@ jobs:
     - name: Test Commands
       run: |
         make test.cmd
-    
+
     - name: Test Tags
       run: |
         CGO_ENABLED=1 make test.tags

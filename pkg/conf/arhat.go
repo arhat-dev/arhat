@@ -17,12 +17,13 @@ limitations under the License.
 package conf
 
 import (
+	"context"
+	"io/ioutil"
+
 	"arhat.dev/pkg/confhelper"
 	"arhat.dev/pkg/exechelper"
 	"arhat.dev/pkg/log"
-	"context"
 	"github.com/spf13/pflag"
-	"io/ioutil"
 )
 
 // ArhatConfig

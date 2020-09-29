@@ -17,9 +17,10 @@ limitations under the License.
 package agent
 
 import (
-	"arhat.dev/aranya-proto/aranyagopb"
 	"fmt"
 	"net"
+
+	"arhat.dev/aranya-proto/aranyagopb"
 )
 
 func (b *Agent) handleHostNetworkList(sid uint64, data []byte) {
@@ -36,7 +37,8 @@ func (b *Agent) handleHostNetworkList(sid uint64, data []byte) {
 			var ifaces []net.Interface
 			ifaces, err = net.Interfaces()
 			for i := range ifaces {
-				iface, err := generateInterface(&ifaces[i])
+				var iface *aranyagopb.HostNetworkInterface
+				iface, err = generateInterface(&ifaces[i])
 				if err != nil {
 					break
 				}
@@ -51,7 +53,8 @@ func (b *Agent) handleHostNetworkList(sid uint64, data []byte) {
 					break
 				}
 
-				f, err := generateInterface(iface)
+				var f *aranyagopb.HostNetworkInterface
+				f, err = generateInterface(iface)
 				if err != nil {
 					break
 				}

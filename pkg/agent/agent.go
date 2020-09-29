@@ -21,8 +21,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"io"
 	"net"
 	"net/url"
@@ -30,6 +28,9 @@ import (
 	goruntime "runtime"
 	"sync"
 	"sync/atomic"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	"arhat.dev/arhat/pkg/device"
 
@@ -329,6 +330,7 @@ func (b *Agent) HandleCmd(cmd *aranyagopb.Cmd) {
 		aranyagopb.CMD_CRED_ENSURE: b.handleCredentialEnsure,
 		aranyagopb.CMD_REJECT:      b.handleRejectCmd,
 
+		aranyagopb.CMD_CTR_NET_LIST:   b.handleContainerNetworkList,
 		aranyagopb.CMD_CTR_NET_ENSURE: b.handleContainerNetworkEnsure,
 
 		aranyagopb.CMD_HOST_NET_LIST: b.handleHostNetworkList,

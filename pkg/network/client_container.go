@@ -160,6 +160,7 @@ func encodeRequest(req *abbotgopb.Request) (string, error) {
 	return base64.StdEncoding.EncodeToString(data), nil
 }
 
+// nolint:unparam
 func (c *Client) doRequest(req *abbotgopb.Request, err error) (*abbotgopb.Response, error) {
 	if err != nil {
 		return nil, err

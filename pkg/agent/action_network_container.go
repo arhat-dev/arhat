@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"arhat.dev/aranya-proto/aranyagopb"
+
 	"arhat.dev/arhat/pkg/types"
 )
 
