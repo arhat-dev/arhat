@@ -26,64 +26,6 @@ import (
 	"arhat.dev/arhat/pkg/types"
 )
 
-func (b *Agent) handleContainerNetworkEnsure(sid uint64, data []byte) {
-	cmd := new(aranyagopb.ContainerNetworkEnsureCmd)
-	err := cmd.Unmarshal(data)
-	if err != nil {
-		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal ContainerNetworkEnsureCmd: %w", err))
-		return
-	}
-
-	rcn, ok := b.runtime.(types.RuntimeContainerNetwork)
-	if !ok {
-		b.handleUnknownCmd(sid, "ctr_net.ensure", cmd)
-		return
-	}
-
-	b.processInNewGoroutine(sid, "ctr_net.ensure", func() {
-		result, err := rcn.UpdateContainerNetwork(cmd)
-		if err != nil {
-			b.handleRuntimeError(sid, err)
-		}
-
-		msg := aranyagopb.NewPodStatusListMsg(result)
-		err = b.PostMsg(sid, aranyagopb.MSG_POD_STATUS_LIST, msg)
-		if err != nil {
-			b.handleConnectivityError(sid, err)
-		}
-	})
-}
-
-func (b *Agent) handleImageEnsure(sid uint64, data []byte) {
-	cmd := new(aranyagopb.ImageEnsureCmd)
-
-	err := cmd.Unmarshal(data)
-	if err != nil {
-		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal ImageEnsureCmd: %w", err))
-		return
-	}
-
-	ri, ok := b.runtime.(types.RuntimeImage)
-	if !ok {
-		b.handleUnknownCmd(sid, "image.ensure", cmd)
-		return
-	}
-
-	b.processInNewGoroutine(sid, "image.ensure", func() {
-		pulledImages, err := ri.EnsureImages(cmd)
-		if err != nil {
-			b.handleRuntimeError(sid, err)
-			return
-		}
-
-		err = b.PostMsg(sid, aranyagopb.MSG_IMAGE_STATUS_LIST, &aranyagopb.ImageStatusListMsg{Images: pulledImages})
-		if err != nil {
-			b.handleConnectivityError(sid, err)
-			return
-		}
-	})
-}
-
 func (b *Agent) handlePodList(sid uint64, data []byte) {
 	cmd := new(aranyagopb.PodListCmd)
 

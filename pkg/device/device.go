@@ -12,8 +12,6 @@ import (
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/wellknownerrors"
-
-	"arhat.dev/arhat/pkg/types"
 )
 
 func hashStringMap(m map[string]string) string {
@@ -50,7 +48,7 @@ type MetricSpec struct {
 func NewDevice(
 	ctx context.Context,
 	connectorHashHex string,
-	connector types.Connectivity,
+	connector *Connectivity,
 	operations []*aranyagopb.DeviceOperation,
 	metrics []*aranyagopb.DeviceMetric,
 ) *Device {
@@ -100,7 +98,7 @@ type Device struct {
 	metrics    []*MetricSpec
 }
 
-func (d *Device) Operate(id string, data []byte) ([][]byte, error) {
+func (d *Device) Operate(ctx context.Context, id string, data []byte) ([][]byte, error) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
@@ -109,7 +107,7 @@ func (d *Device) Operate(id string, data []byte) ([][]byte, error) {
 		return nil, wellknownerrors.ErrNotSupported
 	}
 
-	resp, err := d.conn.Operate(params, data)
+	resp, err := d.conn.Operate(ctx, params, data)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +157,7 @@ func convertMetricValue(value interface{}) (float64, error) {
 func NewMetricsReporter(
 	ctx context.Context,
 	connectorHashHex string,
-	conn types.Connectivity,
+	conn *Connectivity,
 ) *MetricsReporter {
 	return &MetricsReporter{
 		baseDevice: newBaseDevice(ctx, connectorHashHex, conn),

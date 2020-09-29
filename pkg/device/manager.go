@@ -3,47 +3,233 @@
 package device
 
 import (
+	"arhat.dev/aranya-proto/aranyagopb"
+	"arhat.dev/arhat-proto/arhatgopb"
+	"arhat.dev/arhat/pkg/conf"
+	"arhat.dev/pkg/wellknownerrors"
 	"context"
 	"fmt"
+	"google.golang.org/grpc"
 	"sync"
-	"time"
-
-	"arhat.dev/aranya-proto/aranyagopb"
-	"arhat.dev/pkg/wellknownerrors"
-
-	"arhat.dev/arhat/pkg/connectivity"
-	"arhat.dev/arhat/pkg/types"
 )
 
-func NewManager(ctx context.Context, maxCacheTime time.Duration) *Manager {
-	return &Manager{
+type FactoryFunc func(
+	ctx context.Context,
+	target string,
+	params map[string]string,
+	tlsConfig *aranyagopb.TLSConfig,
+) (*Connectivity, error)
+
+// RegisterConnectivity add one connectivity method for device
+func (m *Manager) RegisterConnectivity(
+	name string,
+	factory FactoryFunc,
+) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if _, ok := m.supportedConnectivity[name]; ok {
+		return fmt.Errorf("connectivity %s already registered", name)
+	}
+
+	m.supportedConnectivity[name] = factory
+
+	return nil
+}
+
+func (m *Manager) NewConnectivity(
+	name string,
+	target string,
+	params map[string]string,
+	tlsConfig *aranyagopb.TLSConfig,
+) (*Connectivity, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	factory, ok := m.supportedConnectivity[name]
+
+	if !ok {
+		return nil, fmt.Errorf("unsupported connectivity")
+	}
+
+	return factory(m.ctx, target, params, tlsConfig)
+}
+
+func NewManager(ctx context.Context, config *conf.DeviceExtensionConfig, server *grpc.Server) *Manager {
+
+	mgr := &Manager{
 		ctx: ctx,
 
-		all:              make(map[string]types.Connectivity),
+		config: config,
+
+		all:              make(map[string]*Connectivity),
 		devices:          make(map[string]*Device),
 		metricsReporters: make(map[string]*MetricsReporter),
 
-		metricsCache: NewMetricsCache(maxCacheTime),
+		metricsCache: NewMetricsCache(config.MaxMetricsCacheTime),
 
 		mu: new(sync.RWMutex),
+
+		supportedConnectivity: make(map[string]FactoryFunc),
 	}
+
+	arhatgopb.RegisterDeviceExtensionServer(server, mgr)
+
+	return mgr
 }
 
 type Manager struct {
 	ctx context.Context
 
-	// key: connectivity_hash_hex
-	all map[string]types.Connectivity
+	config *conf.DeviceExtensionConfig
 
+	// key: connectivity_hash_hex
+	all map[string]*Connectivity
 	// key: device_id
 	devices map[string]*Device
-
 	// key: connectivity_hash_hex
 	metricsReporters map[string]*MetricsReporter
 
 	metricsCache *MetricsCache
 
 	mu *sync.RWMutex
+
+	supportedConnectivity map[string]FactoryFunc
+}
+
+func (m *Manager) Sync(srv arhatgopb.DeviceExtension_SyncServer) error {
+	var (
+		errCh = make(chan error)
+	)
+
+	sendErr := func(err error) {
+		select {
+		case <-srv.Context().Done():
+		case <-m.ctx.Done():
+		case errCh <- err:
+		}
+	}
+
+	go func() {
+		started := false
+
+		deviceID := uint64(0)
+		deviceMU := new(sync.RWMutex)
+
+		nextDeviceID := func() uint64 {
+			deviceMU.Lock()
+			defer deviceMU.Unlock()
+			deviceID++
+			return deviceID
+		}
+		connectedDevices := make(map[uint64]chan *arhatgopb.DeviceMsg)
+		for {
+			msg, err := srv.Recv()
+			if err != nil {
+				return
+			}
+
+			if !started {
+				if msg.Kind != arhatgopb.MSG_DEV_REGISTER {
+					sendErr(fmt.Errorf("expecting register as first message"))
+					return
+				}
+
+				r := new(arhatgopb.DeviceRegisterMsg)
+				err := r.Unmarshal(msg.Payload)
+				if err != nil {
+					sendErr(fmt.Errorf("failed to unmarhsal very first register message: %w", err))
+					return
+				}
+
+				started = true
+
+				err = m.RegisterConnectivity(r.Name,
+					func(
+						ctx context.Context,
+						target string,
+						params map[string]string,
+						tlsConfig *aranyagopb.TLSConfig,
+					) (*Connectivity, error) {
+						deviceID := nextDeviceID()
+						cmd, err := arhatgopb.NewDeviceCmd(deviceID, 0, &arhatgopb.DeviceConnectCmd{
+							Target: target,
+							Params: params,
+							Tls: &arhatgopb.TLSConfig{
+								ServerName:         tlsConfig.ServerName,
+								InsecureSkipVerify: tlsConfig.InsecureSkipVerify,
+								MinVersion:         tlsConfig.MinVersion,
+								MaxVersion:         tlsConfig.MaxVersion,
+								CaCert:             tlsConfig.CaCert,
+								Cert:               tlsConfig.Cert,
+								Key:                tlsConfig.Key,
+								CipherSuites:       tlsConfig.CipherSuites,
+								NextProtos:         tlsConfig.NextProtos,
+							},
+						})
+						if err != nil {
+							return nil, fmt.Errorf("failed to create device cmd: %w", err)
+						}
+
+						err = srv.Send(cmd)
+						if err != nil {
+							return nil, err
+						}
+
+						msgCh := make(chan *arhatgopb.DeviceMsg)
+						deviceMU.Lock()
+						connectedDevices[deviceID] = msgCh
+						deviceMU.Unlock()
+
+						return NewConnectivity(m.ctx, deviceID, srv, msgCh, func() {
+							deviceMU.Lock()
+							delete(connectedDevices, deviceID)
+							deviceMU.Unlock()
+						}), nil
+					},
+				)
+
+				if err != nil {
+					sendErr(err)
+					return
+				}
+
+				continue
+			}
+
+			switch msg.Kind {
+			case arhatgopb.MSG_DEV_REGISTER:
+				sendErr(fmt.Errorf("unexpected multiple register message"))
+				return
+			default:
+				deviceMU.RLock()
+				ch, ok := connectedDevices[msg.DeviceId]
+				deviceMU.RUnlock()
+				if !ok {
+					// TODO: log error
+					continue
+				}
+
+				// TODO: use goroutine pool
+				go func() {
+					select {
+					case <-srv.Context().Done():
+					case <-m.ctx.Done():
+					case ch <- msg:
+					}
+				}()
+			}
+		}
+	}()
+
+	select {
+	case <-srv.Context().Done():
+		return nil
+	case <-m.ctx.Done():
+		return nil
+	case err := <-errCh:
+		return err
+	}
 }
 
 func (m *Manager) Ensure(cmd *aranyagopb.DeviceEnsureCmd) (err error) {
@@ -83,12 +269,7 @@ func (m *Manager) Ensure(cmd *aranyagopb.DeviceEnsureCmd) (err error) {
 		return fmt.Errorf("required device connector spec not found")
 	}
 
-	createConn, ok := connectivity.NewConnectivity(dc.Method, dc.Mode)
-	if !ok {
-		return fmt.Errorf("unsupported device connectivity %q: %w", dc.Method, wellknownerrors.ErrNotSupported)
-	}
-
-	conn, err := createConn(dc.Target, dc.Params, dc.Tls)
+	conn, err := m.NewConnectivity(dc.Method, dc.Target, dc.Params, dc.Tls)
 	if err != nil {
 		return fmt.Errorf("failed to create device connectivity: %w", err)
 	}
@@ -109,12 +290,6 @@ func (m *Manager) Ensure(cmd *aranyagopb.DeviceEnsureCmd) (err error) {
 			m.ctx, cmd.ConnectorHashHex, conn, cmd.Operations, cmd.Metrics,
 		)
 
-		err = dev.Start()
-		if err != nil {
-			_ = dev.Close()
-			return fmt.Errorf("failed to start device %q: %w", cmd.DeviceId, err)
-		}
-
 		// nolint:unparam
 		err = func() error {
 			m.mu.Lock()
@@ -125,12 +300,6 @@ func (m *Manager) Ensure(cmd *aranyagopb.DeviceEnsureCmd) (err error) {
 		}()
 	case aranyagopb.DEVICE_TYPE_METRICS_REPORTER:
 		reporter := NewMetricsReporter(m.ctx, cmd.ConnectorHashHex, conn)
-
-		err = reporter.Start()
-		if err != nil {
-			_ = reporter.Close()
-			return fmt.Errorf("failed to start device %q: %w", cmd.DeviceId, err)
-		}
 
 		// nolint:unparam
 		err = func() error {
@@ -210,7 +379,7 @@ func (m *Manager) GetStatus(deviceID string) *aranyagopb.DeviceStatusMsg {
 	return nil
 }
 
-func (m *Manager) Operate(deviceID, operationID string, data []byte) ([][]byte, error) {
+func (m *Manager) Operate(ctx context.Context, deviceID, operationID string, data []byte) ([][]byte, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -219,7 +388,7 @@ func (m *Manager) Operate(deviceID, operationID string, data []byte) ([][]byte, 
 		return nil, wellknownerrors.ErrNotFound
 	}
 
-	return dev.Operate(operationID, data)
+	return dev.Operate(ctx, operationID, data)
 }
 
 func (m *Manager) GetAllStatuses() []*aranyagopb.DeviceStatusMsg {

@@ -17,3 +17,20 @@ test.pkg:
 
 test.cmd:
 	sh scripts/test/unit.sh cmd
+
+test.tags:
+	$(MAKE) arhat-none TAGS='nometrics'
+	$(MAKE) arhat-none TAGS='nodev'
+	$(MAKE) arhat-none TAGS='nodevmetrics'
+	$(MAKE) arhat-none TAGS='nodev nometrics'
+	$(MAKE) arhat-none TAGS='nodev nometrics nodevmetrics'
+	$(MAKE) arhat-none TAGS='nodev nodevmetrics'
+	$(MAKE) arhat-none TAGS='nometrics nodevmetrics'
+
+	$(MAKE) arhat-none TAGS='nomqtt'
+	$(MAKE) arhat-none TAGS='nogrpc'
+	$(MAKE) arhat-none TAGS='nocoap'
+	$(MAKE) arhat-none TAGS='nogrpc nomqtt'
+	$(MAKE) arhat-none TAGS='nocoap nogrpc'
+	$(MAKE) arhat-none TAGS='nocoap nomqtt'
+	$(MAKE) arhat-none TAGS='nomqtt nogrpc nocoap'

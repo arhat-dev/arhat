@@ -23,7 +23,7 @@ type CmdManager struct {
 }
 
 func (m *CmdManager) Process(cmd *aranyagopb.Cmd) (cmdBytes []byte, complete bool) {
-	sid := cmd.Header.Sid
+	sid := cmd.Sid
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -34,7 +34,7 @@ func (m *CmdManager) Process(cmd *aranyagopb.Cmd) (cmdBytes []byte, complete boo
 		m.sessionSQ[sid] = sq
 	}
 
-	cmdByteChunks, complete := sq.Offer(cmd.Header.Seq, cmd.Body)
+	cmdByteChunks, complete := sq.Offer(cmd.Seq, cmd.Body)
 	for _, ck := range cmdByteChunks {
 		if ck == nil {
 			continue
@@ -43,8 +43,8 @@ func (m *CmdManager) Process(cmd *aranyagopb.Cmd) (cmdBytes []byte, complete boo
 		m.partialCmds[sid] = append(m.partialCmds[sid], ck.([]byte)...)
 	}
 
-	if cmd.Header.Completed {
-		complete = sq.SetMaxSeq(cmd.Header.Seq)
+	if cmd.Completed {
+		complete = sq.SetMaxSeq(cmd.Seq)
 	}
 
 	if !complete {

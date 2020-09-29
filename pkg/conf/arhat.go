@@ -17,14 +17,12 @@ limitations under the License.
 package conf
 
 import (
-	"context"
-	"io/ioutil"
-	"time"
-
 	"arhat.dev/pkg/confhelper"
 	"arhat.dev/pkg/exechelper"
 	"arhat.dev/pkg/log"
+	"context"
 	"github.com/spf13/pflag"
+	"io/ioutil"
 )
 
 // ArhatConfig
@@ -33,6 +31,7 @@ type ArhatConfig struct {
 	Connectivity ConnectivityConfig `json:"connectivity" yaml:"connectivity"`
 	Runtime      RuntimeConfig      `json:"runtime" yaml:"runtime"`
 	Storage      StorageConfig      `json:"storage" yaml:"storage"`
+	Extension    ExtensionConfig    `json:"extension" yaml:"extension"`
 }
 
 // AppConfig configuration for arhat application behavior
@@ -41,8 +40,6 @@ type AppConfig struct {
 
 	Host HostConfig `json:"host" yaml:"host"`
 	Node NodeConfig `json:"node" yaml:"node"`
-
-	MaxMetricsCacheTime time.Duration `json:"maxMetricsCacheTime" yaml:"maxMetricsCacheTime"`
 
 	Optimization struct {
 		PProf         confhelper.PProfConfig `json:"pprof" yaml:"pprof"`

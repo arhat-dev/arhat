@@ -4,10 +4,9 @@ package device
 
 import (
 	"context"
-	"time"
 )
 
-func NewManager(ctx context.Context, maxCacheTime time.Duration) *Manager {
+func NewManager(ctx context.Context, _, _ interface{}) *Manager {
 	return &Manager{}
 }
 

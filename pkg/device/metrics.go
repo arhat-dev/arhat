@@ -289,7 +289,7 @@ func (r *MetricsReporter) ReportMetrics(params map[string]string, metrics []*dto
 		return fmt.Errorf("failed to encode metrics: %w", err)
 	}
 
-	_, err = r.conn.Operate(params, buf.Bytes())
+	_, err = r.conn.Operate(r.ctx, params, buf.Bytes())
 	return err
 }
 

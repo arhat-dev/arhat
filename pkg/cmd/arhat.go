@@ -36,8 +36,7 @@ import (
 	"arhat.dev/arhat/pkg/constant"
 	"arhat.dev/arhat/pkg/util/manager"
 
-	_ "arhat.dev/arhat/pkg/client/clientadd"             // add devices
-	_ "arhat.dev/arhat/pkg/connectivity/connectivityadd" // add clients
+	_ "arhat.dev/arhat/pkg/client/clientadd" // add clients
 )
 
 func NewArhatCmd() *cobra.Command {

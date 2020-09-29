@@ -46,7 +46,7 @@ type Stream struct {
 	w   io.WriteCloser
 	seq *queue.SeqQueue
 
-	resizeCh chan *aranyagopb.ContainerTerminalResizeCmd
+	resizeCh chan *aranyagopb.TerminalResizeCmd
 
 	toBeClosed uint32
 }
@@ -59,11 +59,11 @@ func (s *Stream) Reader() io.Reader {
 	return s.r
 }
 
-func (s *Stream) ResizeCh() <-chan *aranyagopb.ContainerTerminalResizeCmd {
+func (s *Stream) ResizeCh() <-chan *aranyagopb.TerminalResizeCmd {
 	return s.resizeCh
 }
 
-func (s *Stream) resize(size *aranyagopb.ContainerTerminalResizeCmd) bool {
+func (s *Stream) resize(size *aranyagopb.TerminalResizeCmd) bool {
 	if s.resizeCh == nil {
 		return false
 	}
@@ -190,7 +190,7 @@ func (m *StreamManager) NewStream(parentCtx context.Context, sid uint64, hasInpu
 		s.seq = queue.NewSeqQueue()
 
 		if hasResize {
-			s.resizeCh = make(chan *aranyagopb.ContainerTerminalResizeCmd, 1)
+			s.resizeCh = make(chan *aranyagopb.TerminalResizeCmd, 1)
 		}
 	}
 
@@ -210,7 +210,7 @@ func (m *StreamManager) Start(stopCh <-chan struct{}) {
 	}()
 }
 
-func (m *StreamManager) Resize(sid uint64, opts *aranyagopb.ContainerTerminalResizeCmd) bool {
+func (m *StreamManager) Resize(sid uint64, opts *aranyagopb.TerminalResizeCmd) bool {
 	if s, ok := m.get(sid); ok {
 		return s.resize(opts)
 	}

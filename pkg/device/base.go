@@ -4,19 +4,16 @@ package device
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"arhat.dev/aranya-proto/aranyagopb"
-
-	"arhat.dev/arhat/pkg/types"
 )
 
 type baseDevice struct {
 	ctx context.Context
 
 	connHashHex string
-	conn        types.Connectivity
+	conn        *Connectivity
 
 	state    aranyagopb.DeviceState
 	stateMsg string
@@ -24,35 +21,18 @@ type baseDevice struct {
 	mu *sync.RWMutex
 }
 
-func newBaseDevice(ctx context.Context, connHashHex string, conn types.Connectivity) *baseDevice {
+func newBaseDevice(ctx context.Context, connHashHex string, conn *Connectivity) *baseDevice {
 	return &baseDevice{
 		ctx: ctx,
 
 		connHashHex: connHashHex,
 		conn:        conn,
 
-		state:    aranyagopb.DEVICE_STATE_CREATED,
-		stateMsg: "Created",
+		state:    aranyagopb.DEVICE_STATE_CONNECTED,
+		stateMsg: "Connected",
 
 		mu: new(sync.RWMutex),
 	}
-}
-
-func (d *baseDevice) Start() error {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
-	err := d.conn.Connect()
-	if err != nil {
-		d.state = aranyagopb.DEVICE_STATE_ERRORED
-		d.stateMsg = err.Error()
-		return fmt.Errorf("failed to connect device: %w", err)
-	}
-
-	d.state = aranyagopb.DEVICE_STATE_CONNECTED
-	d.stateMsg = "Connected"
-
-	return nil
 }
 
 func (d *baseDevice) Status() *aranyagopb.DeviceStatusMsg {

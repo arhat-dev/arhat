@@ -27,7 +27,7 @@ import (
 )
 
 func (b *Agent) handlePodContainerExec(sid uint64, data []byte) {
-	cmd := new(aranyagopb.ContainerExecOrAttachCmd)
+	cmd := new(aranyagopb.ExecOrAttachCmd)
 
 	err := cmd.Unmarshal(data)
 	if err != nil {
@@ -88,7 +88,7 @@ func (b *Agent) handlePodContainerExec(sid uint64, data []byte) {
 }
 
 func (b *Agent) handlePodContainerAttach(sid uint64, data []byte) {
-	cmd := new(aranyagopb.ContainerExecOrAttachCmd)
+	cmd := new(aranyagopb.ExecOrAttachCmd)
 
 	err := cmd.Unmarshal(data)
 	if err != nil {
@@ -163,7 +163,7 @@ func (b *Agent) handlePodContainerAttach(sid uint64, data []byte) {
 }
 
 func (b *Agent) handlePodContainerLogs(sid uint64, data []byte) {
-	cmd := new(aranyagopb.ContainerLogsCmd)
+	cmd := new(aranyagopb.LogsCmd)
 
 	err := cmd.Unmarshal(data)
 	if err != nil {
@@ -263,7 +263,7 @@ func (b *Agent) handlePodContainerLogs(sid uint64, data []byte) {
 }
 
 func (b *Agent) handlePodPortForward(sid uint64, data []byte) {
-	cmd := new(aranyagopb.PodPortForwardCmd)
+	cmd := new(aranyagopb.PortForwardCmd)
 
 	err := cmd.Unmarshal(data)
 	if err != nil {
@@ -342,7 +342,7 @@ func (b *Agent) handlePodPortForward(sid uint64, data []byte) {
 }
 
 func (b *Agent) handlePodContainerTerminalResize(sid uint64, data []byte) {
-	cmd := new(aranyagopb.ContainerTerminalResizeCmd)
+	cmd := new(aranyagopb.TerminalResizeCmd)
 	err := cmd.Unmarshal(data)
 	if err != nil {
 		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal ContainerTerminalResizeCmd: %w", err))
@@ -454,7 +454,7 @@ func (b *Agent) createTerminalStream(
 func (b *Agent) uploadDataOutput(
 	sid uint64,
 	rd io.Reader,
-	kind aranyagopb.Kind,
+	kind aranyagopb.MsgType,
 	readTimeout time.Duration,
 	pSeq *uint64,
 	seqMu *sync.Mutex,

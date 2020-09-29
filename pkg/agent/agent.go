@@ -21,7 +21,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"io"
+	"net"
+	"net/url"
+	"os"
 	goruntime "runtime"
 	"sync"
 	"sync/atomic"
@@ -89,6 +94,53 @@ func NewAgent(appCtx context.Context, config *conf.ArhatConfig) (*Agent, error) 
 		return nil, fmt.Errorf("failed to init runtime: %w", err)
 	}
 
+	var (
+		srv           *grpc.Server
+		deviceManager *device.Manager
+	)
+	if config.Extension.Enabled {
+		u, err := url.Parse(config.Extension.Listen)
+		if err != nil {
+			return nil, fmt.Errorf("invalid extension server listen address: %w", err)
+		}
+
+		addr := u.Host
+		if u.Scheme == "unix" {
+			addr = u.Path
+			// clean up previous unix socket file
+			if err = os.Remove(addr); err != nil && !os.IsNotExist(err) {
+				return nil, fmt.Errorf("failed to remove existing unix sock file: %w", err)
+			}
+		}
+
+		l, err := net.Listen(u.Scheme, addr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create listener for extension server: %w", err)
+		}
+
+		var grpcSrvOptions []grpc.ServerOption
+
+		tlsConfig, err := config.Extension.TLS.GetTLSConfig()
+		if err != nil {
+			return nil, fmt.Errorf("failed to create tls config for extension server: %w", err)
+		}
+
+		if tlsConfig != nil {
+			grpcSrvOptions = append(grpcSrvOptions, grpc.Creds(credentials.NewTLS(tlsConfig)))
+		}
+
+		srv = grpc.NewServer(grpcSrvOptions...)
+
+		deviceManager = device.NewManager(ctx, &config.Extension.Devices, srv)
+
+		go func() {
+			err := srv.Serve(l)
+			if err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+				panic(err)
+			}
+		}()
+	}
+
 	agent := &Agent{
 		hostConfig:    &config.Arhat.Host,
 		machineIDFrom: &config.Arhat.Node.MachineIDFrom,
@@ -105,7 +157,7 @@ func NewAgent(appCtx context.Context, config *conf.ArhatConfig) (*Agent, error) 
 		cmdMgr:  manager.NewCmdManager(),
 		runtime: rt,
 		storage: st,
-		devices: device.NewManager(ctx, config.Arhat.MaxMetricsCacheTime),
+		devices: deviceManager,
 		streams: manager.NewStreamManager(),
 
 		gzipPool: &sync.Pool{
@@ -180,7 +232,7 @@ func (b *Agent) GetGzipWriter(w io.Writer) *gzip.Writer {
 	return gw
 }
 
-func (b *Agent) PostData(sid uint64, kind aranyagopb.Kind, seq uint64, completed bool, data []byte) (uint64, error) {
+func (b *Agent) PostData(sid uint64, kind aranyagopb.MsgType, seq uint64, completed bool, data []byte) (uint64, error) {
 	client := b.GetClient()
 	if client == nil {
 		return seq, errClientNotSet
@@ -204,7 +256,7 @@ func (b *Agent) PostData(sid uint64, kind aranyagopb.Kind, seq uint64, completed
 	return seq, nil
 }
 
-func (b *Agent) PostMsg(sid uint64, kind aranyagopb.Kind, msg proto.Marshaler) error {
+func (b *Agent) PostMsg(sid uint64, kind aranyagopb.MsgType, msg proto.Marshaler) error {
 	data, err := msg.Marshal()
 	if err != nil {
 		return fmt.Errorf("failed to marshal msg body: %w", err)
@@ -224,16 +276,16 @@ func (b *Agent) HandleCmd(cmd *aranyagopb.Cmd) {
 		return
 	}
 
-	sid := cmd.Header.Sid
+	sid := cmd.Sid
 
 	// handle stream data first
-	if cmd.Header.Kind == aranyagopb.CMD_DATA_UPSTREAM {
-		if cmd.Header.Completed {
-			b.streams.CloseRead(sid, cmd.Header.Seq)
+	if cmd.Kind == aranyagopb.CMD_DATA_UPSTREAM {
+		if cmd.Completed {
+			b.streams.CloseRead(sid, cmd.Seq)
 			return
 		}
 
-		if !b.streams.Write(sid, cmd.Header.Seq, cmd.Body) {
+		if !b.streams.Write(sid, cmd.Seq, cmd.Body) {
 			b.handleRuntimeError(sid, errStreamSessionClosed)
 			return
 		}
@@ -246,7 +298,7 @@ func (b *Agent) HandleCmd(cmd *aranyagopb.Cmd) {
 		return
 	}
 
-	handleCmd, ok := map[aranyagopb.Kind]types.RawCmdHandleFunc{
+	handleCmd, ok := map[aranyagopb.CmdType]types.RawCmdHandleFunc{
 		aranyagopb.CMD_SESSION_CLOSE: b.handleSessionClose,
 
 		aranyagopb.CMD_NODE_INFO_GET: b.handleNodeInfoGet,
@@ -260,25 +312,27 @@ func (b *Agent) HandleCmd(cmd *aranyagopb.Cmd) {
 		aranyagopb.CMD_METRICS_CONFIG:  b.handleMetricsConfig,
 		aranyagopb.CMD_METRICS_COLLECT: b.handleMetricsCollect,
 
-		aranyagopb.CMD_IMAGE_LIST:   nil,
+		aranyagopb.CMD_IMAGE_LIST:   b.handleImageList,
 		aranyagopb.CMD_IMAGE_ENSURE: b.handleImageEnsure,
-		aranyagopb.CMD_IMAGE_DELETE: nil,
+		aranyagopb.CMD_IMAGE_DELETE: b.handleImageDelete,
 
 		aranyagopb.CMD_POD_LIST:   b.handlePodList,
 		aranyagopb.CMD_POD_ENSURE: b.handlePodEnsure,
 		aranyagopb.CMD_POD_DELETE: b.handlePodDelete,
 
-		aranyagopb.CMD_POD_CTR_EXEC:       b.handlePodContainerExec,
-		aranyagopb.CMD_POD_CTR_ATTACH:     b.handlePodContainerAttach,
-		aranyagopb.CMD_POD_CTR_LOGS:       b.handlePodContainerLogs,
-		aranyagopb.CMD_POD_CTR_TTY_RESIZE: b.handlePodContainerTerminalResize,
-		aranyagopb.CMD_POD_PORT_FORWARD:   b.handlePodPortForward,
+		aranyagopb.CMD_EXEC:         b.handlePodContainerExec,
+		aranyagopb.CMD_ATTACH:       b.handlePodContainerAttach,
+		aranyagopb.CMD_LOGS:         b.handlePodContainerLogs,
+		aranyagopb.CMD_TTY_RESIZE:   b.handlePodContainerTerminalResize,
+		aranyagopb.CMD_PORT_FORWARD: b.handlePodPortForward,
 
 		aranyagopb.CMD_CRED_ENSURE: b.handleCredentialEnsure,
 		aranyagopb.CMD_REJECT:      b.handleRejectCmd,
 
 		aranyagopb.CMD_CTR_NET_ENSURE: b.handleContainerNetworkEnsure,
-	}[cmd.Header.Kind]
+
+		aranyagopb.CMD_HOST_NET_LIST: b.handleHostNetworkList,
+	}[cmd.Kind]
 
 	if handleCmd == nil || !ok {
 		b.handleUnknownCmd(sid, "unknown or unsupported cmd", cmd)

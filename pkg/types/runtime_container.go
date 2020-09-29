@@ -16,11 +16,20 @@ type RuntimeContainer interface {
 }
 
 type RuntimeImage interface {
+	// DeleteImages lists images with specified references or all images
+	ListImages(options *aranyagopb.ImageListCmd) ([]*aranyagopb.ImageStatusMsg, error)
+
 	// EnsureImages ensure container images
 	EnsureImages(options *aranyagopb.ImageEnsureCmd) ([]*aranyagopb.ImageStatusMsg, error)
+
+	// DeleteImages deletes images with specified references
+	DeleteImages(options *aranyagopb.ImageDeleteCmd) ([]*aranyagopb.ImageStatusMsg, error)
 }
 
 type RuntimeContainerNetwork interface {
-	// UpdateContainerNetwork update cni config dynamically
-	UpdateContainerNetwork(options *aranyagopb.ContainerNetworkEnsureCmd) ([]*aranyagopb.PodStatusMsg, error)
+	// GetContainerNetworkConfig
+	GetContainerNetworkConfig() (*aranyagopb.ContainerNetworkStatusMsg, error)
+
+	// EnsureContainerNetwork update cni config dynamically
+	EnsureContainerNetwork(options *aranyagopb.ContainerNetworkEnsureCmd) ([]*aranyagopb.PodStatusMsg, error)
 }

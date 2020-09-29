@@ -131,8 +131,9 @@ replace (
 )
 
 require (
-	arhat.dev/abbot-proto v0.0.0-20200908152444-df59421a64d2
-	arhat.dev/aranya-proto v0.0.0-20200925143507-0cad559235e1
+	arhat.dev/abbot-proto v0.0.0-20200929091836-58e1aaf44aba
+	arhat.dev/aranya-proto v0.0.0-20200929162955-66422c6e140c
+	arhat.dev/arhat-proto v0.0.0-20200929144101-812c7dd3a0a8
 	arhat.dev/pkg v0.0.0-20200922111851-9707225a9ad0
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/containerd/containerd v1.3.3 // indirect
@@ -147,7 +148,6 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/gogo/protobuf v1.3.1
 	github.com/goiiot/libmqtt v0.9.5
-	github.com/goiiot/libserial v0.0.0-20200819082916-cd2b4aa0cf09
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.14.6 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
@@ -171,10 +171,9 @@ require (
 	github.com/vishvananda/netns v0.0.0-20200520041808-52d707b772fe // indirect
 	go.uber.org/multierr v1.5.0
 	golang.org/x/crypto v0.0.0-20200728195943-123391ffb6de // indirect
-	golang.org/x/sys v0.0.0-20200824131525-c12d262b63d8
+	golang.org/x/sys v0.0.0-20200929083018-4d22bbb62b3c
 	golang.org/x/tools v0.0.0-20200811032001-fd80f4dbb3ea // indirect
-	google.golang.org/grpc v1.31.1
-	google.golang.org/protobuf v1.25.0 // indirect
+	google.golang.org/grpc v1.32.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/client-go v0.18.8

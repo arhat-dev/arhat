@@ -36,7 +36,7 @@ type Runtime interface {
 	ExecInContainer(
 		podUID, container string,
 		stdin io.Reader, stdout, stderr io.Writer,
-		resizeCh <-chan *aranyagopb.ContainerTerminalResizeCmd,
+		resizeCh <-chan *aranyagopb.TerminalResizeCmd,
 		command []string, tty bool,
 	) *aranyagopb.ErrorMsg
 
@@ -44,13 +44,13 @@ type Runtime interface {
 	AttachContainer(
 		podUID, container string,
 		stdin io.Reader, stdout, stderr io.Writer,
-		resizeCh <-chan *aranyagopb.ContainerTerminalResizeCmd,
+		resizeCh <-chan *aranyagopb.TerminalResizeCmd,
 	) error
 
 	// GetContainerLogs retrieve
 	GetContainerLogs(
 		podUID string,
-		options *aranyagopb.ContainerLogsCmd,
+		options *aranyagopb.LogsCmd,
 		stdout, stderr io.WriteCloser,
 		logCtx context.Context,
 	) error

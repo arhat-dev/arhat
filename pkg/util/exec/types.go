@@ -8,4 +8,4 @@ import (
 
 // tryFunc signature for all kinds of command execution
 // nolint:lll
-type tryFunc func(stdin io.Reader, stdout, stderr io.Writer, resizeCh <-chan *aranyagopb.ContainerTerminalResizeCmd, command []string, tty bool) error
+type tryFunc func(stdin io.Reader, stdout, stderr io.Writer, resizeCh <-chan *aranyagopb.TerminalResizeCmd, command []string, tty bool) error

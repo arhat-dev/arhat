@@ -697,7 +697,7 @@ func (r *dockerRuntime) ExecInContainer(
 	podUID, container string,
 	stdin io.Reader,
 	stdout, stderr io.Writer,
-	resizeCh <-chan *aranyagopb.ContainerTerminalResizeCmd,
+	resizeCh <-chan *aranyagopb.TerminalResizeCmd,
 	command []string, tty bool,
 ) *aranyagopb.ErrorMsg {
 	logger := r.Log().WithFields(
@@ -719,7 +719,7 @@ func (r *dockerRuntime) AttachContainer(
 	podUID, container string,
 	stdin io.Reader,
 	stdout, stderr io.Writer,
-	resizeCh <-chan *aranyagopb.ContainerTerminalResizeCmd,
+	resizeCh <-chan *aranyagopb.TerminalResizeCmd,
 ) error {
 	logger := r.Log().WithFields(
 		log.String("action", "attach"),
@@ -791,7 +791,7 @@ func (r *dockerRuntime) AttachContainer(
 
 func (r *dockerRuntime) GetContainerLogs(
 	podUID string,
-	options *aranyagopb.ContainerLogsCmd,
+	options *aranyagopb.LogsCmd,
 	stdout, stderr io.WriteCloser,
 	logCtx context.Context,
 ) error {
@@ -875,7 +875,7 @@ func (r *dockerRuntime) PortForward(podUID string, protocol string, port int32, 
 	return runtimeutil.PortForward(ctx, address, protocol, port, downstream)
 }
 
-func (r *dockerRuntime) UpdateContainerNetwork(
+func (r *dockerRuntime) EnsureContainerNetwork(
 	options *aranyagopb.ContainerNetworkEnsureCmd,
 ) ([]*aranyagopb.PodStatusMsg, error) {
 	logger := r.Log().WithFields(log.String("action", "updateContainerNetwork"))
@@ -938,7 +938,7 @@ func (r *dockerRuntime) UpdateContainerNetwork(
 				ctr.Labels[constant.ContainerLabelPodNamespace],
 				ctr.Labels[constant.ContainerLabelPodName],
 				ctrSpec.ID, uint32(ctrSpec.State.Pid),
-				&aranyagopb.PodNetworkSpec{CidrIpv4: options.CidrIpv4, CidrIpv6: options.CidrIpv6},
+				&aranyagopb.PodNetworkSpec{CidrIpv4: options.Ipv4Cidr, CidrIpv6: options.Ipv6Cidr},
 			)
 
 			if err != nil {

@@ -34,10 +34,8 @@ func (b *Agent) handleRejectCmd(sid uint64, data []byte) {
 
 	switch cmd.Reason {
 	case aranyagopb.REJECTION_ALREADY_CONNECTED,
-		aranyagopb.REJECTION_POD_STATUS_SYNC_ERROR,
-		aranyagopb.REJECTION_NODE_STATUS_SYNC_ERROR,
-		aranyagopb.REJECTION_NETWORK_UPDATE_FAILURE,
-		aranyagopb.REJECTION_CREDENTIAL_FAILURE,
+		aranyagopb.REJECTION_INVALID_PROTO,
+		aranyagopb.REJECTION_INITIAL_CHECK_FAILURE,
 		aranyagopb.REJECTION_INTERNAL_SERVER_ERROR:
 		b.logger.D("rejected by server", log.String("reason", cmd.Reason.String()), log.String("msg", cmd.Message))
 	default:

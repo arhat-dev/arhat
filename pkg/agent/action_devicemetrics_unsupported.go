@@ -3,5 +3,5 @@
 package agent
 
 func (b *Agent) handleDeviceMetricsCollect(sid uint64, data []byte) {
-	b.handleUnknownCmd(sid, "device.metrics", nil)
+	b.handleUnknownCmd(sid, "device.metrics.collect", nil)
 }

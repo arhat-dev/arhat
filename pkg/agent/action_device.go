@@ -58,13 +58,13 @@ func (b *Agent) handleDeviceDelete(sid uint64, data []byte) {
 		return
 	}
 
-	if len(cmd.DeviceIds) == 0 {
+	if len(cmd.Ids) == 0 {
 		b.handleRuntimeError(sid, errRequiredOptionsNotFound)
 		return
 	}
 
 	b.processInNewGoroutine(sid, "device.delete", func() {
-		status := b.devices.Delete(append(cmd.DeviceIds, cmd.MetricsReporterHashHexes...)...)
+		status := b.devices.Delete(cmd.Ids...)
 		if err != nil {
 			b.handleRuntimeError(sid, err)
 			return
@@ -88,7 +88,7 @@ func (b *Agent) handleDeviceOperation(sid uint64, data []byte) {
 
 	b.processInNewGoroutine(sid, "device.operate", func() {
 		var result [][]byte
-		result, err = b.devices.Operate(cmd.DeviceId, cmd.OperationId, cmd.Data)
+		result, err = b.devices.Operate(b.Context(), cmd.DeviceId, cmd.OperationId, cmd.Data)
 		if err != nil {
 			b.handleRuntimeError(sid, err)
 			return

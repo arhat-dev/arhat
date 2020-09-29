@@ -16,8 +16,8 @@ type RawCmdHandleFunc func(sid uint64, data []byte)
 
 type (
 	CmdHandleFunc func(cmd *aranyagopb.Cmd)
-	DataPostFunc  func(sid uint64, kind aranyagopb.Kind, seq uint64, completed bool, data []byte) (uint64, error)
-	MsgPostFunc   func(sid uint64, kind aranyagopb.Kind, msg proto.Marshaler) error
+	DataPostFunc  func(sid uint64, kind aranyagopb.MsgType, seq uint64, completed bool, data []byte) (uint64, error)
+	MsgPostFunc   func(sid uint64, kind aranyagopb.MsgType, msg proto.Marshaler) error
 )
 
 type Agent interface {
@@ -28,9 +28,9 @@ type Agent interface {
 	HandleCmd(cmd *aranyagopb.Cmd)
 
 	// PostMsg upload command execution result to broker/server
-	PostMsg(sid uint64, kind aranyagopb.Kind, msg proto.Marshaler) error
+	PostMsg(sid uint64, kind aranyagopb.MsgType, msg proto.Marshaler) error
 
-	PostData(sid uint64, kind aranyagopb.Kind, seq uint64, completed bool, data []byte) (lastSeq uint64, _ error)
+	PostData(sid uint64, kind aranyagopb.MsgType, seq uint64, completed bool, data []byte) (lastSeq uint64, _ error)
 }
 
 type ConnectivityClient interface {

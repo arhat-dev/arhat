@@ -19,6 +19,8 @@ limitations under the License.
 package network
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"
 	"math"
 	"strings"
@@ -30,8 +32,8 @@ import (
 // EnsureContainerNetwork will ensure container's network meets requirements in options
 func (c *Client) EnsureContainerNetwork(options *aranyagopb.ContainerNetworkEnsureCmd) error {
 	var (
-		ipv4Subnet = options.CidrIpv4
-		ipv6Subnet = options.CidrIpv6
+		ipv4Subnet = options.Ipv4Cidr
+		ipv6Subnet = options.Ipv6Cidr
 	)
 
 	if ipv4Subnet == "" && ipv6Subnet == "" {
@@ -46,7 +48,10 @@ func (c *Client) EnsureContainerNetwork(options *aranyagopb.ContainerNetworkEnsu
 }
 
 func (c *Client) EnsurePodNetwork(
-	namespace, name string, ctrID string, pid uint32, opts *aranyagopb.PodNetworkSpec,
+	namespace, name string,
+	ctrID string,
+	pid uint32,
+	opts *aranyagopb.PodNetworkSpec,
 ) (ipv4, ipv6 string, err error) {
 	var capArgs []*abbotgopb.CNICapArgs
 	capArgs = append(capArgs, &abbotgopb.CNICapArgs{
@@ -108,7 +113,7 @@ func (c *Client) EnsurePodNetwork(
 		})
 	}
 
-	result, err := c.doRequest(newReqForLinkCreate(namespace, name, ctrID, pid, capArgs))
+	result, err := c.doRequest(newReqForLinkEnsure(namespace, name, ctrID, pid, capArgs))
 	if err != nil {
 		return "", "", err
 	}
@@ -146,86 +151,82 @@ func (c *Client) GetPodIPAddresses(pid uint32) (ipv4, ipv6 string, err error) {
 	return
 }
 
-func newReqForLinkCreate(
-	podNamespace, podName, pauseCtrID string,
+func encodeRequest(req *abbotgopb.Request) (string, error) {
+	data, err := req.Marshal()
+	if err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(data), nil
+}
+
+func (c *Client) doRequest(req *abbotgopb.Request, err error) (*abbotgopb.Response, error) {
+	if err != nil {
+		return nil, err
+	}
+
+	encodedReq, err := encodeRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	output := new(bytes.Buffer)
+	err = c.execAbbot([]string{"request", encodedReq}, output)
+	result := output.String()
+
+	if err != nil {
+		if result != "" {
+			return nil, fmt.Errorf("%s: %w", result, err)
+		}
+
+		return nil, err
+	}
+
+	respBytes, err := base64.StdEncoding.DecodeString(result)
+	if err != nil {
+		// not base64 encoded, error happened
+		return nil, fmt.Errorf(result)
+	}
+
+	resp := new(abbotgopb.Response)
+	err = resp.Unmarshal(respBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func newReqForLinkEnsure(
+	podNamespace, podName string,
+	pauseCtrID string,
 	pid uint32,
 	capArgs []*abbotgopb.CNICapArgs,
-) *abbotgopb.Request {
-	return &abbotgopb.Request{
-		Action: abbotgopb.CREATE,
-		Option: &abbotgopb.Request_CreateOpts{
-			CreateOpts: &abbotgopb.CreateOptions{
-				ContainerId: pauseCtrID,
-				Pid:         pid,
-				CniArgs: map[string]string{
-					"IgnoreUnknown":              "true",
-					"K8S_POD_NAMESPACE":          podNamespace,
-					"K8S_POD_NAME":               podName,
-					"K8S_POD_INFRA_CONTAINER_ID": pauseCtrID,
-				},
-				CapArgs: capArgs,
-			},
-		},
+) (*abbotgopb.Request, error) {
+	cniArgs := map[string]string{
+		"IgnoreUnknown":              "true",
+		"K8S_POD_NAMESPACE":          podNamespace,
+		"K8S_POD_NAME":               podName,
+		"K8S_POD_INFRA_CONTAINER_ID": pauseCtrID,
 	}
+
+	// TODO: support static `IP` CNI_ARG
+
+	return abbotgopb.NewRequest(abbotgopb.NewContainerNetworkEnsureRequest(pauseCtrID, pid, capArgs, cniArgs))
 }
 
-func newReqForLinkDelete(pauseCtrID string, pid uint32) *abbotgopb.Request {
-	return &abbotgopb.Request{
-		Action: abbotgopb.DELETE,
-		Option: &abbotgopb.Request_DeleteLinkOpts{
-			DeleteLinkOpts: &abbotgopb.DeleteLinkOptions{
-				ContainerId: pauseCtrID,
-				Pid:         pid,
-			},
-		},
-	}
+func newReqForLinkDelete(pauseCtrID string, pid uint32) (*abbotgopb.Request, error) {
+	return abbotgopb.NewRequest(abbotgopb.NewContainerNetworkDeleteRequest(pauseCtrID, pid))
 }
 
-func newReqForConfigUpdate(ipv4Subnet, ipv6Subnet string) *abbotgopb.Request {
-	return &abbotgopb.Request{
-		Action: abbotgopb.UPDATE_CONFIG,
-		Option: &abbotgopb.Request_ConfigOpts{
-			ConfigOpts: &abbotgopb.ConfigOptions{
-				Ipv4Subnet: ipv4Subnet,
-				Ipv6Subnet: ipv6Subnet,
-			},
-		},
-	}
+func newReqForConfigUpdate(ipv4Subnet, ipv6Subnet string) (*abbotgopb.Request, error) {
+	return abbotgopb.NewRequest(abbotgopb.NewContainerNetworkConfigEnsureRequest(ipv4Subnet, ipv6Subnet))
 }
 
-func newReqForGetAddress(pid uint32) *abbotgopb.Request {
-	return &abbotgopb.Request{
-		Action: abbotgopb.GET_ADDR,
-		Option: &abbotgopb.Request_GetAddrOpts{
-			GetAddrOpts: &abbotgopb.GetAddrOptions{
-				Pid: pid,
-			},
-		},
-	}
+func newReqForGetAddress(pid uint32) (*abbotgopb.Request, error) {
+	return abbotgopb.NewRequest(abbotgopb.NewContainerNetworkQueryRequest("", pid))
 }
 
-// func newReqForUpdateLink(containerID, ipv4PodCIDR, ipv6PodCIDR string, pid uint32) *abbotgopb.Request {
-// 	return &abbotgopb.Request{
-// 		Action: abbotgopb.UPDATE_LINK,
-// 		Option: &abbotgopb.Request_UpdateLinkOpts{
-// 			UpdateLinkOpts: &abbotgopb.UpdateLinkOptions{
-// 				ContainerId: containerID,
-// 				Pid:         pid,
-// 				Ipv4PodCidr: ipv4PodCIDR,
-// 				Ipv6PodCidr: ipv6PodCIDR,
-// 			},
-// 		},
-// 	}
-// }
-
-func newReqForRestoreAddress(containerID string, pid uint32) *abbotgopb.Request {
-	return &abbotgopb.Request{
-		Action: abbotgopb.RESTORE_LINK,
-		Option: &abbotgopb.Request_RestoreLinkOpts{
-			RestoreLinkOpts: &abbotgopb.RestoreLinkOptions{
-				ContainerId: containerID,
-				Pid:         pid,
-			},
-		},
-	}
+func newReqForRestoreAddress(containerID string, pid uint32) (*abbotgopb.Request, error) {
+	return abbotgopb.NewRequest(abbotgopb.NewContainerNetworkRestoreRequest(containerID, pid))
 }

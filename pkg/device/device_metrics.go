@@ -41,7 +41,7 @@ func (d *Device) CollectMetrics(resultCh chan<- *Metric) {
 			defer wg.Done()
 
 			for spec := range collectCh {
-				metricValues, err := d.conn.CollectMetrics(spec.ParamsForCollecting)
+				metricValues, err := d.conn.CollectMetrics(d.ctx, spec.ParamsForCollecting)
 				if err != nil {
 					// TODO: log error
 					continue
@@ -55,9 +55,9 @@ func (d *Device) CollectMetrics(resultCh chan<- *Metric) {
 					}
 
 					ts := mv.Timestamp
-					if ts == nil {
+					if ts == 0 {
 						now := time.Now()
-						ts = &now
+						ts = now.UnixNano()
 					}
 
 					valueType := dto.MetricType_UNTYPED
@@ -72,7 +72,7 @@ func (d *Device) CollectMetrics(resultCh chan<- *Metric) {
 					case resultCh <- &Metric{
 						Name:      spec.Name,
 						Value:     value,
-						Timestamp: ts.UnixNano() / 1000000,
+						Timestamp: ts / 1000000,
 						ValueType: valueType,
 
 						ReportKey: spec.ReportKey,

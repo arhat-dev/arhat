@@ -107,7 +107,7 @@ func (r *dockerRuntime) execInContainer(
 	ctrID string,
 	stdin io.Reader,
 	stdout, stderr io.Writer,
-	resizeCh <-chan *aranyagopb.ContainerTerminalResizeCmd,
+	resizeCh <-chan *aranyagopb.TerminalResizeCmd,
 	command []string,
 	tty bool,
 ) *aranyagopb.ErrorMsg {
