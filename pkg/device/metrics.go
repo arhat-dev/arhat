@@ -132,9 +132,9 @@ func (m *Manager) CollectMetrics(deviceIDs ...string) (
 
 				target := reportViaNodeMetrics
 				switch {
-				case result.ReportKey.ReporterHashHex != "" && result.ReportKey.ParamsHashHex != "":
+				case result.ReportKey.ReporterName != "" && result.ReportKey.ParamsHashHex != "":
 					target = reportViaStandaloneClient
-				case result.ReportKey.ReporterHashHex == "" && result.ReportKey.ParamsHashHex != "":
+				case result.ReportKey.ReporterName == "" && result.ReportKey.ParamsHashHex != "":
 					target = reportViaAgentClient
 				}
 
@@ -346,7 +346,7 @@ func normalizeCollectedMetrics(
 			p = mr.ParamsForReporting
 		}
 
-		reporterHashHexes = append(reporterHashHexes, k.ReporterHashHex)
+		reporterHashHexes = append(reporterHashHexes, k.ReporterName)
 		params = append(params, p)
 		metrics = append(metrics, collection)
 	}

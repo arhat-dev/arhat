@@ -83,3 +83,4 @@ Session.vim
 
 coverage*.txt
 *.log
+e2e/

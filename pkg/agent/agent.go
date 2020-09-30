@@ -19,33 +19,31 @@ package agent
 import (
 	"compress/gzip"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	goruntime "runtime"
 	"sync"
 	"sync/atomic"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-
-	"arhat.dev/arhat/pkg/device"
-
 	"arhat.dev/aranya-proto/aranyagopb"
-	"arhat.dev/pkg/log"
-	"arhat.dev/pkg/wellknownerrors"
-	"github.com/gogo/protobuf/proto"
-
 	"arhat.dev/arhat/pkg/conf"
+	"arhat.dev/arhat/pkg/device"
 	"arhat.dev/arhat/pkg/runtime"
 	"arhat.dev/arhat/pkg/runtime/none"
 	"arhat.dev/arhat/pkg/storage"
 	"arhat.dev/arhat/pkg/types"
 	"arhat.dev/arhat/pkg/util/errconv"
+	"arhat.dev/arhat/pkg/util/extensionutil"
 	"arhat.dev/arhat/pkg/util/manager"
+	"arhat.dev/pkg/log"
+	"arhat.dev/pkg/wellknownerrors"
+	"github.com/gogo/protobuf/proto"
 )
 
 var (
@@ -96,8 +94,7 @@ func NewAgent(appCtx context.Context, config *conf.ArhatConfig) (*Agent, error) 
 	}
 
 	var (
-		srv           *grpc.Server
-		deviceManager *device.Manager
+		deviceManager = device.NewManager(ctx, &config.Extension.Devices)
 	)
 	if config.Extension.Enabled {
 		u, err := url.Parse(config.Extension.Listen)
@@ -119,25 +116,23 @@ func NewAgent(appCtx context.Context, config *conf.ArhatConfig) (*Agent, error) 
 			return nil, fmt.Errorf("failed to create listener for extension server: %w", err)
 		}
 
-		var grpcSrvOptions []grpc.ServerOption
-
-		tlsConfig, err := config.Extension.TLS.GetTLSConfig()
+		tlsConfig, err := config.Extension.TLS.GetTLSConfig(true)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create tls config for extension server: %w", err)
 		}
 
 		if tlsConfig != nil {
-			grpcSrvOptions = append(grpcSrvOptions, grpc.Creds(credentials.NewTLS(tlsConfig)))
+			l = tls.NewListener(l, tlsConfig)
 		}
 
-		srv = grpc.NewServer(grpcSrvOptions...)
-
-		deviceManager = device.NewManager(ctx, &config.Extension.Devices, srv)
+		mux := http.NewServeMux()
+		mux.Handle("/ext/devices", extensionutil.NewHandler(deviceManager.Sync))
+		srv := &http.Server{Handler: mux}
 
 		go func() {
-			err := srv.Serve(l)
-			if err != nil && !errors.Is(err, grpc.ErrServerStopped) {
-				panic(err)
+			err2 := srv.Serve(l)
+			if err2 != nil && errors.Is(err, http.ErrServerClosed) {
+				panic(err2)
 			}
 		}()
 	}

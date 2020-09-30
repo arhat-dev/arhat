@@ -1,14 +1,14 @@
 # arhat.dev/abbot-proto v0.0.0-20200929091836-58e1aaf44aba
 ## explicit
 arhat.dev/abbot-proto/abbotgopb
-# arhat.dev/aranya-proto v0.0.0-20200929162955-66422c6e140c
+# arhat.dev/aranya-proto v0.0.0-20200929205310-ef91c409ad90
 ## explicit
 arhat.dev/aranya-proto/aranyagopb
 arhat.dev/aranya-proto/aranyagopb/aranyagoconst
-# arhat.dev/arhat-proto v0.0.0-20200929144101-812c7dd3a0a8
+# arhat.dev/arhat-proto v0.0.0-20200930174402-b7b2c57c1e82
 ## explicit
 arhat.dev/arhat-proto/arhatgopb
-# arhat.dev/pkg v0.0.0-20200922193124-416462163776
+# arhat.dev/pkg v0.0.0-20200930092909-aa3af7acc29c
 ## explicit
 arhat.dev/pkg/backoff
 arhat.dev/pkg/confhelper
@@ -792,7 +792,7 @@ golang.org/x/crypto/openpgp/packet
 golang.org/x/crypto/openpgp/s2k
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/ssh/terminal
-# golang.org/x/net v0.0.0-20200927032502-5d4f70055728 => github.com/golang/net v0.0.0-20200707034311-ab3426394381
+# golang.org/x/net v0.0.0-20200707034311-ab3426394381 => github.com/golang/net v0.0.0-20200707034311-ab3426394381
 golang.org/x/net/bpf
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
@@ -843,7 +843,7 @@ google.golang.org/appengine/internal/log
 google.golang.org/appengine/internal/remote_api
 google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/urlfetch
-# google.golang.org/genproto v0.0.0-20200925023002-c2d885f95484
+# google.golang.org/genproto v0.0.0-20200806141610-86f49bd18e98
 google.golang.org/genproto/googleapis/api/httpbody
 google.golang.org/genproto/googleapis/rpc/status
 google.golang.org/genproto/protobuf/field_mask
@@ -888,12 +888,13 @@ google.golang.org/grpc/serviceconfig
 google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
-# google.golang.org/protobuf v1.25.0
+# google.golang.org/protobuf v1.24.0
 google.golang.org/protobuf/encoding/protojson
 google.golang.org/protobuf/encoding/prototext
 google.golang.org/protobuf/encoding/protowire
 google.golang.org/protobuf/internal/descfmt
 google.golang.org/protobuf/internal/descopts
+google.golang.org/protobuf/internal/detectknown
 google.golang.org/protobuf/internal/detrand
 google.golang.org/protobuf/internal/encoding/defval
 google.golang.org/protobuf/internal/encoding/json
@@ -901,11 +902,12 @@ google.golang.org/protobuf/internal/encoding/messageset
 google.golang.org/protobuf/internal/encoding/tag
 google.golang.org/protobuf/internal/encoding/text
 google.golang.org/protobuf/internal/errors
+google.golang.org/protobuf/internal/fieldnum
 google.golang.org/protobuf/internal/fieldsort
 google.golang.org/protobuf/internal/filedesc
 google.golang.org/protobuf/internal/filetype
 google.golang.org/protobuf/internal/flags
-google.golang.org/protobuf/internal/genid
+google.golang.org/protobuf/internal/genname
 google.golang.org/protobuf/internal/impl
 google.golang.org/protobuf/internal/mapsort
 google.golang.org/protobuf/internal/pragma

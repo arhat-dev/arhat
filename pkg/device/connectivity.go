@@ -12,21 +12,21 @@ import (
 )
 
 func NewConnectivity(
-	ctx context.Context,
+	stopSig <-chan struct{},
 	id uint64,
-	srv arhatgopb.DeviceExtension_SyncServer,
-	msgCh <-chan *arhatgopb.DeviceMsg,
+	cmdCh chan<- *arhatgopb.Cmd,
+	msgCh <-chan *arhatgopb.Msg,
 	onClosed func(),
 ) *Connectivity {
 	c := &Connectivity{
-		ctx: ctx,
-		id:  id,
+		stopSig: stopSig,
+		id:      id,
 
+		cmdCh:     cmdCh,
 		msgCh:     msgCh,
-		expecting: make(map[uint64]chan *arhatgopb.DeviceMsg),
+		expecting: make(map[uint64]chan *arhatgopb.Msg),
 
 		onClosed: onClosed,
-		srv:      srv,
 		mu:       new(sync.RWMutex),
 	}
 
@@ -36,21 +36,22 @@ func NewConnectivity(
 }
 
 type Connectivity struct {
-	ctx   context.Context
-	id    uint64
-	msgCh <-chan *arhatgopb.DeviceMsg
+	stopSig <-chan struct{}
+	id      uint64
+
+	cmdCh chan<- *arhatgopb.Cmd
+	msgCh <-chan *arhatgopb.Msg
 
 	seq       uint64
-	expecting map[uint64]chan *arhatgopb.DeviceMsg
+	expecting map[uint64]chan *arhatgopb.Msg
 
 	onClosed func()
-	srv      arhatgopb.DeviceExtension_SyncServer
 	mu       *sync.RWMutex
 }
 
 func (c *Connectivity) handleMsgs() {
 	for m := range c.msgCh {
-		if m.DeviceId != c.id {
+		if m.Id != c.id {
 			// TODO: log error
 			continue
 		}
@@ -68,9 +69,7 @@ func (c *Connectivity) handleMsgs() {
 
 			msg := m
 			select {
-			case <-c.ctx.Done():
-				return
-			case <-c.srv.Context().Done():
+			case <-c.stopSig:
 				return
 			case ch <- msg:
 				close(ch)
@@ -86,7 +85,7 @@ func (c *Connectivity) nextSeq() uint64 {
 	return c.seq
 }
 
-func (c *Connectivity) sendCmd(ctx context.Context, p proto.Marshaler) (*arhatgopb.DeviceMsg, error) {
+func (c *Connectivity) sendCmd(ctx context.Context, p proto.Marshaler) (*arhatgopb.Msg, error) {
 	seq := c.nextSeq()
 	cmd, err := arhatgopb.NewDeviceCmd(c.id, seq, p)
 	if err != nil {
@@ -98,14 +97,17 @@ func (c *Connectivity) sendCmd(ctx context.Context, p proto.Marshaler) (*arhatgo
 		return nil, fmt.Errorf("unexpected used ack")
 	}
 
-	ch := make(chan *arhatgopb.DeviceMsg, 1)
+	ch := make(chan *arhatgopb.Msg, 1)
 	c.mu.Lock()
 	c.expecting[seq] = ch
 	c.mu.Unlock()
 
-	err = c.srv.Send(cmd)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send device cmd: %w", err)
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-c.stopSig:
+		return nil, fmt.Errorf("closed")
+	case c.cmdCh <- cmd:
 	}
 
 	defer func() {
@@ -117,10 +119,8 @@ func (c *Connectivity) sendCmd(ctx context.Context, p proto.Marshaler) (*arhatgo
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case <-c.ctx.Done():
-		return nil, c.ctx.Err()
-	case <-c.srv.Context().Done():
-		return nil, c.srv.Context().Err()
+	case <-c.stopSig:
+		return nil, fmt.Errorf("closed")
 	case msg := <-ch:
 		return msg, nil
 	}
@@ -145,7 +145,7 @@ func (c *Connectivity) Operate(ctx context.Context, params map[string]string, da
 		return nil, fmt.Errorf("unexpected non operation result msg")
 	}
 
-	m := new(arhatgopb.DeviceOperateResultMsg)
+	m := new(arhatgopb.DeviceOperationResultMsg)
 	err = m.Unmarshal(msg.Payload)
 	if err != nil {
 		return nil, fmt.Errorf(
@@ -185,7 +185,7 @@ func (c *Connectivity) CollectMetrics(
 }
 
 func (c *Connectivity) Close() error {
-	msg, err := c.sendCmd(c.ctx, &arhatgopb.DeviceCloseCmd{})
+	msg, err := c.sendCmd(context.TODO(), &arhatgopb.DeviceCloseCmd{})
 	if err != nil {
 		return err
 	}
@@ -193,8 +193,8 @@ func (c *Connectivity) Close() error {
 	return getError("failed to close connectivity", msg)
 }
 
-func getError(desc string, msg *arhatgopb.DeviceMsg) error {
-	if msg.Kind != arhatgopb.MSG_DEV_ERROR {
+func getError(desc string, msg *arhatgopb.Msg) error {
+	if msg.Kind != arhatgopb.MSG_ERROR {
 		return nil
 	}
 

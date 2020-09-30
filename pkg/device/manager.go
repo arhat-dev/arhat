@@ -9,10 +9,9 @@ import (
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/arhat-proto/arhatgopb"
-	"arhat.dev/pkg/wellknownerrors"
-	"google.golang.org/grpc"
-
 	"arhat.dev/arhat/pkg/conf"
+	"arhat.dev/pkg/log"
+	"arhat.dev/pkg/wellknownerrors"
 )
 
 type FactoryFunc func(
@@ -57,11 +56,11 @@ func (m *Manager) NewConnectivity(
 	return factory(m.ctx, target, params, tlsConfig)
 }
 
-func NewManager(ctx context.Context, config *conf.DeviceExtensionConfig, server *grpc.Server) *Manager {
-
-	mgr := &Manager{
+func NewManager(ctx context.Context, config *conf.DeviceExtensionConfig) *Manager {
+	return &Manager{
 		ctx: ctx,
 
+		logger: log.Log.WithName("device"),
 		config: config,
 
 		all:              make(map[string]*Connectivity),
@@ -74,15 +73,12 @@ func NewManager(ctx context.Context, config *conf.DeviceExtensionConfig, server 
 
 		supportedConnectivity: make(map[string]FactoryFunc),
 	}
-
-	arhatgopb.RegisterDeviceExtensionServer(server, mgr)
-
-	return mgr
 }
 
 type Manager struct {
 	ctx context.Context
 
+	logger log.Interface
 	config *conf.DeviceExtensionConfig
 
 	// key: connectivity_hash_hex
@@ -99,16 +95,25 @@ type Manager struct {
 	supportedConnectivity map[string]FactoryFunc
 }
 
-func (m *Manager) Sync(srv arhatgopb.DeviceExtension_SyncServer) error {
+func (m *Manager) Sync(stopSig <-chan struct{}, msgCh <-chan *arhatgopb.Msg, cmdCh chan<- *arhatgopb.Cmd) error {
 	var (
 		errCh = make(chan error)
 	)
 
 	sendErr := func(err error) {
 		select {
-		case <-srv.Context().Done():
+		case <-stopSig:
 		case <-m.ctx.Done():
 		case errCh <- err:
+		}
+	}
+
+	sendCmd := func(cmd *arhatgopb.Cmd) {
+		m.logger.V("sending cmd")
+		select {
+		case <-stopSig:
+		case <-m.ctx.Done():
+		case cmdCh <- cmd:
 		}
 	}
 
@@ -124,109 +129,102 @@ func (m *Manager) Sync(srv arhatgopb.DeviceExtension_SyncServer) error {
 			deviceID++
 			return deviceID
 		}
-		connectedDevices := make(map[uint64]chan *arhatgopb.DeviceMsg)
-		for {
-			msg, err := srv.Recv()
-			if err != nil {
-				return
-			}
+		connectedDevices := make(map[uint64]chan *arhatgopb.Msg)
 
-			if !started {
-				if msg.Kind != arhatgopb.MSG_DEV_REGISTER {
-					sendErr(fmt.Errorf("expecting register as first message"))
+		m.logger.I("receiving msgs")
+		for msg := range msgCh {
+			if started {
+				switch msg.Kind {
+				case arhatgopb.MSG_REGISTER:
+					sendErr(fmt.Errorf("unexpected multiple register message"))
 					return
-				}
+				default:
+					deviceMU.RLock()
+					ch, ok := connectedDevices[msg.Id]
+					deviceMU.RUnlock()
+					if !ok {
+						// TODO: log error
+						continue
+					}
 
-				r := new(arhatgopb.DeviceRegisterMsg)
-				err := r.Unmarshal(msg.Payload)
-				if err != nil {
-					sendErr(fmt.Errorf("failed to unmarhsal very first register message: %w", err))
-					return
-				}
-
-				started = true
-
-				err = m.RegisterConnectivity(r.Name,
-					func(
-						ctx context.Context,
-						target string,
-						params map[string]string,
-						tlsConfig *aranyagopb.TLSConfig,
-					) (*Connectivity, error) {
-						deviceID := nextDeviceID()
-						var cmd *arhatgopb.DeviceCmd
-						cmd, err = arhatgopb.NewDeviceCmd(deviceID, 0, &arhatgopb.DeviceConnectCmd{
-							Target: target,
-							Params: params,
-							Tls: &arhatgopb.TLSConfig{
-								ServerName:         tlsConfig.ServerName,
-								InsecureSkipVerify: tlsConfig.InsecureSkipVerify,
-								MinVersion:         tlsConfig.MinVersion,
-								MaxVersion:         tlsConfig.MaxVersion,
-								CaCert:             tlsConfig.CaCert,
-								Cert:               tlsConfig.Cert,
-								Key:                tlsConfig.Key,
-								CipherSuites:       tlsConfig.CipherSuites,
-								NextProtos:         tlsConfig.NextProtos,
-							},
-						})
-						if err != nil {
-							return nil, fmt.Errorf("failed to create device cmd: %w", err)
+					// TODO: use goroutine pool
+					go func() {
+						select {
+						case <-stopSig:
+						case <-m.ctx.Done():
+						case ch <- msg:
 						}
-
-						err = srv.Send(cmd)
-						if err != nil {
-							return nil, err
-						}
-
-						msgCh := make(chan *arhatgopb.DeviceMsg)
-						deviceMU.Lock()
-						connectedDevices[deviceID] = msgCh
-						deviceMU.Unlock()
-
-						return NewConnectivity(m.ctx, deviceID, srv, msgCh, func() {
-							deviceMU.Lock()
-							delete(connectedDevices, deviceID)
-							deviceMU.Unlock()
-						}), nil
-					},
-				)
-
-				if err != nil {
-					sendErr(err)
-					return
+					}()
 				}
 
 				continue
 			}
 
-			switch msg.Kind {
-			case arhatgopb.MSG_DEV_REGISTER:
-				sendErr(fmt.Errorf("unexpected multiple register message"))
+			if msg.Kind != arhatgopb.MSG_REGISTER {
+				sendErr(fmt.Errorf("expecting register as first message"))
 				return
-			default:
-				deviceMU.RLock()
-				ch, ok := connectedDevices[msg.DeviceId]
-				deviceMU.RUnlock()
-				if !ok {
-					// TODO: log error
-					continue
-				}
+			}
 
-				// TODO: use goroutine pool
-				go func() {
-					select {
-					case <-srv.Context().Done():
-					case <-m.ctx.Done():
-					case ch <- msg:
+			r := new(arhatgopb.RegisterMsg)
+			err := r.Unmarshal(msg.Payload)
+			if err != nil {
+				sendErr(fmt.Errorf("failed to unmarhsal very first register message: %w", err))
+				return
+			}
+
+			started = true
+
+			err = m.RegisterConnectivity(r.Name,
+				func(
+					ctx context.Context,
+					target string,
+					params map[string]string,
+					tlsConfig *aranyagopb.TLSConfig,
+				) (*Connectivity, error) {
+					deviceID := nextDeviceID()
+					var cmd *arhatgopb.Cmd
+					cmd, err = arhatgopb.NewDeviceCmd(deviceID, 0, &arhatgopb.DeviceConnectCmd{
+						Target: target,
+						Params: params,
+						Tls: &arhatgopb.TLSConfig{
+							ServerName:         tlsConfig.ServerName,
+							InsecureSkipVerify: tlsConfig.InsecureSkipVerify,
+							MinVersion:         tlsConfig.MinVersion,
+							MaxVersion:         tlsConfig.MaxVersion,
+							CaCert:             tlsConfig.CaCert,
+							Cert:               tlsConfig.Cert,
+							Key:                tlsConfig.Key,
+							CipherSuites:       tlsConfig.CipherSuites,
+							NextProtos:         tlsConfig.NextProtos,
+						},
+					})
+					if err != nil {
+						return nil, fmt.Errorf("failed to create device cmd: %w", err)
 					}
-				}()
+
+					msgCh := make(chan *arhatgopb.Msg)
+					deviceMU.Lock()
+					connectedDevices[deviceID] = msgCh
+					deviceMU.Unlock()
+
+					sendCmd(cmd)
+
+					return NewConnectivity(stopSig, deviceID, cmdCh, msgCh, func() {
+						deviceMU.Lock()
+						delete(connectedDevices, deviceID)
+						deviceMU.Unlock()
+					}), nil
+				},
+			)
+
+			if err != nil {
+				// TODO: log error, do not send error
 			}
 		}
 	}()
 
 	select {
-	case <-srv.Context().Done():
+	case <-stopSig:
 		return nil
 	case <-m.ctx.Done():
 		return nil
@@ -236,13 +234,13 @@ func (m *Manager) Sync(srv arhatgopb.DeviceExtension_SyncServer) error {
 }
 
 func (m *Manager) Ensure(cmd *aranyagopb.DeviceEnsureCmd) (err error) {
-	if cmd.ConnectorHashHex == "" {
-		return fmt.Errorf("invalid empty connectivity hash hex")
+	if cmd.Name == "" {
+		return fmt.Errorf("invalid empty name")
 	}
 
 	switch cmd.Kind {
 	case aranyagopb.DEVICE_TYPE_NORMAL:
-		if cmd.DeviceId == "" {
+		if cmd.Name == "" {
 			return fmt.Errorf("invalid empty device id for normal device")
 		}
 	case aranyagopb.DEVICE_TYPE_METRICS_REPORTER:
@@ -257,7 +255,7 @@ func (m *Manager) Ensure(cmd *aranyagopb.DeviceEnsureCmd) (err error) {
 		m.mu.RLock()
 		defer m.mu.RUnlock()
 
-		if _, ok := m.all[cmd.ConnectorHashHex]; ok {
+		if _, ok := m.all[cmd.Name]; ok {
 			// TODO: ensure config up to date
 			return wellknownerrors.ErrAlreadyExists
 		}
@@ -282,7 +280,7 @@ func (m *Manager) Ensure(cmd *aranyagopb.DeviceEnsureCmd) (err error) {
 			_ = conn.Close()
 		} else {
 			m.mu.Lock()
-			m.all[cmd.ConnectorHashHex] = conn
+			m.all[cmd.Name] = conn
 			m.mu.Unlock()
 		}
 	}()
@@ -290,7 +288,7 @@ func (m *Manager) Ensure(cmd *aranyagopb.DeviceEnsureCmd) (err error) {
 	switch cmd.Kind {
 	case aranyagopb.DEVICE_TYPE_NORMAL:
 		dev := NewDevice(
-			m.ctx, cmd.ConnectorHashHex, conn, cmd.Operations, cmd.Metrics,
+			m.ctx, cmd.Name, conn, cmd.Operations, cmd.Metrics,
 		)
 
 		// nolint:unparam
@@ -298,18 +296,18 @@ func (m *Manager) Ensure(cmd *aranyagopb.DeviceEnsureCmd) (err error) {
 			m.mu.Lock()
 			defer m.mu.Unlock()
 
-			m.devices[cmd.DeviceId] = dev
+			m.devices[cmd.Name] = dev
 			return nil
 		}()
 	case aranyagopb.DEVICE_TYPE_METRICS_REPORTER:
-		reporter := NewMetricsReporter(m.ctx, cmd.ConnectorHashHex, conn)
+		reporter := NewMetricsReporter(m.ctx, cmd.Name, conn)
 
 		// nolint:unparam
 		err = func() error {
 			m.mu.Lock()
 			defer m.mu.Unlock()
 
-			m.metricsReporters[cmd.ConnectorHashHex] = reporter
+			m.metricsReporters[cmd.Name] = reporter
 			return nil
 		}()
 	}
@@ -331,7 +329,7 @@ func (m *Manager) Delete(ids ...string) (result []*aranyagopb.DeviceStatusMsg) {
 					// TODO: log error
 				}
 
-				return aranyagopb.DEVICE_TYPE_NORMAL, d.connHashHex, true
+				return aranyagopb.DEVICE_TYPE_NORMAL, d.name, true
 			}
 
 			r, ok := m.metricsReporters[id]
@@ -342,10 +340,10 @@ func (m *Manager) Delete(ids ...string) (result []*aranyagopb.DeviceStatusMsg) {
 					// TODO: log error
 				}
 
-				return aranyagopb.DEVICE_TYPE_METRICS_REPORTER, r.connHashHex, true
+				return aranyagopb.DEVICE_TYPE_METRICS_REPORTER, r.name, true
 			}
 
-			return aranyagopb.DEVICE_TYPE_UNSPECIFIED, "", false
+			return 0, "", false
 		}()
 
 		if !found {

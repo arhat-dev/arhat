@@ -45,7 +45,7 @@ func NewCoAPClient(agent types.Agent, cfg interface{}) (_ types.ConnectivityClie
 	)
 
 	if config.TLS.Enabled {
-		tlsCfg, err = config.TLS.GetTLSConfig()
+		tlsCfg, err = config.TLS.GetTLSConfig(false)
 		if err != nil {
 			return nil, err
 		}

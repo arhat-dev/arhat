@@ -31,8 +31,8 @@ func hashStringMap(m map[string]string) string {
 }
 
 type MetricReportKey struct {
-	ReporterHashHex string
-	ParamsHashHex   string
+	ReporterName  string
+	ParamsHashHex string
 }
 
 // MetricSpec defines how to collect one metric from device
@@ -65,7 +65,7 @@ func NewDevice(
 			switch m.ReportMethod {
 			case aranyagopb.REPORT_WITH_NODE_METRICS:
 			case aranyagopb.REPORT_WITH_STANDALONE_CLIENT:
-				reportKey.ReporterHashHex = m.ReporterHashHex
+				reportKey.ReporterName = m.ReporterName
 				fallthrough
 			case aranyagopb.REPORT_WITH_ARHAT_CONNECTIVITY:
 				reportKey.ParamsHashHex = hashStringMap(m.ReporterParams)

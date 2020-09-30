@@ -12,8 +12,8 @@ import (
 type baseDevice struct {
 	ctx context.Context
 
-	connHashHex string
-	conn        *Connectivity
+	name string
+	conn *Connectivity
 
 	state    aranyagopb.DeviceState
 	stateMsg string
@@ -21,12 +21,12 @@ type baseDevice struct {
 	mu *sync.RWMutex
 }
 
-func newBaseDevice(ctx context.Context, connHashHex string, conn *Connectivity) *baseDevice {
+func newBaseDevice(ctx context.Context, name string, conn *Connectivity) *baseDevice {
 	return &baseDevice{
 		ctx: ctx,
 
-		connHashHex: connHashHex,
-		conn:        conn,
+		name: name,
+		conn: conn,
 
 		state:    aranyagopb.DEVICE_STATE_CONNECTED,
 		stateMsg: "Connected",
@@ -39,5 +39,5 @@ func (d *baseDevice) Status() *aranyagopb.DeviceStatusMsg {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
-	return aranyagopb.NewDeviceStatusMsg(aranyagopb.DEVICE_TYPE_NORMAL, d.connHashHex, d.state, d.stateMsg)
+	return aranyagopb.NewDeviceStatusMsg(aranyagopb.DEVICE_TYPE_NORMAL, d.name, d.state, d.stateMsg)
 }

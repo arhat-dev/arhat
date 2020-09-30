@@ -62,7 +62,7 @@ func NewGRPCClient(agent types.Agent, cfg interface{}) (types.ConnectivityClient
 		grpc.WithAuthority(config.Endpoint),
 	}
 
-	tlsConfig, err := config.TLS.GetTLSConfig()
+	tlsConfig, err := config.TLS.GetTLSConfig(false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client tls config: %w", err)
 	}

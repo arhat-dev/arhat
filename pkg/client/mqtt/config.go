@@ -172,7 +172,7 @@ func (c *ConnectivityMQTT) GetConnectInfo() (*ConnectivityMQTTConnectInfo, error
 	}
 
 	var err error
-	result.TLSConfig, err = c.TLS.GetTLSConfig()
+	result.TLSConfig, err = c.TLS.GetTLSConfig(false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client tls config: %w", err)
 	}

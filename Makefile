@@ -29,6 +29,7 @@ vendor:
 
 # testing
 include scripts/test/unit.mk
+include scripts/test/e2e.mk
 
 # binary build
 include scripts/build/arhat-none.mk

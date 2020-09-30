@@ -18,7 +18,7 @@ func (b *Agent) handleDeviceMetricsCollect(sid uint64, data []byte) {
 	}
 
 	b.processInNewGoroutine(sid, "device.metrics", func() {
-		metricsForNode, paramsForAgent, metricsForAgent := b.devices.CollectMetrics(cmd.DeviceIds...)
+		metricsForNode, paramsForAgent, metricsForAgent := b.devices.CollectMetrics(cmd.DeviceNames...)
 		_, _ = paramsForAgent, metricsForAgent
 		// TODO: add agent metrics report support
 
