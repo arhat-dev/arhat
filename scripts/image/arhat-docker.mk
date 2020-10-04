@@ -19,6 +19,9 @@ image.build.arhat-docker.linux.x86:
 image.build.arhat-docker.linux.amd64:
 	sh scripts/image/build.sh $@
 
+image.build.arhat-docker.linux.armv5:
+	sh scripts/image/build.sh $@
+
 image.build.arhat-docker.linux.armv6:
 	sh scripts/image/build.sh $@
 
@@ -31,6 +34,9 @@ image.build.arhat-docker.linux.arm64:
 image.build.arhat-docker.linux.ppc64le:
 	sh scripts/image/build.sh $@
 
+image.build.arhat-docker.linux.mips64le:
+	sh scripts/image/build.sh $@
+
 image.build.arhat-docker.linux.s390x:
 	sh scripts/image/build.sh $@
 
@@ -39,9 +45,11 @@ image.build.arhat-docker.linux.all: \
 	image.build.arhat-docker.linux.arm64 \
 	image.build.arhat-docker.linux.armv7 \
 	image.build.arhat-docker.linux.armv6 \
+	image.build.arhat-docker.linux.armv5 \
 	image.build.arhat-docker.linux.x86 \
 	image.build.arhat-docker.linux.s390x \
-	image.build.arhat-docker.linux.ppc64le
+	image.build.arhat-docker.linux.ppc64le \
+	image.build.arhat-docker.linux.mips64le
 
 image.build.arhat-docker.windows.amd64:
 	sh scripts/image/build.sh $@
@@ -60,6 +68,9 @@ image.push.arhat-docker.linux.x86:
 image.push.arhat-docker.linux.amd64:
 	sh scripts/image/push.sh $@
 
+image.push.arhat-docker.linux.armv5:
+	sh scripts/image/push.sh $@
+
 image.push.arhat-docker.linux.armv6:
 	sh scripts/image/push.sh $@
 
@@ -72,6 +83,9 @@ image.push.arhat-docker.linux.arm64:
 image.push.arhat-docker.linux.ppc64le:
 	sh scripts/image/push.sh $@
 
+image.push.arhat-docker.linux.mips64le:
+	sh scripts/image/push.sh $@
+
 image.push.arhat-docker.linux.s390x:
 	sh scripts/image/push.sh $@
 
@@ -80,9 +94,11 @@ image.push.arhat-docker.linux.all: \
 	image.push.arhat-docker.linux.arm64 \
 	image.push.arhat-docker.linux.armv7 \
 	image.push.arhat-docker.linux.armv6 \
+	image.push.arhat-docker.linux.armv5 \
 	image.push.arhat-docker.linux.x86 \
 	image.push.arhat-docker.linux.s390x \
-	image.push.arhat-docker.linux.ppc64le
+	image.push.arhat-docker.linux.ppc64le \
+	image.push.arhat-docker.linux.mips64le
 
 image.push.arhat-docker.windows.amd64:
 	sh scripts/image/push.sh $@
