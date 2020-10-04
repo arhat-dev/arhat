@@ -10,7 +10,23 @@ end_of_line = lf
 indent_style = tab
 indent_size = 4
 
-[{*.yml,*.yaml}]
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+[*.json]
+indent_style = space
+indent_size = 2
+
+[*.{js,jsx,ts}]
+indent_style = space
+indent_size = 2
+
+[*.{css,html}]
+indent_style = space
+indent_size = 2
+
+[*.{sh,bash,fish}]
 indent_style = space
 indent_size = 2
 
