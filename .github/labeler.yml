@@ -1,16 +1,13 @@
 docs:
-- any:
-  - docs/**
-  - README.md
+- docs/**
+- README.md
 
 ci:
-- any:
-  - .github/**
-  - cicd/gitlab/**
-  - .gitlab-ci.yml
+- .github/**
+- cicd/gitlab/**
+- .gitlab-ci.yml
 
 dependency:
-- any:
-  - go.mod
-  - go.sum
-  - vendor/**
+- go.mod
+- go.sum
+- vendor/**

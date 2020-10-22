@@ -7,9 +7,18 @@ on:
     - rerequested
     - requested_action
   pull_request:
+    paths-ignore:
+    - docs/**
+    - cicd/deploy/charts/**
+    - README.md
     branches:
     - master
+    - "!deps/**"
   push:
+    paths-ignore:
+    - docs/**
+    - cicd/deploy/charts/**
+    - README.md
     branches:
     - master
     tags:
@@ -24,6 +33,7 @@ defaults:
 
 jobs:
   build-on-linux:
+    if: contains(github.head_ref, 'deps/') == false
     runs-on: ubuntu-latest
     steps:
     - uses: kolpav/purge-artifacts-action@v1
@@ -91,6 +101,7 @@ jobs:
         path: build
 
   build-arhat-libpod:
+    if: contains(github.head_ref, 'deps/') == false
     runs-on: ubuntu-latest
     container:
       image: arhatdev/builder-go:debian
@@ -145,6 +156,7 @@ jobs:
         path: build
 
   build-on-darwin:
+    if: contains(github.head_ref, 'deps/') == false
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
@@ -184,6 +196,7 @@ jobs:
         path: build
 
   build-on-windows:
+    if: contains(github.head_ref, 'deps/') == false
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2

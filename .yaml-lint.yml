@@ -5,10 +5,10 @@ yaml-files:
 ignore: |
   vendor/
   build/
-  private/
   cicd/deploy/charts/**/templates/
   cicd/deploy/charts/**/crds/
   cicd/deploy/kube/
+  private/
 
 rules:
   braces:
