@@ -6,7 +6,17 @@
 [![GoReportCard](https://goreportcard.com/badge/arhat.dev/arhat)](https://goreportcard.com/report/arhat.dev/arhat)
 [![codecov](https://codecov.io/gh/arhat-dev/arhat/branch/master/graph/badge.svg)](https://codecov.io/gh/arhat-dev/arhat)
 
-The EdgeDevice Agent for `aranya`
+The `EdgeDevice` Agent for `aranya`
+
+## Design
+
+- [Networking](./docs/Networking.md)
+- [Storage](./docs/Storage.md)
+- [Extension](./docs/Extension.md)
+
+## Build
+
+__TL;DR:__ have a look at the `build-on-{linux,darwin,windows}` jobs in [build workflow](./.github/workflows/build.yaml)
 
 ## LICENSE
 
