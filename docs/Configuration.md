@@ -6,6 +6,7 @@
   - [Section `runtime`](#section-runtime)
   - [Section `storage`](#section-storage)
   - [Section `connectivity`](#section-connectivity)
+  - [Section `extension`](#section-extension)
 - [Appendix.A: List of supported cipher suites](#appendixa-list-of-supported-cipher-suites)
 
 ## Overview
@@ -489,8 +490,9 @@ This section defines the functionality of [extension api](https://github.com/arh
 extension:
   # enable extension service or not
   enabled: true
-  # listen address, support tcp/unixsock
+  # listen address, support tcp/unix
   listen: unix:///var/run/arhat.sock
+
   tls:
     enabled: false
 
