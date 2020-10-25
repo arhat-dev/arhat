@@ -77,7 +77,7 @@ replace (
 	golang.org/x/net => github.com/golang/net v0.0.0-20200707034311-ab3426394381
 	golang.org/x/oauth2 => github.com/golang/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/sync => github.com/golang/sync v0.0.0-20200317015054-43a5402ce75a
-	golang.org/x/sys => github.com/golang/sys v0.0.0-20200821140526-fda516888d29
+	// golang.org/x/sys => github.com/golang/sys v0.0.0-20200821140526-fda516888d29
 	golang.org/x/text => github.com/golang/text v0.3.2
 	golang.org/x/tools => github.com/golang/tools v0.0.0-20201023174141-c8cfbd0f21e6
 	golang.org/x/xerrors => github.com/golang/xerrors v0.0.0-20200804184101-5ec99f83aff1
@@ -166,7 +166,7 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/vishvananda/netns v0.0.0-20200520041808-52d707b772fe // indirect
 	go.uber.org/multierr v1.6.0
-	golang.org/x/sys v0.0.0-20200909081042-eff7692f9009
+	golang.org/x/sys v0.0.0-20201024232916-9f70ab9862d5
 	golang.org/x/tools v0.0.0-20201023174141-c8cfbd0f21e6 // indirect
 	google.golang.org/grpc v1.33.1
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
