@@ -60,6 +60,8 @@ replace (
 	github.com/coreos/go-systemd/v22 => github.com/coreos/go-systemd/v22 v22.1.0
 	github.com/docker/distribution => github.com/docker/distribution v2.7.1+incompatible
 	github.com/godbus/dbus/v5 => github.com/godbus/dbus/v5 v5.0.3
+	github.com/moby/sys/mountinfo => github.com/moby/sys/mountinfo v0.4.0
+	github.com/moby/term => github.com/moby/term v0.0.0-20200915141129-7f0af18e79f2
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc91.0.20200708210054-ce54a9d4d79b
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.3-0.20200817204227-f9c09b4ea1df
 	github.com/opencontainers/runtime-tools => github.com/opencontainers/runtime-tools v0.9.1-0.20200714183735-07406c5828aa
@@ -77,7 +79,7 @@ replace (
 	golang.org/x/net => github.com/golang/net v0.0.0-20200707034311-ab3426394381
 	golang.org/x/oauth2 => github.com/golang/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/sync => github.com/golang/sync v0.0.0-20200317015054-43a5402ce75a
-	// golang.org/x/sys => github.com/golang/sys v0.0.0-20200821140526-fda516888d29
+	golang.org/x/sys => github.com/golang/sys v0.0.0-20200821140526-fda516888d29
 	golang.org/x/text => github.com/golang/text v0.3.2
 	golang.org/x/tools => github.com/golang/tools v0.0.0-20201023174141-c8cfbd0f21e6
 	golang.org/x/xerrors => github.com/golang/xerrors v0.0.0-20200804184101-5ec99f83aff1
