@@ -29,7 +29,27 @@ The interaction between the `arhat` and `extension plugin`:
 
 Extension endpoints are just http paths
 
-### `/etx/peripherals`: Interact with physical world
+### `/peripherals`: Interact with physical world
 
 - This extension is designed to support operations and metrics collections for all kinds of physical peripherals, sensors, routers...
 - More peripheral extension apps are comming soon
+
+## Configuration
+
+The extension configuration defines the functionality of [extension api (arhat-proto)](https://github.com/arhat-dev/arhat-proto) server
+
+```yaml
+extension:
+  # enable extension service or not
+  enabled: true
+  # listen address, support tcp/unix
+  listen: unix:///var/run/arhat.sock
+
+  tls:
+    enabled: false
+
+  # peripheral extension config
+  peripherals:
+    # cache unhandled metrics for at most this time
+    maxMetricsCacheTime: 1h
+```
