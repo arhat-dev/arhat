@@ -18,13 +18,18 @@ package none
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"os"
+	"os/exec"
 	"runtime"
+	"strings"
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/wellknownerrors"
 
 	"arhat.dev/arhat/pkg/conf"
+	"arhat.dev/arhat/pkg/network"
 	"arhat.dev/arhat/pkg/runtime/runtimeutil"
 	"arhat.dev/arhat/pkg/types"
 	"arhat.dev/arhat/pkg/util/errconv"
@@ -33,16 +38,37 @@ import (
 )
 
 func NewNoneRuntime(ctx context.Context, _ types.Storage, config *conf.RuntimeConfig) (types.Runtime, error) {
+	abbotCmd, ok := os.LookupEnv("ARHAT_CMD_ABBOT")
+	if !ok {
+		// assume abbot is installed in PATH and ran without any args
+		abbotCmd = "abbot"
+	}
+
+	abbotCmdParts := strings.Split(abbotCmd, " ")
+	if len(abbotCmdParts) == 0 {
+		return nil, fmt.Errorf("invalid abbot command")
+	}
+
 	return &noneRuntime{
 		BaseRuntime: runtimeutil.NewBaseRuntime(
 			ctx, config, "none", version.Tag(),
 			runtime.GOOS, version.Arch(), sysinfo.GetKernelVersion(),
 		),
+		NetworkClient: network.NewNetworkClient(func(subCmd []string, stdout, stderr io.Writer) error {
+			cmd := exec.Command(abbotCmdParts[0], append(abbotCmdParts[1:], subCmd...)...)
+			cmd.Stdin = nil
+			cmd.Stdout = stdout
+			cmd.Stderr = stderr
+
+			return cmd.Run()
+		}),
 	}, nil
 }
 
 type noneRuntime struct {
 	*runtimeutil.BaseRuntime
+
+	types.NetworkClient
 }
 
 func (r *noneRuntime) InitRuntime() error {

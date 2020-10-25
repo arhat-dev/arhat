@@ -8,6 +8,8 @@ import (
 )
 
 type Runtime interface {
+	NetworkClient
+
 	// Name of the runtime name
 	Name() string
 

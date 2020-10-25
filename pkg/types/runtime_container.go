@@ -25,11 +25,3 @@ type RuntimeImage interface {
 	// DeleteImages deletes images with specified references
 	DeleteImages(options *aranyagopb.ImageDeleteCmd) ([]*aranyagopb.ImageStatusMsg, error)
 }
-
-type RuntimeContainerNetwork interface {
-	// GetContainerNetworkConfig
-	GetContainerNetworkConfig() (*aranyagopb.ContainerNetworkStatusMsg, error)
-
-	// EnsureContainerNetwork update cni config dynamically
-	EnsureContainerNetwork(options *aranyagopb.ContainerNetworkEnsureCmd) ([]*aranyagopb.PodStatusMsg, error)
-}

@@ -9,19 +9,19 @@ import (
 	"arhat.dev/aranya-proto/aranyagopb"
 )
 
-func (b *Agent) handleDeviceMetricsCollect(sid uint64, data []byte) {
-	cmd := new(aranyagopb.DeviceMetricsCollectCmd)
+func (b *Agent) handlePeripheralMetricsCollect(sid uint64, data []byte) {
+	cmd := new(aranyagopb.PeripheralMetricsCollectCmd)
 	err := cmd.Unmarshal(data)
 	if err != nil {
-		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal DeviceMetricsCollectCmd: %w", err))
+		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal PeripheralMetricsCollectCmd: %w", err))
 		return
 	}
 
-	b.processInNewGoroutine(sid, "device.metrics", func() {
-		metricsForNode, paramsForAgent, metricsForAgent := b.devices.CollectMetrics(cmd.DeviceNames...)
+	b.processInNewGoroutine(sid, "peripheral.metrics", func() {
+		metricsForNode, paramsForAgent, metricsForAgent := b.peripherals.CollectMetrics(cmd.PeripheralNames...)
 		_, _ = paramsForAgent, metricsForAgent
 		// TODO: add agent metrics report support
 
-		b.devices.CacheMetrics(metricsForNode)
+		b.peripherals.CacheMetrics(metricsForNode)
 	})
 }

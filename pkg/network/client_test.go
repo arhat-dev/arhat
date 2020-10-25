@@ -24,7 +24,7 @@ import (
 )
 
 func TestCreateResolvConf(t *testing.T) {
-	client := NewNetworkClient(func(subCmd []string, output io.Writer) error {
+	client := NewNetworkClient(func(cmd []string, stdout, stderr io.Writer) error {
 		return nil
 	})
 

@@ -7,7 +7,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -154,12 +154,12 @@ func (m *Msg) GetCredentialStatus() *CredentialStatusMsg {
 	return cs
 }
 
-func (m *Msg) GetDeviceStatus() *DeviceStatusMsg {
-	if m.Kind != MSG_DEVICE_STATUS {
+func (m *Msg) GetPeripheralStatus() *PeripheralStatusMsg {
+	if m.Kind != MSG_PERIPHERAL_STATUS {
 		return nil
 	}
 
-	ds := new(DeviceStatusMsg)
+	ds := new(PeripheralStatusMsg)
 	if err := ds.Unmarshal(m.Body); err != nil {
 		return nil
 	}
@@ -167,12 +167,12 @@ func (m *Msg) GetDeviceStatus() *DeviceStatusMsg {
 	return ds
 }
 
-func (m *Msg) GetDeviceStatusList() *DeviceStatusListMsg {
-	if m.Kind != MSG_DEVICE_STATUS_LIST {
+func (m *Msg) GetPeripheralStatusList() *PeripheralStatusListMsg {
+	if m.Kind != MSG_PERIPHERAL_STATUS_LIST {
 		return nil
 	}
 
-	dsl := new(DeviceStatusListMsg)
+	dsl := new(PeripheralStatusListMsg)
 	if err := dsl.Unmarshal(m.Body); err != nil {
 		return nil
 	}
@@ -180,11 +180,11 @@ func (m *Msg) GetDeviceStatusList() *DeviceStatusListMsg {
 	return dsl
 }
 
-func (m *Msg) GetDeviceOperationResult() *DeviceOperationResultMsg {
-	if m.Kind != MSG_DEVICE_OPERATION_RESULT {
+func (m *Msg) GetPeripheralOperationResult() *PeripheralOperationResultMsg {
+	if m.Kind != MSG_PERIPHERAL_OPERATION_RESULT {
 		return nil
 	}
-	dor := new(DeviceOperationResultMsg)
+	dor := new(PeripheralOperationResultMsg)
 	if err := dor.Unmarshal(m.Body); err != nil {
 		return nil
 	}

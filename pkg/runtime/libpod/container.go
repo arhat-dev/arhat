@@ -33,10 +33,10 @@ import (
 	"arhat.dev/pkg/log"
 	"arhat.dev/pkg/wellknownerrors"
 	"github.com/containers/image/v5/manifest"
-	"github.com/containers/libpod/v2/libpod"
-	"github.com/containers/libpod/v2/libpod/define"
-	libpodns "github.com/containers/libpod/v2/pkg/namespaces"
-	libpodspec "github.com/containers/libpod/v2/pkg/spec"
+	"github.com/containers/podman/v2/libpod"
+	"github.com/containers/podman/v2/libpod/define"
+	libpodns "github.com/containers/podman/v2/pkg/namespaces"
+	libpodspec "github.com/containers/podman/v2/pkg/spec"
 	"github.com/containers/storage"
 	ociruntimespec "github.com/opencontainers/runtime-spec/specs-go"
 	"go.uber.org/multierr"
@@ -193,7 +193,7 @@ func (r *libpodRuntime) execInContainer(
 func (r *libpodRuntime) createPauseContainer(
 	ctx context.Context,
 	options *aranyagopb.PodEnsureCmd,
-) (_ *libpod.Pod, _ *libpod.Container, podIPv4, podIPv6 string, err error) {
+) (_ *libpod.Pod, _ *libpod.Container, abbotRespBytes []byte, err error) {
 	logger := r.Log().WithFields(log.String("action", "createPauseContainer"))
 	podName := fmt.Sprintf("%s.%s", options.Namespace, options.Name)
 
@@ -203,7 +203,7 @@ func (r *libpodRuntime) createPauseContainer(
 		logger.V("found previously created pod, deleting", log.String("name", podName))
 		if err = r.deletePod(prevPod); err != nil {
 			logger.I("failed to delete previously created pod", log.Error(err))
-			return nil, nil, "", "", err
+			return nil, nil, nil, err
 		}
 	}
 
@@ -211,19 +211,19 @@ func (r *libpodRuntime) createPauseContainer(
 	if !options.HostNetwork {
 		_, err = r.findAbbotContainer()
 		if err != nil {
-			return nil, nil, "", "", fmt.Errorf("abbot container required but not found: %w", err)
+			return nil, nil, nil, fmt.Errorf("abbot container required but not found: %w", err)
 		}
 	}
 
 	var hosts []string
 	image, err := r.imageClient.NewFromLocal(r.PauseImage)
 	if err != nil {
-		return nil, nil, "", "", err
+		return nil, nil, nil, err
 	}
 
 	imageConfig, err := r.getImageConfig(ctx, image)
 	if err != nil {
-		return nil, nil, "", "", err
+		return nil, nil, nil, err
 	}
 
 	podLabels := runtimeutil.ContainerLabels(options, constant.ContainerNamePause)
@@ -239,7 +239,7 @@ func (r *libpodRuntime) createPauseContainer(
 	pod, err := r.runtimeClient.NewPod(ctx, podOpts...)
 	if err != nil {
 		logger.I("failed to create new pod", log.Error(err))
-		return nil, nil, "", "", err
+		return nil, nil, nil, err
 	}
 	defer func() {
 		if err != nil {
@@ -318,12 +318,12 @@ func (r *libpodRuntime) createPauseContainer(
 
 	runtimeSpec, opts, err := config.MakeContainerConfig(r.runtimeClient, pod)
 	if err != nil {
-		return nil, nil, "", "", err
+		return nil, nil, nil, err
 	}
 
 	pauseCtr, err := r.runtimeClient.NewContainer(ctx, runtimeSpec, opts...)
 	if err != nil {
-		return nil, nil, "", "", err
+		return nil, nil, nil, err
 	}
 	defer func() {
 		if err != nil {
@@ -338,32 +338,32 @@ func (r *libpodRuntime) createPauseContainer(
 	err = pauseCtr.Start(ctx, true)
 	if err != nil {
 		logger.I("failed to start pause container", log.Error(err))
-		return nil, nil, "", "", err
+		return nil, nil, nil, err
 	}
 
 	logger.D("checking pause container running")
 	code, exited, err := pauseCtr.ExitCode()
 	if err != nil {
 		logger.I("failed to check pause container running", log.Error(err))
-		return nil, nil, "", "", err
+		return nil, nil, nil, err
 	}
 
 	if exited {
 		logger.I("pause container exited", log.Int32("code", code))
-		return nil, nil, "", "", fmt.Errorf("pause container exited with code %d", code)
+		return nil, nil, nil, fmt.Errorf("pause container exited with code %d", code)
 	}
 
 	if !options.HostNetwork {
 		pid, _ := pauseCtr.PID()
-		podIPv4, podIPv6, err = r.networkClient.EnsurePodNetwork(
-			options.Namespace, options.Name, pauseCtr.ID(), uint32(pid), options.Network,
+		abbotRespBytes, err = r.DelegateExec(
+			options.Network.AbbotRequestBytes, int64(pid), pauseCtr.ID(),
 		)
 		if err != nil {
-			return nil, nil, "", "", err
+			return nil, nil, nil, err
 		}
 	}
 
-	return pod, pauseCtr, podIPv4, podIPv6, nil
+	return pod, pauseCtr, abbotRespBytes, nil
 }
 
 // nolint:gocyclo
@@ -460,13 +460,13 @@ func (r *libpodRuntime) createContainer(
 		})
 	}
 
-	if netOpts := options.Network; len(netOpts.NameServers) != 0 {
+	if netOpts := options.Network; len(netOpts.Nameservers) != 0 {
 		resolvConfFile := r.PodResolvConfFile(options.PodUid)
 		if err := os.MkdirAll(filepath.Dir(resolvConfFile), 0750); err != nil {
 			return nil, err
 		}
 
-		data, err := r.networkClient.CreateResolvConf(netOpts.NameServers, netOpts.SearchDomains, netOpts.DnsOptions)
+		data, err := r.CreateResolvConf(netOpts.Nameservers, netOpts.DnsSearches, netOpts.DnsOptions)
 		if err != nil {
 			return nil, err
 		}
@@ -729,7 +729,7 @@ func (r *libpodRuntime) deletePod(pod *libpod.Pod) error {
 		labels := pauseCtr.Labels()
 		if !runtimeutil.IsHostNetwork(labels) {
 			pid, _ := pauseCtr.PID()
-			if err := r.networkClient.DeletePodNetwork(pauseCtr.ID(), uint32(pid)); err != nil {
+			if err = r.DeleteContainerNetwork(int64(pid), pauseCtr.ID()); err != nil {
 				// refuse to delete pod if network not deleted
 				return err
 			}

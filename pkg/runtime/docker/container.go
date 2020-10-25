@@ -200,19 +200,19 @@ func (r *dockerRuntime) execInContainer(
 func (r *dockerRuntime) createPauseContainer(
 	ctx context.Context,
 	options *aranyagopb.PodEnsureCmd,
-) (ctrInfo *dockertype.ContainerJSON, podIPv4, podIPv6 string, err error) {
+) (ctrInfo *dockertype.ContainerJSON, abbotRespBytes []byte, err error) {
 	_, err = r.findContainer(options.PodUid, constant.ContainerNamePause)
 	if err == nil {
-		return nil, "", "", wellknownerrors.ErrAlreadyExists
+		return nil, nil, wellknownerrors.ErrAlreadyExists
 	} else if !errors.Is(err, wellknownerrors.ErrNotFound) {
-		return nil, "", "", err
+		return nil, nil, err
 	}
 
 	// refuse to create pod using cluster network if no abbot found
 	if !options.HostNetwork {
 		_, err = r.findAbbotContainer()
 		if err != nil {
-			return nil, "", "", fmt.Errorf("abbot container required but not found: %w", err)
+			return nil, nil, fmt.Errorf("abbot container required but not found: %w", err)
 		}
 	}
 
@@ -235,23 +235,6 @@ func (r *dockerRuntime) createPauseContainer(
 
 	for k, v := range options.Network.Hosts {
 		hosts = append(hosts, fmt.Sprintf("%s:%s", k, v))
-	}
-
-	if !options.HostNetwork {
-		for _, port := range options.Network.Ports {
-			var ctrPort dockernat.Port
-			ctrPort, err = dockernat.NewPort(port.Protocol, strconv.FormatInt(int64(port.ContainerPort), 10))
-			if err != nil {
-				return nil, "", "", err
-			}
-
-			exposedPorts[ctrPort] = struct{}{}
-			if !options.HostNetwork {
-				portBindings[ctrPort] = []dockernat.PortBinding{{
-					HostPort: strconv.FormatInt(int64(port.HostPort), 10),
-				}}
-			}
-		}
 	}
 
 	pauseCtrName := runtimeutil.GetContainerName(options.Namespace, options.Name, constant.ContainerNamePause)
@@ -299,7 +282,7 @@ func (r *dockerRuntime) createPauseContainer(
 		nil, pauseCtrName)
 
 	if err != nil {
-		return nil, "", "", err
+		return nil, nil, err
 	}
 	defer func() {
 		if err != nil {
@@ -312,25 +295,23 @@ func (r *dockerRuntime) createPauseContainer(
 
 	err = r.runtimeClient.ContainerStart(ctx, pauseCtr.ID, dockertype.ContainerStartOptions{})
 	if err != nil {
-		return nil, "", "", err
+		return nil, nil, err
 	}
 
 	pauseCtrSpec, err := r.runtimeClient.ContainerInspect(ctx, pauseCtr.ID)
 	if err != nil {
-		return nil, "", "", err
+		return nil, nil, err
 	}
 
 	// handle cni network setup
 	if !options.HostNetwork {
-		podIPv4, podIPv6, err = r.networkClient.EnsurePodNetwork(
-			options.Namespace, options.Name, pauseCtr.ID, uint32(pauseCtrSpec.State.Pid), options.Network,
-		)
+		abbotRespBytes, err = r.DelegateExec(options.Network.AbbotRequestBytes, int64(pauseCtrSpec.State.Pid), pauseCtr.ID)
 		if err != nil {
-			return nil, "", "", err
+			return nil, nil, err
 		}
 	}
 
-	return &pauseCtrSpec, podIPv4, podIPv6, nil
+	return &pauseCtrSpec, abbotRespBytes, nil
 }
 
 func (r *dockerRuntime) createContainer(
@@ -431,15 +412,15 @@ func (r *dockerRuntime) createContainer(
 		})
 	}
 
-	if netOpts := options.Network; len(netOpts.NameServers) != 0 {
+	if netOpts := options.Network; len(netOpts.Nameservers) != 0 {
 		resolvConfFile := r.PodResolvConfFile(options.PodUid)
 		if err = os.MkdirAll(filepath.Dir(resolvConfFile), 0750); err != nil {
 			return "", err
 		}
 
 		var data []byte
-		data, err = r.networkClient.CreateResolvConf(
-			netOpts.NameServers, netOpts.SearchDomains, netOpts.DnsOptions,
+		data, err = r.CreateResolvConf(
+			netOpts.Nameservers, netOpts.DnsSearches, netOpts.DnsOptions,
 		)
 		if err != nil {
 			return "", err
@@ -569,7 +550,7 @@ func (r *dockerRuntime) deleteContainer(containerID string, isPauseCtr bool) err
 		}
 
 		if !runtimeutil.IsHostNetwork(pauseCtr.Config.Labels) {
-			err = r.networkClient.DeletePodNetwork(pauseCtr.ID, uint32(pauseCtr.State.Pid))
+			err = r.DeleteContainerNetwork(int64(pauseCtr.State.Pid), pauseCtr.ID)
 			if err != nil {
 				return err
 			}

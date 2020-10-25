@@ -7,7 +7,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -100,11 +100,10 @@ func NewPodContainerDeleteCmd(podUID string, containers []string) *PodDeleteCmd 
 	}
 }
 
-func NewPodListCmd(namespace, name string, all bool) *PodListCmd {
+func NewPodListCmd(all bool, names ...string) *PodListCmd {
 	return &PodListCmd{
-		Namespace: namespace,
-		Name:      name,
-		All:       all,
+		All:   all,
+		Names: names,
 	}
 }
 
@@ -193,29 +192,18 @@ func NewMetricsConfigCmd(t MetricsTarget, collect, extraArgs []string) *MetricsC
 	}
 }
 
-func NewContainerNetworkListCmd() *ContainerNetworkListCmd {
-	return &ContainerNetworkListCmd{}
+func NewPeripheralListCmd(names ...string) *PeripheralListCmd {
+	return &PeripheralListCmd{PeripheralNames: names}
 }
 
-func NewContainerNetworkEnsureCmd(ipv4CIDR, ipv6CIDR string) *ContainerNetworkEnsureCmd {
-	return &ContainerNetworkEnsureCmd{
-		Ipv4Cidr: ipv4CIDR,
-		Ipv6Cidr: ipv6CIDR,
-	}
-}
-
-func NewDeviceListCmd(names ...string) *DeviceListCmd {
-	return &DeviceListCmd{DeviceNames: names}
-}
-
-func NewDeviceEnsureCmd(
-	kind DeviceType,
+func NewPeripheralEnsureCmd(
+	kind PeripheralType,
 	name string,
 	connector *Connectivity,
-	operations []*DeviceOperation,
-	metrics []*DeviceMetric,
-) *DeviceEnsureCmd {
-	return &DeviceEnsureCmd{
+	operations []*PeripheralOperation,
+	metrics []*PeripheralMetric,
+) *PeripheralEnsureCmd {
+	return &PeripheralEnsureCmd{
 		Kind:       kind,
 		Name:       name,
 		Connector:  connector,
@@ -224,20 +212,20 @@ func NewDeviceEnsureCmd(
 	}
 }
 
-func NewDeviceDeleteCmd(names ...string) *DeviceDeleteCmd {
-	return &DeviceDeleteCmd{DeviceNames: names}
+func NewPeripheralDeleteCmd(names ...string) *PeripheralDeleteCmd {
+	return &PeripheralDeleteCmd{PeripheralNames: names}
 }
 
-func NewDeviceOperateCmd(deviceName, operationID string, data []byte) *DeviceOperateCmd {
-	return &DeviceOperateCmd{
-		DeviceName:  deviceName,
-		OperationId: operationID,
-		Data:        data,
+func NewPeripheralOperateCmd(peripheralName, operationID string, data []byte) *PeripheralOperateCmd {
+	return &PeripheralOperateCmd{
+		PeripheralName: peripheralName,
+		OperationId:    operationID,
+		Data:           data,
 	}
 }
 
-func NewDeviceMetricsCollectCmd(names ...string) *DeviceMetricsCollectCmd {
-	return &DeviceMetricsCollectCmd{
-		DeviceNames: names,
+func NewPeripheralMetricsCollectCmd(names ...string) *PeripheralMetricsCollectCmd {
+	return &PeripheralMetricsCollectCmd{
+		PeripheralNames: names,
 	}
 }

@@ -3,7 +3,6 @@ package network
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"text/template"
 
 	"arhat.dev/arhat/pkg/types"
@@ -19,14 +18,14 @@ options {{- range .Options }} {{ . }} {{- end -}}
 {{ end }}
 `
 
-func NewNetworkClient(exec types.AbbotExecFunc) *Client {
+func NewNetworkClient(exec types.DelegateExecFunc) *Client {
 	return &Client{
 		execAbbot: exec,
 	}
 }
 
 type Client struct {
-	execAbbot func(subCmd []string, output io.Writer) error
+	execAbbot types.DelegateExecFunc
 }
 
 func (c *Client) CreateResolvConf(nameservers, searches, options []string) ([]byte, error) {
@@ -54,4 +53,22 @@ func (c *Client) CreateResolvConf(nameservers, searches, options []string) ([]by
 	}
 
 	return buf.Bytes(), nil
+}
+
+func (c *Client) DelegateExec(
+	abbotReqData []byte, pid int64, containerID string,
+) (abbotRespData []byte, err error) {
+	return nil, nil
+}
+
+func (c *Client) RestoreContainerNetwork(pid int64, containerID string) error {
+	return nil
+}
+
+func (c *Client) QueryContainerNetwork(pid int64, containerID string) ([]byte, error) {
+	return nil, nil
+}
+
+func (c *Client) DeleteContainerNetwork(pid int64, containerID string) error {
+	return nil
 }

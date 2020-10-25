@@ -14,10 +14,10 @@ type ExtensionConfig struct {
 	Listen  string               `json:"listen" yaml:"listen"`
 	TLS     confhelper.TLSConfig `json:"tls" yaml:"tls"`
 
-	Devices DeviceExtensionConfig `json:"devices" yaml:"devices"`
+	Peripherals PeripheralExtensionConfig `json:"peripherals" yaml:"peripherals"`
 }
 
-type DeviceExtensionConfig struct {
+type PeripheralExtensionConfig struct {
 	MaxMetricsCacheTime time.Duration `json:"maxMetricsCacheTime" yaml:"maxMetricsCacheTime"`
 }
 
@@ -30,8 +30,8 @@ func FlagsForExtensionConfig(prefix string, config *ExtensionConfig) *pflag.Flag
 		constant.DefaultArhatExtensionListen, "extension server listen address")
 	fs.AddFlagSet(confhelper.FlagsForTLSConfig(prefix+"tls.", &config.TLS))
 
-	fs.DurationVar(&config.Devices.MaxMetricsCacheTime, prefix+"maxMetricsCacheTime",
-		constant.DefaultDeviceMetricsMaxCacheTime, "device metrics cache timeout")
+	fs.DurationVar(&config.Peripherals.MaxMetricsCacheTime, prefix+"maxMetricsCacheTime",
+		constant.DefaultPeripheralMetricsMaxCacheTime, "peripheral metrics cache timeout")
 
 	return fs
 }

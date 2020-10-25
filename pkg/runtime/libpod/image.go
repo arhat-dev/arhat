@@ -23,8 +23,8 @@ import (
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	imagetypes "github.com/containers/image/v5/types"
-	libpodimage "github.com/containers/libpod/v2/libpod/image"
-	libpodutil "github.com/containers/libpod/v2/pkg/util"
+	libpodimage "github.com/containers/podman/v2/libpod/image"
+	libpodutil "github.com/containers/podman/v2/pkg/util"
 	imagespec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 

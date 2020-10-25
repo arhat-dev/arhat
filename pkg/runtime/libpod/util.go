@@ -17,7 +17,7 @@ limitations under the License.
 package libpod
 
 import (
-	"github.com/containers/libpod/v2/libpod"
+	"github.com/containers/podman/v2/libpod"
 )
 
 func filterLabels(filters, labels map[string]string) bool {

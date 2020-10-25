@@ -33,7 +33,7 @@ import (
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/arhat/pkg/conf"
-	"arhat.dev/arhat/pkg/device"
+	"arhat.dev/arhat/pkg/peripheral"
 	"arhat.dev/arhat/pkg/runtime"
 	"arhat.dev/arhat/pkg/runtime/none"
 	"arhat.dev/arhat/pkg/storage"
@@ -94,7 +94,7 @@ func NewAgent(appCtx context.Context, config *conf.ArhatConfig) (*Agent, error) 
 	}
 
 	var (
-		deviceManager = device.NewManager(ctx, &config.Extension.Devices)
+		peripheralManager = peripheral.NewManager(ctx, &config.Extension.Peripherals)
 	)
 	if config.Extension.Enabled {
 		u, err := url.Parse(config.Extension.Listen)
@@ -126,7 +126,7 @@ func NewAgent(appCtx context.Context, config *conf.ArhatConfig) (*Agent, error) 
 		}
 
 		mux := http.NewServeMux()
-		mux.Handle("/ext/devices", extensionutil.NewHandler(deviceManager.Sync))
+		mux.Handle("/peripherals", extensionutil.NewHandler(peripheralManager.Sync))
 		srv := &http.Server{Handler: mux}
 
 		go func() {
@@ -150,11 +150,11 @@ func NewAgent(appCtx context.Context, config *conf.ArhatConfig) (*Agent, error) 
 
 		metricsMU: new(sync.RWMutex),
 
-		cmdMgr:  manager.NewCmdManager(),
-		runtime: rt,
-		storage: st,
-		devices: deviceManager,
-		streams: manager.NewStreamManager(),
+		cmdMgr:      manager.NewCmdManager(),
+		runtime:     rt,
+		storage:     st,
+		peripherals: peripheralManager,
+		streams:     manager.NewStreamManager(),
 
 		gzipPool: &sync.Pool{
 			New: func() interface{} {
@@ -184,11 +184,11 @@ type Agent struct {
 	collectNodeMetrics      types.MetricsCollectFunc
 	collectContainerMetrics types.MetricsCollectFunc
 
-	cmdMgr  *manager.CmdManager
-	runtime types.Runtime
-	storage types.Storage
-	devices *device.Manager
-	streams *manager.StreamManager
+	cmdMgr      *manager.CmdManager
+	runtime     types.Runtime
+	storage     types.Storage
+	peripherals *peripheral.Manager
+	streams     *manager.StreamManager
 
 	gzipPool *sync.Pool
 
@@ -299,11 +299,11 @@ func (b *Agent) HandleCmd(cmd *aranyagopb.Cmd) {
 
 		aranyagopb.CMD_NODE_INFO_GET: b.handleNodeInfoGet,
 
-		aranyagopb.CMD_DEVICE_LIST:            b.handleDeviceList,
-		aranyagopb.CMD_DEVICE_ENSURE:          b.handleDeviceEnsure,
-		aranyagopb.CMD_DEVICE_DELETE:          b.handleDeviceDelete,
-		aranyagopb.CMD_DEVICE_OPERATE:         b.handleDeviceOperation,
-		aranyagopb.CMD_DEVICE_COLLECT_METRICS: b.handleDeviceMetricsCollect,
+		aranyagopb.CMD_PERIPHERAL_LIST:            b.handlePeripheralList,
+		aranyagopb.CMD_PERIPHERAL_ENSURE:          b.handlePeripheralEnsure,
+		aranyagopb.CMD_PERIPHERAL_DELETE:          b.handlePeripheralDelete,
+		aranyagopb.CMD_PERIPHERAL_OPERATE:         b.handlePeripheralOperation,
+		aranyagopb.CMD_PERIPHERAL_COLLECT_METRICS: b.handlePeripheralMetricsCollect,
 
 		aranyagopb.CMD_METRICS_CONFIG:  b.handleMetricsConfig,
 		aranyagopb.CMD_METRICS_COLLECT: b.handleMetricsCollect,
@@ -325,10 +325,7 @@ func (b *Agent) HandleCmd(cmd *aranyagopb.Cmd) {
 		aranyagopb.CMD_CRED_ENSURE: b.handleCredentialEnsure,
 		aranyagopb.CMD_REJECT:      b.handleRejectCmd,
 
-		aranyagopb.CMD_CTR_NET_LIST:   b.handleContainerNetworkList,
-		aranyagopb.CMD_CTR_NET_ENSURE: b.handleContainerNetworkEnsure,
-
-		aranyagopb.CMD_HOST_NET_LIST: b.handleHostNetworkList,
+		aranyagopb.CMD_NET: b.handleNetwork,
 	}[cmd.Kind]
 
 	if handleCmd == nil || !ok {

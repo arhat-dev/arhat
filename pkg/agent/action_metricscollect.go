@@ -51,7 +51,7 @@ func (b *Agent) handleMetricsCollect(sid uint64, data []byte) {
 			return
 		}
 
-		metrics = append(metrics, b.devices.RetrieveCachedMetrics()...)
+		metrics = append(metrics, b.peripherals.RetrieveCachedMetrics()...)
 		data, err := b.encodeMetrics(metrics)
 		if err != nil {
 			b.handleConnectivityError(sid, fmt.Errorf("failed to encode metrics: %w", err))

@@ -2,6 +2,6 @@
 
 package agent
 
-func (b *Agent) handleDeviceMetricsCollect(sid uint64, data []byte) {
-	b.handleUnknownCmd(sid, "device.metrics.collect", nil)
+func (b *Agent) handlePeripheralMetricsCollect(sid uint64, data []byte) {
+	b.handleUnknownCmd(sid, "peripheral.metrics.collect", nil)
 }

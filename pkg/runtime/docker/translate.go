@@ -49,7 +49,7 @@ func (r *dockerRuntime) translateRestartPolicy(policy aranyagopb.RestartPolicy) 
 }
 
 func (r *dockerRuntime) translatePodStatus(
-	podIPv4, podIPv6 string,
+	abbotRespBytes []byte,
 	pauseContainer *dockertype.ContainerJSON,
 	containers []*dockertype.ContainerJSON,
 ) *aranyagopb.PodStatusMsg {
@@ -68,7 +68,7 @@ func (r *dockerRuntime) translatePodStatus(
 		ctrStatus[name] = status
 	}
 
-	return aranyagopb.NewPodStatusMsg(podUID, podIPv4, podIPv6, ctrStatus)
+	return aranyagopb.NewPodStatusMsg(podUID, abbotRespBytes, ctrStatus)
 }
 
 func (r *dockerRuntime) translateContainerStatus(

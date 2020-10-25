@@ -1,18 +1,19 @@
 package extensionutil
 
 import (
-	"arhat.dev/arhat-proto/arhatgopb"
 	"encoding/json"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"arhat.dev/arhat-proto/arhatgopb"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHandler_ServeHTTP(t *testing.T) {
-	registerMsg, err := arhatgopb.NewDeviceMsg(1, 0, &arhatgopb.RegisterMsg{
+	registerMsg, err := arhatgopb.NewMsg(1, 0, &arhatgopb.RegisterMsg{
 		Name: "test",
 	})
 	if !assert.NoError(t, err) {
@@ -21,16 +22,16 @@ func TestHandler_ServeHTTP(t *testing.T) {
 
 	cmds := []*arhatgopb.Cmd{
 		{
-			Kind:     arhatgopb.CMD_DEV_CONNECT,
-			DeviceId: 1,
-			Seq:      1,
-			Payload:  nil,
+			Kind:    arhatgopb.CMD_PERIPHERAL_CONNECT,
+			Id:      1,
+			Seq:     1,
+			Payload: nil,
 		},
 		{
-			Kind:     arhatgopb.CMD_DEV_CONNECT,
-			DeviceId: 1,
-			Seq:      1,
-			Payload:  nil,
+			Kind:    arhatgopb.CMD_PERIPHERAL_CONNECT,
+			Id:      1,
+			Seq:     1,
+			Payload: nil,
 		},
 	}
 
@@ -54,7 +55,7 @@ func TestHandler_ServeHTTP(t *testing.T) {
 
 		pr, pw := io.Pipe()
 		jsonRec := httptest.NewRecorder()
-		jsonReq := httptest.NewRequest(http.MethodPost, "/ext/devices", pr)
+		jsonReq := httptest.NewRequest(http.MethodPost, "/peripherals", pr)
 
 		go func() {
 			for j := 0; j < len(cmds); j++ {

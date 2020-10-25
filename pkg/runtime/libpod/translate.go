@@ -25,8 +25,8 @@ import (
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
 	"arhat.dev/pkg/log"
-	"github.com/containers/libpod/v2/libpod"
-	"github.com/containers/libpod/v2/libpod/define"
+	"github.com/containers/podman/v2/libpod"
+	"github.com/containers/podman/v2/libpod/define"
 
 	"arhat.dev/arhat/pkg/constant"
 )
@@ -80,7 +80,7 @@ func (r *libpodRuntime) translateRestartPolicy(policy aranyagopb.RestartPolicy) 
 }
 
 func (r *libpodRuntime) translatePodStatus(
-	podIPv4, podIPv6 string,
+	abbotRespBytes []byte,
 	pauseCtr *libpod.Container,
 	containers []*libpod.Container,
 ) (*aranyagopb.PodStatusMsg, error) {
@@ -104,7 +104,7 @@ func (r *libpodRuntime) translatePodStatus(
 		ctrStatus[name] = status
 	}
 
-	return aranyagopb.NewPodStatusMsg(podUID, podIPv4, podIPv6, ctrStatus), nil
+	return aranyagopb.NewPodStatusMsg(podUID, abbotRespBytes, ctrStatus), nil
 }
 
 func (r *libpodRuntime) translateContainerStatus(ctr *libpod.Container) (*aranyagopb.ContainerStatus, error) {
