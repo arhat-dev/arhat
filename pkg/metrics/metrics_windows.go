@@ -3,6 +3,8 @@
 package metrics
 
 import (
+	"fmt"
+	
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/wellknownerrors"
 
