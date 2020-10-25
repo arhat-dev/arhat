@@ -25,7 +25,7 @@ replace (
 	github.com/gorilla/mux => github.com/gorilla/mux v1.8.0
 	github.com/jmespath/go-jmespath => github.com/jmespath/go-jmespath v0.3.0
 	github.com/pion/dtls/v2 => github.com/pion/dtls/v2 v2.0.3
-	github.com/spf13/cobra => github.com/spf13/cobra v1.0.0
+	github.com/spf13/cobra => github.com/spf13/cobra v1.1.1
 	github.com/stretchr/testify => github.com/stretchr/testify v1.6.1
 	go.etcd.io/etcd => go.etcd.io/etcd v0.5.0-alpha.5.0.20200329194405-dd816f0735f8
 	go.uber.org/atomic => go.uber.org/atomic v1.6.0
@@ -39,9 +39,9 @@ replace (
 // prometheus related
 replace (
 	github.com/prometheus-community/windows_exporter => github.com/prometheus-community/windows_exporter v0.14.0
-	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.7.1
+	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.8.0
 	github.com/prometheus/client_model => github.com/prometheus/client_model v0.2.0
-	github.com/prometheus/common => github.com/prometheus/common v0.13.0
+	github.com/prometheus/common => github.com/prometheus/common v0.14.0
 	github.com/prometheus/node_exporter => github.com/prometheus/node_exporter v1.0.1
 	github.com/prometheus/procfs => github.com/prometheus/procfs v0.1.3
 	honnef.co/go/tools => honnef.co/go/tools v0.0.1-2020.1.5
@@ -52,11 +52,11 @@ replace (
 	github.com/containernetworking/cni => github.com/containernetworking/cni v0.8.0
 	github.com/containernetworking/plugins => github.com/containernetworking/plugins v0.8.7
 	github.com/containers/buildah => github.com/containers/buildah v1.16.1
-	github.com/containers/common => github.com/containers/common v0.22.0
-	github.com/containers/image/v5 => github.com/containers/image/v5 v5.6.0
+	github.com/containers/common => github.com/containers/common v0.26.2
+	github.com/containers/image/v5 => github.com/containers/image/v5 v5.7.0
 	github.com/containers/podman/v2 => github.com/containers/podman/v2 v2.1.1
 	github.com/containers/psgo => github.com/containers/psgo v1.5.1
-	github.com/containers/storage => github.com/containers/storage v1.23.5
+	github.com/containers/storage => github.com/containers/storage v1.23.7
 	github.com/coreos/go-systemd/v22 => github.com/coreos/go-systemd/v22 v22.1.0
 	github.com/docker/distribution => github.com/docker/distribution v2.7.1+incompatible
 	github.com/godbus/dbus/v5 => github.com/godbus/dbus/v5 v5.0.3
@@ -137,9 +137,9 @@ require (
 	arhat.dev/pkg v0.0.0-20200930092909-aa3af7acc29c
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/containers/common v0.22.0
-	github.com/containers/image/v5 v5.6.0
+	github.com/containers/image/v5 v5.7.0
 	github.com/containers/podman/v2 v2.1.1
-	github.com/containers/storage v1.23.5
+	github.com/containers/storage v1.23.6
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/docker/docker v17.12.0-ce-rc1.0.20200917150144-3956a86b6235+incompatible
@@ -149,7 +149,7 @@ require (
 	github.com/goiiot/libmqtt v0.9.6
 	github.com/grpc-ecosystem/grpc-gateway v1.14.6 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
-	github.com/mholt/archiver/v3 v3.3.0
+	github.com/mholt/archiver/v3 v3.4.0
 	github.com/mistifyio/go-zfs v2.1.2-0.20190413222219-f784269be439+incompatible // indirect
 	github.com/mssola/user_agent v0.5.2
 	github.com/opencontainers/image-spec v1.0.2-0.20190823105129-775207bd45b6
@@ -159,16 +159,16 @@ require (
 	github.com/pion/logging v0.2.2
 	github.com/plgd-dev/go-coap/v2 v2.0.4
 	github.com/prometheus-community/windows_exporter v0.14.0
-	github.com/prometheus/client_golang v1.7.1
+	github.com/prometheus/client_golang v1.8.0
 	github.com/prometheus/client_model v0.2.0
-	github.com/prometheus/common v0.13.0
+	github.com/prometheus/common v0.14.0
 	github.com/prometheus/node_exporter v1.0.1
-	github.com/spf13/cobra v1.0.0
+	github.com/spf13/cobra v1.1.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
 	github.com/vishvananda/netns v0.0.0-20200520041808-52d707b772fe // indirect
 	go.uber.org/multierr v1.6.0
-	golang.org/x/sys v0.0.0-20201024232916-9f70ab9862d5
+	golang.org/x/sys v0.0.0-20201015000850-e3ed0017c211
 	golang.org/x/tools v0.0.0-20201023174141-c8cfbd0f21e6 // indirect
 	google.golang.org/grpc v1.33.1
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
