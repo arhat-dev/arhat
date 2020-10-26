@@ -133,7 +133,7 @@ replace (
 )
 
 require (
-	arhat.dev/aranya-proto v0.1.3
+	arhat.dev/aranya-proto v0.1.4
 	arhat.dev/arhat-proto v0.1.1
 	arhat.dev/pkg v0.0.0-20200930092909-aa3af7acc29c
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
