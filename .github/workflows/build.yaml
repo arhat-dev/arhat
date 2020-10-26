@@ -50,11 +50,11 @@ jobs:
       run: |
         CGO_ENABLED=0 make -j$(nproc --all) arhat-none.linux.all
         CGO_ENABLED=0 make arhat-none.linux.riscv64 \
-          TAGS='nometrics'
+          TAGS='nometrics noperipheral_metrics'
 
         CGO_ENABLED=0 make -j$(nproc --all) arhat-docker.linux.all
         CGO_ENABLED=0 make arhat-docker.linux.riscv64 \
-          TAGS='nometrics'
+          TAGS='nometrics noperipheral_metrics'
 
         CGO_ENABLED=0 make -j$(nproc --all) arhat-none.freebsd.all \
           TAGS='noboottime noexec nomeminfo nonetdev nozfs nofilesystem'
