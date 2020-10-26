@@ -1,5 +1,5 @@
-// +build !nodev
-// +build !nometrics,!nodevmetrics
+// +build !noperipheral
+// +build !noperipheral_metrics
 
 package peripheral
 
@@ -95,7 +95,7 @@ func (m *Manager) CollectMetrics(peripheralIDs ...string) (
 	)
 
 	m.mu.RLock()
-	var peripherals []*Device
+	var peripherals []*Peripheral
 	all := len(peripheralIDs) == 0
 	for _, id := range peripheralIDs {
 		dev, ok := m.peripherals[id]
@@ -114,7 +114,7 @@ func (m *Manager) CollectMetrics(peripheralIDs ...string) (
 		// map this metrics collecting tasks to workers
 
 		wg.Add(1)
-		go func(dev *Device) {
+		go func(dev *Peripheral) {
 			defer wg.Done()
 
 			go dev.CollectMetrics(resultCh)

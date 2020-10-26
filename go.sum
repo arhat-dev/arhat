@@ -1,5 +1,5 @@
-arhat.dev/aranya-proto v0.1.1 h1:hZ8WXeclszENCmYR+uRKcSV1ZtFruuqRt4+Mm+iW2d0=
-arhat.dev/aranya-proto v0.1.1/go.mod h1:qAZHl3cbkhjAiuD6fQpDZFpNh6L+BhWZcKpsWdmrzGQ=
+arhat.dev/aranya-proto v0.1.3 h1:S/2HOUP+UVg5Zxat52hiskyJOXky0cOJz4hxeow0CB4=
+arhat.dev/aranya-proto v0.1.3/go.mod h1:qAZHl3cbkhjAiuD6fQpDZFpNh6L+BhWZcKpsWdmrzGQ=
 arhat.dev/arhat-proto v0.1.1 h1:QuAStrhiIeZJVzGkkLdVoi9c1RZDtwk7d/lKDS8dLYE=
 arhat.dev/arhat-proto v0.1.1/go.mod h1:Pd9J0IeEjj8dCxXvMDn+q2f8C04/yS4CUbpOO5jfb4o=
 arhat.dev/pkg v0.0.0-20200930092909-aa3af7acc29c h1:Tr5Yg/ka46kyPPvqFp+DUywEEP2WpT0TlDjlFO5EmVA=
@@ -165,8 +165,8 @@ github.com/containers/buildah v1.16.1 h1:kxxZbW0in7cFv/AEQtSPNQ06aemYN5fsya31IS9
 github.com/containers/buildah v1.16.1/go.mod h1:i1XqXgpCROnfcq4oNtfrFEk7UzNDxLJ/PZ+CnPyoIq8=
 github.com/containers/common v0.26.2 h1:TysMCBpzq3gDFD9GzM0TKTGjtq/9HySWevKtlrvVGRU=
 github.com/containers/common v0.26.2/go.mod h1:igUeog5hx8rYhJk67rG6rGAh3zEcf0Uxuzm9KpXzo2E=
-github.com/containers/conmon v2.0.20+incompatible h1:YbCVSFSCqFjjVwHTPINGdMX1F6JXHGTUje2ZYobNrkg=
-github.com/containers/conmon v2.0.20+incompatible/go.mod h1:hgwZ2mtuDrppv78a/cOBNiCm6O0UMWGx1mu7P00nu5I=
+github.com/containers/conmon v0.4.1-0.20200908203337-35a2fa83022e h1:ypTrVR/Yv9hU57a5KKSYZakpeTorua8WcPp5P9N3izQ=
+github.com/containers/conmon v0.4.1-0.20200908203337-35a2fa83022e/go.mod h1:VpU8ZohepOdyottp82gMdwha6XarGqEkWS7JbxPYMmE=
 github.com/containers/image/v5 v5.7.0 h1:fiTC8/Xbr+zEP6njGTZtPW/3UD7MC93nC9DbUoWdxkA=
 github.com/containers/image/v5 v5.7.0/go.mod h1:8aOy+YaItukxghRORkvhq5ibWttHErzDLy6egrKfKos=
 github.com/containers/libtrust v0.0.0-20190913040956-14b96171aa3b h1:Q8ePgVfHDplZ7U33NwHZkrVELsZP5fYj9pM5WBZB2GE=

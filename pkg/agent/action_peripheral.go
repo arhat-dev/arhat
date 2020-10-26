@@ -1,12 +1,25 @@
-// +build !nodev
+// +build !noperipheral
 
 package agent
 
 import (
 	"fmt"
+	"net/http"
+
+	"arhat.dev/arhat/pkg/conf"
+	"arhat.dev/arhat/pkg/peripheral"
+	"arhat.dev/arhat/pkg/util/extensionutil"
 
 	"arhat.dev/aranya-proto/aranyagopb"
 )
+
+func (b *Agent) createAndRegisterPeripheralExtensionManager(
+	mux *http.ServeMux,
+	config *conf.PeripheralExtensionConfig,
+) {
+	b.peripherals = peripheral.NewManager(b.ctx, config)
+	mux.Handle("/peripherals", extensionutil.NewHandler(b.peripherals.Sync))
+}
 
 func (b *Agent) handlePeripheralList(sid uint64, data []byte) {
 	cmd := new(aranyagopb.PeripheralListCmd)
@@ -94,7 +107,11 @@ func (b *Agent) handlePeripheralOperation(sid uint64, data []byte) {
 			return
 		}
 
-		err = b.PostMsg(sid, aranyagopb.MSG_PERIPHERAL_OPERATION_RESULT, aranyagopb.NewPeripheralOperationResultMsg(result))
+		err = b.PostMsg(
+			sid,
+			aranyagopb.MSG_PERIPHERAL_OPERATION_RESULT,
+			aranyagopb.NewPeripheralOperationResultMsg(result),
+		)
 		if err != nil {
 			b.handleConnectivityError(sid, err)
 			return

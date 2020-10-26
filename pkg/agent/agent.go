@@ -32,6 +32,10 @@ import (
 	"sync/atomic"
 
 	"arhat.dev/aranya-proto/aranyagopb"
+	"arhat.dev/pkg/log"
+	"arhat.dev/pkg/wellknownerrors"
+	"github.com/gogo/protobuf/proto"
+
 	"arhat.dev/arhat/pkg/conf"
 	"arhat.dev/arhat/pkg/peripheral"
 	"arhat.dev/arhat/pkg/runtime"
@@ -39,11 +43,7 @@ import (
 	"arhat.dev/arhat/pkg/storage"
 	"arhat.dev/arhat/pkg/types"
 	"arhat.dev/arhat/pkg/util/errconv"
-	"arhat.dev/arhat/pkg/util/extensionutil"
 	"arhat.dev/arhat/pkg/util/manager"
-	"arhat.dev/pkg/log"
-	"arhat.dev/pkg/wellknownerrors"
-	"github.com/gogo/protobuf/proto"
 )
 
 var (
@@ -93,9 +93,33 @@ func NewAgent(appCtx context.Context, config *conf.Config) (*Agent, error) {
 		return nil, fmt.Errorf("failed to init runtime: %w", err)
 	}
 
-	var (
-		peripheralManager = peripheral.NewManager(ctx, &config.Extension.Peripherals)
-	)
+	agent := &Agent{
+		hostConfig:    &config.Arhat.Host,
+		machineIDFrom: &config.Arhat.Node.MachineIDFrom,
+		kubeLogFile:   config.Arhat.Log.KubeLogFile(),
+		extInfo:       extInfo,
+
+		ctx:  ctx,
+		exit: exit,
+
+		logger: log.Log.WithName("agent"),
+
+		metricsMU: new(sync.RWMutex),
+
+		cmdMgr:      manager.NewCmdManager(),
+		runtime:     rt,
+		storage:     st,
+		peripherals: nil,
+		streams:     manager.NewStreamManager(),
+
+		gzipPool: &sync.Pool{
+			New: func() interface{} {
+				w, _ := gzip.NewWriterLevel(nil, gzip.BestCompression)
+				return w
+			},
+		},
+	}
+
 	if config.Extension.Enabled {
 		u, err := url.Parse(config.Extension.Listen)
 		if err != nil {
@@ -126,7 +150,9 @@ func NewAgent(appCtx context.Context, config *conf.Config) (*Agent, error) {
 		}
 
 		mux := http.NewServeMux()
-		mux.Handle("/peripherals", extensionutil.NewHandler(peripheralManager.Sync))
+
+		agent.createAndRegisterPeripheralExtensionManager(mux, &config.Extension.Peripherals)
+
 		srv := &http.Server{Handler: mux}
 
 		go func() {
@@ -135,33 +161,6 @@ func NewAgent(appCtx context.Context, config *conf.Config) (*Agent, error) {
 				panic(err2)
 			}
 		}()
-	}
-
-	agent := &Agent{
-		hostConfig:    &config.Arhat.Host,
-		machineIDFrom: &config.Arhat.Node.MachineIDFrom,
-		kubeLogFile:   config.Arhat.Log.KubeLogFile(),
-		extInfo:       extInfo,
-
-		ctx:  ctx,
-		exit: exit,
-
-		logger: log.Log.WithName("agent"),
-
-		metricsMU: new(sync.RWMutex),
-
-		cmdMgr:      manager.NewCmdManager(),
-		runtime:     rt,
-		storage:     st,
-		peripherals: peripheralManager,
-		streams:     manager.NewStreamManager(),
-
-		gzipPool: &sync.Pool{
-			New: func() interface{} {
-				w, _ := gzip.NewWriterLevel(nil, gzip.BestCompression)
-				return w
-			},
-		},
 	}
 
 	agent.streams.Start(ctx.Done())

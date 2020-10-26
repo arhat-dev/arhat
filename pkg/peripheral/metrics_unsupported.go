@@ -1,5 +1,5 @@
-// +build !nodev
-// +build nometrics nodevmetrics
+// +build !noperipheral
+// +build noperipheral_metrics
 
 package peripheral
 

@@ -1,13 +1,15 @@
 // +build !nometrics
-// +build nodev nodevmetrics
+// +build noperipheral noperipheral_metrics
 
 package agent
 
 import (
-	"arhat.dev/aranya-proto/aranyagopb"
-	"arhat.dev/arhat/pkg/types"
-	"arhat.dev/pkg/wellknownerrors"
 	"fmt"
+
+	"arhat.dev/aranya-proto/aranyagopb"
+	"arhat.dev/pkg/wellknownerrors"
+
+	"arhat.dev/arhat/pkg/types"
 )
 
 func (b *Agent) handleMetricsCollect(sid uint64, data []byte) {

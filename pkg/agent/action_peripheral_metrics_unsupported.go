@@ -1,4 +1,4 @@
-// +build nodev nometrics nodevmetrics
+// +build noperipheral noperipheral_metrics
 
 package agent
 

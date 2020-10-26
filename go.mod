@@ -53,6 +53,7 @@ replace (
 	github.com/containernetworking/plugins => github.com/containernetworking/plugins v0.8.7
 	github.com/containers/buildah => github.com/containers/buildah v1.16.1
 	github.com/containers/common => github.com/containers/common v0.26.2
+	github.com/containers/conmon => github.com/containers/conmon v0.4.1-0.20200908203337-35a2fa83022e
 	github.com/containers/image/v5 => github.com/containers/image/v5 v5.7.0
 	github.com/containers/podman/v2 => github.com/containers/podman/v2 v2.1.1
 	github.com/containers/psgo => github.com/containers/psgo v1.5.1
@@ -132,7 +133,7 @@ replace (
 )
 
 require (
-	arhat.dev/aranya-proto v0.1.1
+	arhat.dev/aranya-proto v0.1.3
 	arhat.dev/arhat-proto v0.1.1
 	arhat.dev/pkg v0.0.0-20200930092909-aa3af7acc29c
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect

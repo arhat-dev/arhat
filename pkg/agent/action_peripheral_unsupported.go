@@ -1,6 +1,18 @@
-// +build nodev
+// +build noperipheral
 
 package agent
+
+import (
+	"net/http"
+
+	"arhat.dev/arhat/pkg/conf"
+)
+
+func (b *Agent) createAndRegisterPeripheralExtensionManager(
+	mux *http.ServeMux,
+	config *conf.PeripheralExtensionConfig,
+) {
+}
 
 func (b *Agent) handlePeripheralList(sid uint64, data []byte) {
 	b.handleUnknownCmd(sid, "peripheral.list", nil)

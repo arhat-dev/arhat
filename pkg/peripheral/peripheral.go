@@ -1,4 +1,4 @@
-// +build !nodev
+// +build !noperipheral
 
 package peripheral
 
@@ -45,13 +45,13 @@ type MetricSpec struct {
 	ParamsForReporting map[string]string
 }
 
-func NewDevice(
+func NewPeripheral(
 	ctx context.Context,
-	connectorHashHex string,
+	name string,
 	connector *Connectivity,
 	operations []*aranyagopb.PeripheralOperation,
 	metrics []*aranyagopb.PeripheralMetric,
-) *Device {
+) *Peripheral {
 	ops := make(map[string]map[string]string)
 	for i, o := range operations {
 		ops[o.OperationId] = operations[i].Params
@@ -82,15 +82,15 @@ func NewDevice(
 		}
 	}
 
-	return &Device{
-		basePeripheral: newBasePeripheral(ctx, connectorHashHex, connector),
+	return &Peripheral{
+		basePeripheral: newBasePeripheral(ctx, name, connector),
 
 		operations: ops,
 		metrics:    ms,
 	}
 }
 
-type Device struct {
+type Peripheral struct {
 	*basePeripheral
 
 	// operation_id -> params
@@ -98,7 +98,7 @@ type Device struct {
 	metrics    []*MetricSpec
 }
 
-func (d *Device) Operate(ctx context.Context, id string, data []byte) ([][]byte, error) {
+func (d *Peripheral) Operate(ctx context.Context, id string, data []byte) ([][]byte, error) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
@@ -115,7 +115,7 @@ func (d *Device) Operate(ctx context.Context, id string, data []byte) ([][]byte,
 	return resp, nil
 }
 
-func (d *Device) Close() error {
+func (d *Peripheral) Close() error {
 	return d.conn.Close()
 }
 

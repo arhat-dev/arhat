@@ -1,5 +1,5 @@
-// +build !nodev
-// +build !nometrics,!nodevmetrics
+// +build !noperipheral
+// +build !noperipheral_metrics
 
 package peripheral
 
@@ -13,7 +13,7 @@ import (
 
 // CollectMetrics will collect all metrics configured when creating this peripheral and close the resultCh
 // when finished
-func (d *Device) CollectMetrics(resultCh chan<- *Metric) {
+func (d *Peripheral) CollectMetrics(resultCh chan<- *Metric) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 

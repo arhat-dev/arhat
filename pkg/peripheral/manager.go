@@ -1,4 +1,4 @@
-// +build !nodev
+// +build !noperipheral
 
 package peripheral
 
@@ -9,9 +9,10 @@ import (
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/arhat-proto/arhatgopb"
-	"arhat.dev/arhat/pkg/conf"
 	"arhat.dev/pkg/log"
 	"arhat.dev/pkg/wellknownerrors"
+
+	"arhat.dev/arhat/pkg/conf"
 )
 
 type FactoryFunc func(
@@ -64,7 +65,7 @@ func NewManager(ctx context.Context, config *conf.PeripheralExtensionConfig) *Ma
 		config: config,
 
 		all:              make(map[string]*Connectivity),
-		peripherals:      make(map[string]*Device),
+		peripherals:      make(map[string]*Peripheral),
 		metricsReporters: make(map[string]*MetricsReporter),
 
 		metricsCache: NewMetricsCache(config.MaxMetricsCacheTime),
@@ -84,7 +85,7 @@ type Manager struct {
 	// key: connectivity_hash_hex
 	all map[string]*Connectivity
 	// key: peripheral_id
-	peripherals map[string]*Device
+	peripherals map[string]*Peripheral
 	// key: connectivity_hash_hex
 	metricsReporters map[string]*MetricsReporter
 
@@ -219,6 +220,7 @@ func (m *Manager) Sync(stopSig <-chan struct{}, msgCh <-chan *arhatgopb.Msg, cmd
 
 			if err != nil {
 				// TODO: log error, do not send error
+				m.logger.I("failed to register peripheral connectivity", log.Error(err))
 			}
 		}
 	}()
@@ -287,7 +289,7 @@ func (m *Manager) Ensure(cmd *aranyagopb.PeripheralEnsureCmd) (err error) {
 
 	switch cmd.Kind {
 	case aranyagopb.PERIPHERAL_TYPE_NORMAL:
-		dev := NewDevice(
+		dev := NewPeripheral(
 			m.ctx, cmd.Name, conn, cmd.Operations, cmd.Metrics,
 		)
 

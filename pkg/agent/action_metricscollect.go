@@ -1,5 +1,5 @@
 // +build !nometrics
-// +build !nodev,!nodevmetrics
+// +build !noperipheral,!noperipheral_metrics
 
 package agent
 
