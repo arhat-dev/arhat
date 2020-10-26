@@ -1,5 +1,9 @@
 # Runtime
 
+Kubernetes defines its runtime API as `CRI` (container runtime interface)
+
+## Design
+
 ## Configuration
 
 __NOTE:__ this configuration section is ignored by `arhat-none`, which has no container runtime support
