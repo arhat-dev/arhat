@@ -26,8 +26,8 @@ import (
 	"github.com/spf13/pflag"
 )
 
-// ArhatConfig
-type ArhatConfig struct {
+// Config
+type Config struct {
 	Arhat        AppConfig          `json:"arhat" yaml:"arhat"`
 	Connectivity ConnectivityConfig `json:"connectivity" yaml:"connectivity"`
 	Runtime      RuntimeConfig      `json:"runtime" yaml:"runtime"`
@@ -38,6 +38,8 @@ type ArhatConfig struct {
 // AppConfig configuration for arhat application behavior
 type AppConfig struct {
 	Log log.ConfigSet `json:"log" yaml:"log"`
+
+	Chroot string `json:"chroot" yaml:"chroot"`
 
 	Host HostConfig `json:"host" yaml:"host"`
 	Node NodeConfig `json:"node" yaml:"node"`

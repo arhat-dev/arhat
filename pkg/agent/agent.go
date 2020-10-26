@@ -55,7 +55,7 @@ var (
 
 var _ types.Agent = &Agent{}
 
-func NewAgent(appCtx context.Context, config *conf.ArhatConfig) (*Agent, error) {
+func NewAgent(appCtx context.Context, config *conf.Config) (*Agent, error) {
 	ctx, exit := context.WithCancel(appCtx)
 
 	extInfo, err := convertNodeExtInfo(config.Arhat.Node.ExtInfo)

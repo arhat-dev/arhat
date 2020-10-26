@@ -43,7 +43,7 @@ func NewArhatCmd() *cobra.Command {
 	var (
 		appCtx       context.Context
 		configFile   string
-		config       = new(conf.ArhatConfig)
+		config       = new(conf.Config)
 		cliLogConfig = new(log.Config)
 	)
 
@@ -96,7 +96,14 @@ func NewArhatCmd() *cobra.Command {
 	return arhatCmd
 }
 
-func run(appCtx context.Context, config *conf.ArhatConfig) error {
+func run(appCtx context.Context, config *conf.Config) error {
+	if config.Arhat.Chroot != "" {
+		err := chroot(config.Arhat.Chroot)
+		if err != nil {
+			return fmt.Errorf("failed to chroot to %s: %w", config.Arhat.Chroot, err)
+		}
+	}
+
 	runtime.GOMAXPROCS(config.Arhat.Optimization.MaxProcessors)
 
 	logger := log.Log.WithName("cmd")

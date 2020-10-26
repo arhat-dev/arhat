@@ -36,7 +36,7 @@ func ReadConfig(
 	cmd *cobra.Command,
 	configFile *string,
 	cliLogConfig *log.Config,
-	config *ArhatConfig,
+	config *Config,
 ) (context.Context, error) {
 	flags := cmd.Flags()
 	configBytes, err := ioutil.ReadFile(*configFile)
