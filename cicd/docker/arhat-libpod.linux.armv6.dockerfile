@@ -4,8 +4,8 @@ FROM arhatdev/base-go:debian-amd64 as builder
 ARG ARCH=armv6
 
 ENV CGO_ENABLED=1
-RUN apk add --no-cache \
-    python3-distutils=3.7.3-1 python3-lib2to3=3.7.3-1 python3=3.7.3-1
+RUN apt update ;\
+    apt install -y python3-distutils=3.7.3-1 python3-lib2to3=3.7.3-1 python3=3.7.3-1
 
 WORKDIR /app
 COPY . /app
