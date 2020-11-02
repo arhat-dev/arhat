@@ -1,0 +1,37 @@
+arhat:
+  log:
+  - level: debug
+    format: console
+    kubeLog: true
+    file: stderr
+  node:
+    machineIDFrom:
+      text: "foo"
+    extInfo:
+    - valueFrom:
+        text: "1"
+      operator: +=
+      valueType: int
+      applyTo: metadata.annotations['example.com/key']
+
+connectivity:
+  dialTimeout: 10s
+  initialBackoff: 10s
+  maxBackoff: 3m
+  backoffFactor: 1.5
+
+  methods:
+  # wasm only supoorts mqtt with websocket, any other connectivity method will fail
+  - name: mqtt
+    priority: 1
+    config:
+      variant: standard
+      endpoint: websocket-mqtt.example.com:8083
+      transport: websocket
+      topicNamespaceFrom:
+        text: foo
+      clientID: foo
+      username: foo-user
+      password: my-password
+      tls:
+        enabled: false

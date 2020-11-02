@@ -1,0 +1,67 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/BrowserFS/2.0.0/browserfs.js"></script>
+    <script src="/wasm_exec.js"></script>
+    <script>
+      // Configures BrowserFS to use the InMemory file system.
+      BrowserFS.configure(
+        {
+          fs: "InMemory",
+        },
+        function (e) {
+          if (e) {
+            // An error happened!
+            throw e;
+          }
+          // Otherwise, BrowserFS is ready-to-use!
+          var fs = BrowserFS.BFSRequire("fs");
+          var Buffer = BrowserFS.BFSRequire("buffer").Buffer;
+
+          // Write the test pdf file to the InMemory FS
+          fetch("/config.yaml")
+            .then(function (res) {
+              return res.arrayBuffer();
+            })
+            .then(function (buffer) {
+              fs.writeFile("/config.yaml", Buffer.from(buffer), function (err) {
+                // check it is there
+                fs.readFile("/config.yaml", function (err, contents) {
+                  console.log(contents);
+                  done();
+                });
+              });
+            });
+
+          function done() {
+            const go = new Go();
+            go.argv = ["arhat-none.js.wasm", "-c", "/config.yaml"];
+
+            fetch("/arhat-none.js.wasm")
+              .then((response) => response.arrayBuffer())
+              .then((bytes) => WebAssembly.instantiate(bytes, go.importObject))
+              .then((obj) => {
+                var old = console.log;
+                var logger = document.getElementById("log");
+                console.log = function (message) {
+                  if (typeof message == "object") {
+                    logger.innerHTML +=
+                      (JSON && JSON.stringify
+                        ? JSON.stringify(message)
+                        : message) + "<br />";
+                  } else {
+                    logger.innerHTML += message + "<br />";
+                  }
+                };
+
+                go.run(obj.instance);
+              });
+          }
+        }
+      );
+    </script>
+  </head>
+  <body>
+    <div id="log" height="100%" weight="100%"></div>
+  </body>
+</html>
