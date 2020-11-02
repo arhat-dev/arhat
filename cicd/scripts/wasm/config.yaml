@@ -6,7 +6,7 @@ arhat:
     file: stderr
   node:
     machineIDFrom:
-      text: "foo"
+      text: foo
     extInfo:
     - valueFrom:
         text: "1"

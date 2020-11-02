@@ -42,7 +42,7 @@ The extension configuration defines the functionality of [extension api (arhat-p
 extension:
   # enable extension service or not
   enabled: true
-  
+
   endpoints:
     # listen address of the endpoint
     # supported protocols: unix, tcp/tcp4/tcp6, udp/udp4/udp6
