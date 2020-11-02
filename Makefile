@@ -59,6 +59,9 @@ image.push.windows.all: \
 	image.push.arhat-none.windows.all \
 	image.push.arhat-docker.windows.all
 
+# manifest generation
+include scripts/gen/manifests.mk
+
 # packaging
 include scripts/package/arhat-none.mk
 include scripts/package/arhat-docker.mk

@@ -23,21 +23,17 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
-	"net/http"
-	"net/url"
-	"os"
 	goruntime "runtime"
 	"sync"
 	"sync/atomic"
 
 	"arhat.dev/aranya-proto/aranyagopb"
+	"arhat.dev/libext/server"
 	"arhat.dev/pkg/log"
 	"arhat.dev/pkg/wellknownerrors"
 	"github.com/gogo/protobuf/proto"
 
 	"arhat.dev/arhat/pkg/conf"
-	"arhat.dev/arhat/pkg/peripheral"
 	"arhat.dev/arhat/pkg/runtime"
 	"arhat.dev/arhat/pkg/runtime/none"
 	"arhat.dev/arhat/pkg/storage"
@@ -106,11 +102,10 @@ func NewAgent(appCtx context.Context, config *conf.Config) (*Agent, error) {
 
 		metricsMU: new(sync.RWMutex),
 
-		cmdMgr:      manager.NewCmdManager(),
-		runtime:     rt,
-		storage:     st,
-		peripherals: nil,
-		streams:     manager.NewStreamManager(),
+		cmdMgr:  manager.NewCmdManager(),
+		runtime: rt,
+		storage: st,
+		streams: manager.NewStreamManager(),
 
 		gzipPool: &sync.Pool{
 			New: func() interface{} {
@@ -121,43 +116,36 @@ func NewAgent(appCtx context.Context, config *conf.Config) (*Agent, error) {
 	}
 
 	if config.Extension.Enabled {
-		u, err := url.Parse(config.Extension.Listen)
-		if err != nil {
-			return nil, fmt.Errorf("invalid extension server listen address: %w", err)
-		}
-
-		addr := u.Host
-		if u.Scheme == "unix" {
-			addr = u.Path
-			// clean up previous unix socket file
-			if err = os.Remove(addr); err != nil && !os.IsNotExist(err) {
-				return nil, fmt.Errorf("failed to remove existing unix sock file: %w", err)
+		var endpoints []server.EndpointConfig
+		for _, ep := range config.Extension.Endpoints {
+			tlsConfig, err := ep.TLS.TLSConfig.GetTLSConfig(true)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create tls config for extension endpoint %q: %w", ep.Listen, err)
 			}
-		}
 
-		l, err := net.Listen(u.Scheme, addr)
+			if tlsConfig != nil && ep.TLS.VerifyClientCert {
+				tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+			}
+
+			endpoints = append(endpoints, server.EndpointConfig{
+				Listen:            ep.Listen,
+				TLS:               tlsConfig,
+				KeepaliveInterval: ep.KeepaliveInterval,
+				MessageTimeout:    ep.MessageTimeout,
+			})
+		}
+		srv, err := server.NewServer(agent.ctx, agent.logger, &server.Config{
+			Endpoints: endpoints,
+		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to create listener for extension server: %w", err)
+			return nil, fmt.Errorf("failed to create extension server")
 		}
 
-		tlsConfig, err := config.Extension.TLS.GetTLSConfig(true)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create tls config for extension server: %w", err)
-		}
-
-		if tlsConfig != nil {
-			l = tls.NewListener(l, tlsConfig)
-		}
-
-		mux := http.NewServeMux()
-
-		agent.createAndRegisterPeripheralExtensionManager(mux, &config.Extension.Peripherals)
-
-		srv := &http.Server{Handler: mux}
+		agent.createAndRegisterPeripheralExtensionManager(agent.ctx, srv, &config.Extension.Peripherals)
 
 		go func() {
-			err2 := srv.Serve(l)
-			if err2 != nil && errors.Is(err, http.ErrServerClosed) {
+			err2 := srv.ListenAndServe()
+			if err2 != nil {
 				panic(err2)
 			}
 		}()
@@ -183,11 +171,12 @@ type Agent struct {
 	collectNodeMetrics      types.MetricsCollectFunc
 	collectContainerMetrics types.MetricsCollectFunc
 
-	cmdMgr      *manager.CmdManager
-	runtime     types.Runtime
-	storage     types.Storage
-	peripherals *peripheral.Manager
-	streams     *manager.StreamManager
+	cmdMgr  *manager.CmdManager
+	runtime types.Runtime
+	storage types.Storage
+	streams *manager.StreamManager
+
+	agentComponentPeripheral
 
 	gzipPool *sync.Pool
 

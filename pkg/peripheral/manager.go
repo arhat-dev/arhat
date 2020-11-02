@@ -1,5 +1,3 @@
-// +build !noperipheral
-
 package peripheral
 
 import (
@@ -9,53 +7,13 @@ import (
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/arhat-proto/arhatgopb"
+	"arhat.dev/libext/server"
+	"arhat.dev/libext/util"
 	"arhat.dev/pkg/log"
 	"arhat.dev/pkg/wellknownerrors"
 
 	"arhat.dev/arhat/pkg/conf"
 )
-
-type FactoryFunc func(
-	ctx context.Context,
-	target string,
-	params map[string]string,
-	tlsConfig *aranyagopb.TLSConfig,
-) (*Connectivity, error)
-
-// RegisterConnectivity add one connectivity method for peripheral
-func (m *Manager) RegisterConnectivity(
-	name string,
-	factory FactoryFunc,
-) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if _, ok := m.supportedConnectivity[name]; ok {
-		return fmt.Errorf("connectivity %s already registered", name)
-	}
-
-	m.supportedConnectivity[name] = factory
-
-	return nil
-}
-
-func (m *Manager) NewConnectivity(
-	name string,
-	target string,
-	params map[string]string,
-	tlsConfig *aranyagopb.TLSConfig,
-) (*Connectivity, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	factory, ok := m.supportedConnectivity[name]
-
-	if !ok {
-		return nil, fmt.Errorf("unsupported connectivity")
-	}
-
-	return factory(m.ctx, target, params, tlsConfig)
-}
 
 func NewManager(ctx context.Context, config *conf.PeripheralExtensionConfig) *Manager {
 	return &Manager{
@@ -64,15 +22,13 @@ func NewManager(ctx context.Context, config *conf.PeripheralExtensionConfig) *Ma
 		logger: log.Log.WithName("peripheral"),
 		config: config,
 
-		all:              make(map[string]*Connectivity),
+		all:              make(map[string]*Conn),
 		peripherals:      make(map[string]*Peripheral),
 		metricsReporters: make(map[string]*MetricsReporter),
 
 		metricsCache: NewMetricsCache(config.MaxMetricsCacheTime),
 
 		mu: new(sync.RWMutex),
-
-		supportedConnectivity: make(map[string]FactoryFunc),
 	}
 }
 
@@ -82,157 +38,113 @@ type Manager struct {
 	logger log.Interface
 	config *conf.PeripheralExtensionConfig
 
-	// key: connectivity_hash_hex
-	all map[string]*Connectivity
+	// key: name
+	all map[string]*Conn
 	// key: peripheral_id
 	peripherals map[string]*Peripheral
-	// key: connectivity_hash_hex
+	// key: name
 	metricsReporters map[string]*MetricsReporter
 
 	metricsCache *MetricsCache
 
 	mu *sync.RWMutex
 
-	supportedConnectivity map[string]FactoryFunc
+	extensions *sync.Map
 }
 
-func (m *Manager) Sync(stopSig <-chan struct{}, msgCh <-chan *arhatgopb.Msg, cmdCh chan<- *arhatgopb.Cmd) error {
-	var (
-		errCh = make(chan error)
+func (m *Manager) CreateExtensionHandleFunc(
+	extensionName string,
+) (server.ExtensionHandleFunc, server.OutOfBandMsgHandleFunc) {
+	handleFunc := func(c *server.ExtensionContext) {
+		_, loaded := m.extensions.LoadOrStore(extensionName, c)
+		if loaded {
+			return
+		}
+
+		defer func() {
+			c.Close()
+
+			m.extensions.Delete(extensionName)
+		}()
+
+		select {
+		case <-c.Context.Done():
+			return
+		case <-m.ctx.Done():
+			return
+		}
+	}
+
+	oobHandleFunc := func(msg *arhatgopb.Msg) {
+		m.logger.I("received out of band message",
+			log.String("extension", extensionName),
+			log.Uint64("id", msg.Id),
+			log.String("msg_type", msg.Kind.String()),
+			log.Binary("payload", msg.Payload),
+		)
+	}
+
+	return handleFunc, oobHandleFunc
+}
+
+func (m *Manager) connectTarget(
+	extensionName string,
+	target string,
+	params map[string]string,
+	tlsConfig *aranyagopb.TLSConfig,
+) (_ *Conn, err error) {
+	// TODO: determine peripheral id
+	var id uint64 = 1
+
+	v, ok := m.extensions.Load(extensionName)
+	if !ok {
+		return nil, fmt.Errorf("peripheral extension not found")
+	}
+
+	ec, ok := v.(*server.ExtensionContext)
+	if !ok {
+		return nil, fmt.Errorf("invalid non extension context stored")
+	}
+
+	connCmd := &arhatgopb.PeripheralConnectCmd{
+		Target: target,
+		Params: params,
+		Tls:    nil,
+	}
+	if tlsConfig != nil {
+		connCmd.Tls = &arhatgopb.TLSConfig{
+			ServerName:         tlsConfig.ServerName,
+			InsecureSkipVerify: tlsConfig.InsecureSkipVerify,
+			MinVersion:         tlsConfig.MinVersion,
+			MaxVersion:         tlsConfig.MaxVersion,
+			CaCert:             tlsConfig.CaCert,
+			Cert:               tlsConfig.Cert,
+			Key:                tlsConfig.Key,
+			CipherSuites:       tlsConfig.CipherSuites,
+			NextProtos:         tlsConfig.NextProtos,
+		}
+	}
+
+	cmd, err := util.NewCmd(
+		ec.Codec.Marshal, arhatgopb.CMD_PERIPHERAL_CONNECT, id, 1, connCmd,
 	)
-
-	sendErr := func(err error) {
-		select {
-		case <-stopSig:
-		case <-m.ctx.Done():
-		case errCh <- err:
-		}
+	if err != nil {
+		return nil, fmt.Errorf("failed to create peripheral connect cmd: %w", err)
 	}
 
-	sendCmd := func(cmd *arhatgopb.Cmd) {
-		m.logger.V("sending cmd")
-		select {
-		case <-stopSig:
-		case <-m.ctx.Done():
-		case cmdCh <- cmd:
-		}
+	resp, err := ec.SendCmd(cmd)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send peripheral connect cmd: %w", err)
 	}
 
-	go func() {
-		started := false
-
-		peripheralID := uint64(0)
-		peripheralMU := new(sync.RWMutex)
-
-		nextDeviceID := func() uint64 {
-			peripheralMU.Lock()
-			defer peripheralMU.Unlock()
-			peripheralID++
-			return peripheralID
-		}
-		connectedDevices := make(map[uint64]chan *arhatgopb.Msg)
-
-		m.logger.I("receiving msgs")
-		for msg := range msgCh {
-			if started {
-				switch msg.Kind {
-				case arhatgopb.MSG_REGISTER:
-					sendErr(fmt.Errorf("unexpected multiple register message"))
-					return
-				default:
-					peripheralMU.RLock()
-					ch, ok := connectedDevices[msg.Id]
-					peripheralMU.RUnlock()
-					if !ok {
-						// TODO: log error
-						continue
-					}
-
-					// TODO: use goroutine pool
-					go func() {
-						select {
-						case <-stopSig:
-						case <-m.ctx.Done():
-						case ch <- msg:
-						}
-					}()
-				}
-
-				continue
-			}
-
-			if msg.Kind != arhatgopb.MSG_REGISTER {
-				sendErr(fmt.Errorf("expecting register as first message"))
-				return
-			}
-
-			r := new(arhatgopb.RegisterMsg)
-			err := r.Unmarshal(msg.Payload)
-			if err != nil {
-				sendErr(fmt.Errorf("failed to unmarhsal very first register message: %w", err))
-				return
-			}
-
-			started = true
-
-			err = m.RegisterConnectivity(r.Name,
-				func(
-					ctx context.Context,
-					target string,
-					params map[string]string,
-					tlsConfig *aranyagopb.TLSConfig,
-				) (*Connectivity, error) {
-					peripheralID := nextDeviceID()
-					var cmd *arhatgopb.Cmd
-					cmd, err = arhatgopb.NewCmd(peripheralID, 0, &arhatgopb.PeripheralConnectCmd{
-						Target: target,
-						Params: params,
-						Tls: &arhatgopb.TLSConfig{
-							ServerName:         tlsConfig.ServerName,
-							InsecureSkipVerify: tlsConfig.InsecureSkipVerify,
-							MinVersion:         tlsConfig.MinVersion,
-							MaxVersion:         tlsConfig.MaxVersion,
-							CaCert:             tlsConfig.CaCert,
-							Cert:               tlsConfig.Cert,
-							Key:                tlsConfig.Key,
-							CipherSuites:       tlsConfig.CipherSuites,
-							NextProtos:         tlsConfig.NextProtos,
-						},
-					})
-					if err != nil {
-						return nil, fmt.Errorf("failed to create peripheral cmd: %w", err)
-					}
-
-					msgCh := make(chan *arhatgopb.Msg)
-					peripheralMU.Lock()
-					connectedDevices[peripheralID] = msgCh
-					peripheralMU.Unlock()
-
-					sendCmd(cmd)
-
-					return NewConnectivity(stopSig, peripheralID, cmdCh, msgCh, func() {
-						peripheralMU.Lock()
-						delete(connectedDevices, peripheralID)
-						peripheralMU.Unlock()
-					}), nil
-				},
-			)
-
-			if err != nil {
-				// TODO: log error, do not send error
-				m.logger.I("failed to register peripheral connectivity", log.Error(err))
-			}
-		}
-	}()
-
-	select {
-	case <-stopSig:
-		return nil
-	case <-m.ctx.Done():
-		return nil
-	case err := <-errCh:
-		return err
+	switch resp.Kind {
+	case arhatgopb.MSG_DONE:
+	case arhatgopb.MSG_ERROR:
+	default:
+		return nil, fmt.Errorf("unexpected")
 	}
+
+	return NewConnectivity(id, ec), nil
 }
 
 func (m *Manager) Ensure(cmd *aranyagopb.PeripheralEnsureCmd) (err error) {
@@ -272,7 +184,7 @@ func (m *Manager) Ensure(cmd *aranyagopb.PeripheralEnsureCmd) (err error) {
 		return fmt.Errorf("required peripheral connector spec not found")
 	}
 
-	conn, err := m.NewConnectivity(dc.Method, dc.Target, dc.Params, dc.Tls)
+	conn, err := m.connectTarget(dc.Method, dc.Target, dc.Params, dc.Tls)
 	if err != nil {
 		return fmt.Errorf("failed to create peripheral connectivity: %w", err)
 	}
@@ -319,7 +231,7 @@ func (m *Manager) Ensure(cmd *aranyagopb.PeripheralEnsureCmd) (err error) {
 
 func (m *Manager) Delete(ids ...string) (result []*aranyagopb.PeripheralStatusMsg) {
 	for _, id := range ids {
-		kind, hashHex, found := func() (aranyagopb.PeripheralType, string, bool) {
+		kind, name, found := func() (aranyagopb.PeripheralType, string, bool) {
 			m.mu.RLock()
 			defer m.mu.RUnlock()
 
@@ -365,7 +277,7 @@ func (m *Manager) Delete(ids ...string) (result []*aranyagopb.PeripheralStatusMs
 		m.mu.Unlock()
 
 		result = append(result,
-			aranyagopb.NewPeripheralStatusMsg(kind, hashHex, aranyagopb.PERIPHERAL_STATE_REMOVED, "Removed"),
+			aranyagopb.NewPeripheralStatusMsg(kind, name, aranyagopb.PERIPHERAL_STATE_REMOVED, "Removed"),
 		)
 	}
 	return
@@ -434,5 +346,4 @@ func (m *Manager) Cleanup() {
 		delete(m.all, k)
 	}
 	m.mu.Unlock()
-
 }

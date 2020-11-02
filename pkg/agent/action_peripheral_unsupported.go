@@ -3,13 +3,14 @@
 package agent
 
 import (
-	"net/http"
-
 	"arhat.dev/arhat/pkg/conf"
 )
 
+type agentComponentPeripheral struct{}
+
 func (b *Agent) createAndRegisterPeripheralExtensionManager(
-	mux *http.ServeMux,
+	agentCtx context.Context,
+	srv *server.Server,
 	config *conf.PeripheralExtensionConfig,
 ) {
 }

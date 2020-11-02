@@ -18,10 +18,10 @@ func (b *Agent) handlePeripheralMetricsCollect(sid uint64, data []byte) {
 	}
 
 	b.processInNewGoroutine(sid, "peripheral.metrics", func() {
-		metricsForNode, paramsForAgent, metricsForAgent := b.peripherals.CollectMetrics(cmd.PeripheralNames...)
+		metricsForNode, paramsForAgent, metricsForAgent := b.peripheralManager.CollectMetrics(cmd.PeripheralNames...)
 		_, _ = paramsForAgent, metricsForAgent
 		// TODO: add agent metrics report support
 
-		b.peripherals.CacheMetrics(metricsForNode)
+		b.peripheralManager.CacheMetrics(metricsForNode)
 	})
 }

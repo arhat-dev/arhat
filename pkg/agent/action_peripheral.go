@@ -3,22 +3,28 @@
 package agent
 
 import (
+	"context"
 	"fmt"
-	"net/http"
+
+	"arhat.dev/aranya-proto/aranyagopb"
+	"arhat.dev/arhat-proto/arhatgopb"
+	"arhat.dev/libext/server"
 
 	"arhat.dev/arhat/pkg/conf"
 	"arhat.dev/arhat/pkg/peripheral"
-	"arhat.dev/arhat/pkg/util/extensionutil"
-
-	"arhat.dev/aranya-proto/aranyagopb"
 )
 
-func (b *Agent) createAndRegisterPeripheralExtensionManager(
-	mux *http.ServeMux,
+type agentComponentPeripheral struct {
+	peripheralManager *peripheral.Manager
+}
+
+func (b *agentComponentPeripheral) createAndRegisterPeripheralExtensionManager(
+	agentCtx context.Context,
+	srv *server.Server,
 	config *conf.PeripheralExtensionConfig,
 ) {
-	b.peripherals = peripheral.NewManager(b.ctx, config)
-	mux.Handle("/peripherals", extensionutil.NewHandler(b.peripherals.Sync))
+	b.peripheralManager = peripheral.NewManager(agentCtx, config)
+	srv.Handle(arhatgopb.EXTENSION_PERIPHERAL, b.peripheralManager.CreateExtensionHandleFunc)
 }
 
 func (b *Agent) handlePeripheralList(sid uint64, data []byte) {
@@ -30,7 +36,7 @@ func (b *Agent) handlePeripheralList(sid uint64, data []byte) {
 	}
 
 	b.processInNewGoroutine(sid, "peripheral.list", func() {
-		statusList := aranyagopb.NewPeripheralStatusListMsg(b.peripherals.GetAllStatuses())
+		statusList := aranyagopb.NewPeripheralStatusListMsg(b.peripheralManager.GetAllStatuses())
 		err = b.PostMsg(sid, aranyagopb.MSG_PERIPHERAL_STATUS_LIST, statusList)
 		if err != nil {
 			b.handleConnectivityError(sid, err)
@@ -48,13 +54,13 @@ func (b *Agent) handlePeripheralEnsure(sid uint64, data []byte) {
 	}
 
 	b.processInNewGoroutine(sid, "peripheral.ensure", func() {
-		err = b.peripherals.Ensure(cmd)
+		err = b.peripheralManager.Ensure(cmd)
 		if err != nil {
 			b.handleRuntimeError(sid, err)
 			return
 		}
 
-		status := b.peripherals.GetStatus(cmd.Name)
+		status := b.peripheralManager.GetStatus(cmd.Name)
 		err = b.PostMsg(sid, aranyagopb.MSG_PERIPHERAL_STATUS, status)
 		if err != nil {
 			b.handleConnectivityError(sid, err)
@@ -77,7 +83,7 @@ func (b *Agent) handlePeripheralDelete(sid uint64, data []byte) {
 	}
 
 	b.processInNewGoroutine(sid, "peripheral.delete", func() {
-		status := b.peripherals.Delete(cmd.PeripheralNames...)
+		status := b.peripheralManager.Delete(cmd.PeripheralNames...)
 		if err != nil {
 			b.handleRuntimeError(sid, err)
 			return
@@ -101,7 +107,7 @@ func (b *Agent) handlePeripheralOperation(sid uint64, data []byte) {
 
 	b.processInNewGoroutine(sid, "peripheral.operate", func() {
 		var result [][]byte
-		result, err = b.peripherals.Operate(b.Context(), cmd.PeripheralName, cmd.OperationId, cmd.Data)
+		result, err = b.peripheralManager.Operate(b.Context(), cmd.PeripheralName, cmd.OperationId, cmd.Data)
 		if err != nil {
 			b.handleRuntimeError(sid, err)
 			return

@@ -1,14 +1,10 @@
-// +build !noperipheral
-
 package peripheral
 
 import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"sort"
-	"strconv"
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/wellknownerrors"
@@ -48,7 +44,7 @@ type MetricSpec struct {
 func NewPeripheral(
 	ctx context.Context,
 	name string,
-	connector *Connectivity,
+	connector *Conn,
 	operations []*aranyagopb.PeripheralOperation,
 	metrics []*aranyagopb.PeripheralMetric,
 ) *Peripheral {
@@ -119,45 +115,10 @@ func (d *Peripheral) Close() error {
 	return d.conn.Close()
 }
 
-func convertMetricValue(value interface{}) (float64, error) {
-	switch v := value.(type) {
-	case int:
-		return float64(v), nil
-	case int8:
-		return float64(v), nil
-	case int16:
-		return float64(v), nil
-	case int32:
-		return float64(v), nil
-	case int64:
-		return float64(v), nil
-	case uint:
-		return float64(v), nil
-	case uint8:
-		return float64(v), nil
-	case uint16:
-		return float64(v), nil
-	case uint32:
-		return float64(v), nil
-	case uint64:
-		return float64(v), nil
-	case float32:
-		return float64(v), nil
-	case float64:
-		return v, nil
-	case string:
-		return strconv.ParseFloat(v, 64)
-	case []byte:
-		return strconv.ParseFloat(string(v), 64)
-	default:
-		return 0, fmt.Errorf("unsupported metrics value type")
-	}
-}
-
 func NewMetricsReporter(
 	ctx context.Context,
 	connectorHashHex string,
-	conn *Connectivity,
+	conn *Conn,
 ) *MetricsReporter {
 	return &MetricsReporter{
 		basePeripheral: newBasePeripheral(ctx, connectorHashHex, conn),

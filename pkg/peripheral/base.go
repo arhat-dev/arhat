@@ -1,5 +1,3 @@
-// +build !noperipheral
-
 package peripheral
 
 import (
@@ -13,7 +11,7 @@ type basePeripheral struct {
 	ctx context.Context
 
 	name string
-	conn *Connectivity
+	conn *Conn
 
 	state    aranyagopb.PeripheralState
 	stateMsg string
@@ -21,7 +19,7 @@ type basePeripheral struct {
 	mu *sync.RWMutex
 }
 
-func newBasePeripheral(ctx context.Context, name string, conn *Connectivity) *basePeripheral {
+func newBasePeripheral(ctx context.Context, name string, conn *Conn) *basePeripheral {
 	return &basePeripheral{
 		ctx: ctx,
 

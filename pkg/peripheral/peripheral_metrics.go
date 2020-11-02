@@ -1,4 +1,3 @@
-// +build !noperipheral
 // +build !noperipheral_metrics
 
 package peripheral
@@ -48,7 +47,6 @@ func (d *Peripheral) CollectMetrics(resultCh chan<- *Metric) {
 				}
 
 				for _, mv := range metricValues {
-					value, err := convertMetricValue(mv.Value)
 					if err != nil {
 						// TODO: log error
 						continue
@@ -70,8 +68,9 @@ func (d *Peripheral) CollectMetrics(resultCh chan<- *Metric) {
 
 					select {
 					case resultCh <- &Metric{
-						Name:      spec.Name,
-						Value:     value,
+						Name:  spec.Name,
+						Value: mv.Value,
+						// nanosecond to millisecond
 						Timestamp: ts / 1000000,
 						ValueType: valueType,
 

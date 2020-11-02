@@ -1,137 +1,74 @@
-// +build !noperipheral
-
 package peripheral
 
 import (
 	"context"
 	"fmt"
-	"sync"
+	"runtime"
+	"sync/atomic"
 
 	"arhat.dev/arhat-proto/arhatgopb"
+	"arhat.dev/libext/server"
+	"arhat.dev/libext/util"
 	"github.com/gogo/protobuf/proto"
 )
 
 func NewConnectivity(
-	stopSig <-chan struct{},
 	id uint64,
-	cmdCh chan<- *arhatgopb.Cmd,
-	msgCh <-chan *arhatgopb.Msg,
-	onClosed func(),
-) *Connectivity {
-	c := &Connectivity{
-		stopSig: stopSig,
+	ec *server.ExtensionContext,
+) *Conn {
+	c := &Conn{
 		id:      id,
+		seq:     1,
+		working: 0,
 
-		cmdCh:     cmdCh,
-		msgCh:     msgCh,
-		expecting: make(map[uint64]chan *arhatgopb.Msg),
-
-		onClosed: onClosed,
-		mu:       new(sync.RWMutex),
+		sendCmd: nil,
 	}
 
-	go c.handleMsgs()
+	c.sendCmd = func(ctx context.Context, kind arhatgopb.CmdType, p proto.Marshaler) (*arhatgopb.Msg, error) {
+		seq := c.nextSeq()
+		cmd, err := util.NewCmd(ec.Codec.Marshal, kind, id, seq, p)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create peripheral cmd: %w", err)
+		}
+
+		return ec.SendCmd(cmd)
+	}
 
 	return c
 }
 
-type Connectivity struct {
-	stopSig <-chan struct{}
+type Conn struct {
 	id      uint64
+	seq     uint64
+	working uint32
 
-	cmdCh chan<- *arhatgopb.Cmd
-	msgCh <-chan *arhatgopb.Msg
-
-	seq       uint64
-	expecting map[uint64]chan *arhatgopb.Msg
-
-	onClosed func()
-	mu       *sync.RWMutex
+	sendCmd func(ctx context.Context, kind arhatgopb.CmdType, p proto.Marshaler) (*arhatgopb.Msg, error)
 }
 
-func (c *Connectivity) handleMsgs() {
-	for m := range c.msgCh {
-		if m.Id != c.id {
-			// TODO: log error
-			continue
+func (c *Conn) nextSeq() uint64 {
+	defer func() {
+		for !atomic.CompareAndSwapUint32(&c.working, 1, 0) {
+			runtime.Gosched()
 		}
+	}()
 
-		if m.Ack != 0 {
-			c.mu.RLock()
-			ch, ok := c.expecting[m.Ack]
-			c.mu.RUnlock()
-
-			if !ok {
-				// TODO: handle unexpected ack
-				// discard
-				continue
-			}
-
-			msg := m
-			select {
-			case <-c.stopSig:
-				return
-			case ch <- msg:
-				close(ch)
-			}
-		}
+	for !atomic.CompareAndSwapUint32(&c.working, 0, 1) {
+		runtime.Gosched()
 	}
-}
-
-func (c *Connectivity) nextSeq() uint64 {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	// TODO: reuse sequence
 	c.seq++
+
 	return c.seq
 }
 
-func (c *Connectivity) sendCmd(ctx context.Context, p proto.Marshaler) (*arhatgopb.Msg, error) {
-	seq := c.nextSeq()
-	cmd, err := arhatgopb.NewCmd(c.id, seq, p)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create peripheral cmd: %w", err)
-	}
-
-	_, ok := c.expecting[seq]
-	if ok {
-		return nil, fmt.Errorf("unexpected used ack")
-	}
-
-	ch := make(chan *arhatgopb.Msg, 1)
-	c.mu.Lock()
-	c.expecting[seq] = ch
-	c.mu.Unlock()
-
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-c.stopSig:
-		return nil, fmt.Errorf("closed")
-	case c.cmdCh <- cmd:
-	}
-
-	defer func() {
-		c.mu.Lock()
-		delete(c.expecting, seq)
-		c.mu.Unlock()
-	}()
-
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-c.stopSig:
-		return nil, fmt.Errorf("closed")
-	case msg := <-ch:
-		return msg, nil
-	}
-}
-
 // Operate the peripheral via established connection
-func (c *Connectivity) Operate(ctx context.Context, params map[string]string, data []byte) ([][]byte, error) {
-	msg, err := c.sendCmd(ctx, &arhatgopb.PeripheralOperateCmd{
-		Params: params,
-		Data:   data,
-	})
+func (c *Conn) Operate(ctx context.Context, params map[string]string, data []byte) ([][]byte, error) {
+	msg, err := c.sendCmd(ctx, arhatgopb.CMD_PERIPHERAL_OPERATE,
+		&arhatgopb.PeripheralOperateCmd{
+			Params: params,
+			Data:   data,
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -156,12 +93,14 @@ func (c *Connectivity) Operate(ctx context.Context, params map[string]string, da
 }
 
 // CollectMetrics collects all existing metrics for one metric kind
-func (c *Connectivity) CollectMetrics(
+func (c *Conn) CollectMetrics(
 	ctx context.Context, params map[string]string,
 ) ([]*arhatgopb.PeripheralMetricsMsg_Value, error) {
-	msg, err := c.sendCmd(ctx, &arhatgopb.PeripheralMetricsCollectCmd{
-		Params: params,
-	})
+	msg, err := c.sendCmd(ctx, arhatgopb.CMD_PERIPHERAL_COLLECT_METRICS,
+		&arhatgopb.PeripheralMetricsCollectCmd{
+			Params: params,
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -184,8 +123,10 @@ func (c *Connectivity) CollectMetrics(
 	return m.Values, nil
 }
 
-func (c *Connectivity) Close() error {
-	msg, err := c.sendCmd(context.TODO(), &arhatgopb.PeripheralCloseCmd{})
+func (c *Conn) Close() error {
+	msg, err := c.sendCmd(context.TODO(), arhatgopb.CMD_PERIPHERAL_CLOSE,
+		&arhatgopb.PeripheralCloseCmd{},
+	)
 	if err != nil {
 		return err
 	}

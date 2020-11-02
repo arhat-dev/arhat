@@ -305,7 +305,9 @@ func (r *dockerRuntime) createPauseContainer(
 
 	// handle cni network setup
 	if !options.HostNetwork {
-		abbotRespBytes, err = r.DelegateExec(options.Network.AbbotRequestBytes, int64(pauseCtrSpec.State.Pid), pauseCtr.ID)
+		abbotRespBytes, err = r.DelegateExec(
+			options.Network.AbbotRequestBytes, int64(pauseCtrSpec.State.Pid), pauseCtr.ID,
+		)
 		if err != nil {
 			return nil, nil, err
 		}

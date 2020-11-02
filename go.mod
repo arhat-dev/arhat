@@ -134,8 +134,9 @@ replace (
 
 require (
 	arhat.dev/aranya-proto v0.1.4
-	arhat.dev/arhat-proto v0.1.1
-	arhat.dev/pkg v0.0.0-20200930092909-aa3af7acc29c
+	arhat.dev/arhat-proto v0.3.1
+	arhat.dev/libext v0.3.0
+	arhat.dev/pkg v0.1.1
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/containers/common v0.22.0
 	github.com/containers/image/v5 v5.7.0
@@ -148,7 +149,6 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/gogo/protobuf v1.3.1
 	github.com/goiiot/libmqtt v0.9.6
-	github.com/grpc-ecosystem/grpc-gateway v1.14.6 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/mholt/archiver/v3 v3.4.0
 	github.com/mistifyio/go-zfs v2.1.2-0.20190413222219-f784269be439+incompatible // indirect
@@ -169,7 +169,7 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/vishvananda/netns v0.0.0-20200520041808-52d707b772fe // indirect
 	go.uber.org/multierr v1.6.0
-	golang.org/x/sys v0.0.0-20201015000850-e3ed0017c211
+	golang.org/x/sys v0.0.0-20201101102859-da207088b7d1
 	golang.org/x/tools v0.0.0-20201023174141-c8cfbd0f21e6 // indirect
 	google.golang.org/grpc v1.33.1
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6

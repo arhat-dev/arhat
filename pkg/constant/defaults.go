@@ -36,8 +36,6 @@ const (
 
 // Extension defaults
 const (
-	DefaultArhatExtensionListen = "unix:///var/run/arhat.sock"
-
 	// peripheral
 	DefaultPeripheralMetricsMaxCacheTime = 30 * time.Minute
 )
