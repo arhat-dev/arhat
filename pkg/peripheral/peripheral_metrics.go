@@ -1,4 +1,4 @@
-// +build !noperipheral_metrics
+// +build !nometrics
 
 package peripheral
 

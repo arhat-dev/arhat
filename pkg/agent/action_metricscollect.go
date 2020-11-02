@@ -1,5 +1,4 @@
 // +build !nometrics
-// +build !noperipheral,!noperipheral_metrics
 
 package agent
 
@@ -63,5 +62,22 @@ func (b *Agent) handleMetricsCollect(sid uint64, data []byte) {
 			b.handleConnectivityError(sid, err)
 			return
 		}
+	})
+}
+
+func (b *Agent) handlePeripheralMetricsCollect(sid uint64, data []byte) {
+	cmd := new(aranyagopb.PeripheralMetricsCollectCmd)
+	err := cmd.Unmarshal(data)
+	if err != nil {
+		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal PeripheralMetricsCollectCmd: %w", err))
+		return
+	}
+
+	b.processInNewGoroutine(sid, "peripheral.metrics", func() {
+		metricsForNode, paramsForAgent, metricsForAgent := b.peripheralManager.CollectMetrics(cmd.PeripheralNames...)
+		_, _ = paramsForAgent, metricsForAgent
+		// TODO: add agent metrics report support
+
+		b.peripheralManager.CacheMetrics(metricsForNode)
 	})
 }

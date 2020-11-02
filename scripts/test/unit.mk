@@ -20,12 +20,6 @@ test.cmd:
 
 test.tags:
 	$(MAKE) arhat-none TAGS='nometrics'
-	$(MAKE) arhat-none TAGS='noperipheral'
-	$(MAKE) arhat-none TAGS='noperipheral_metrics'
-	$(MAKE) arhat-none TAGS='noperipheral nometrics'
-	$(MAKE) arhat-none TAGS='noperipheral nometrics noperipheral_metrics'
-	$(MAKE) arhat-none TAGS='noperipheral noperipheral_metrics'
-	$(MAKE) arhat-none TAGS='nometrics noperipheral_metrics'
 
 	$(MAKE) arhat-none TAGS='nomqtt'
 	$(MAKE) arhat-none TAGS='nogrpc'

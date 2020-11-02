@@ -1,5 +1,3 @@
-// +build !noperipheral
-
 package agent
 
 import (
