@@ -42,14 +42,69 @@ The extension configuration defines the functionality of [extension api (arhat-p
 extension:
   # enable extension service or not
   enabled: true
-  # listen address, support tcp/unix
-  listen: unix:///var/run/arhat.sock
+  
+  endpoints:
+    # listen address of the endpoint
+    # supported protocols: unix, tcp/tcp4/tcp6, udp/udp4/udp6
+    #
+    # if you want to serve multiple protocols/addresses,
+    # just add multiple endpoints with different listen address
+  - listen: unix:///var/run/arhat.sock
+    # tls configuration for the endpoint (server tls)
+    tls:
+      # enable tls or not
+      enabled: false
 
-  tls:
-    enabled: false
+    # keepalive interval, defaults to one minute
+    keepaliveInterval: 1m
+
+    # how long should we wait for message response, defaults to one minute
+    messageTimeout: 1m
+
+  - listen: udp://localhost:65432
+    # dtls is used for udp with tls enabled
+    tls:
+      # enable tls or not
+      enabled: true
+
+      # require client certificate or not
+      verifyClientCert: false
+
+      # CA cert file (PEM/ASN.1 format)
+      caCert: /path/to/ca.crt
+      # You can specify base64 encoded ca cert data directly as an alternative to caCert
+      #caCertData: "<base64-encoded-ca-cert>"
+
+      # client cert file (PEM format)
+      #
+      # for variant `gcp-iot-core`, this field MUST be empty
+      cert: /path/to/client.crt
+      # You can specify base64 encoded cert data directly as an alternative to cert
+      #certData: "<base64-encoded-tls-cert>"
+
+      # client private key file (PEM format)
+      key:  /path/to/client.key
+      # You can specify base64 encoded tls key directly as an alternative to `key`
+      #keyData: "<base64-encoded-tls-key>"
+
+      # tls server name override
+      serverName: foo.example.com
+
+      # ONLY intended for DEBUG use
+      #
+      # if set, will record the random key used in the tls connection to this file
+      # and the file can be used for applications like wireshark to decrypt tls connection
+      keyLogFile: /path/to/tmp/tls/log
+
+      # set cipher suites expected to ues when establishing tls connection
+      #
+      # please refer to Appendix.A section in Connectivity.md for full
+      # list of supported cipher suites
+      cipherSuites: []
+      # - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
 
   # peripheral extension config
   peripherals:
     # cache unhandled metrics for at most this time
-    maxMetricsCacheTime: 1h
+    metricsCacheTimeout: 1h
 ```

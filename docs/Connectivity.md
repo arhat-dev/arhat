@@ -60,9 +60,6 @@ connectivity:
       # in the form of {ADDRESS}:{PORT}
       endpoint: mqtt.example.com:8883
 
-      # priority of mqtt connectivity, used to determine connection priority when method is auto, defaults to 0
-      priority: 1
-
       # transport protocol
       #
       # value can be one of the following
@@ -90,7 +87,13 @@ connectivity:
       # for `azure-iot-hub`
       #       it is the extra property bag in the format of `{key1}={value1}&{key2}={value2}...`
       #       arhat will set property bag to `dev=${DEVICE_ID}&arhat&${topicNamespace}`
-      topicNamespace: arhat.dev/aranya/foo
+      topicNamespaceFrom:
+        # read a file, and use the file content as topicNamespace
+        #file: /path/to/topicNamespace/file
+        # execute a command and take the output as topicNamespace
+        #exec: []
+        # set topicNamespace explicitly
+        text: arhat.dev/aranya/foo
 
       # clientID
       #
@@ -127,17 +130,23 @@ connectivity:
 
         # CA cert file (PEM/ASN.1 format)
         caCert: /path/to/ca.crt
+        # You can specify base64 encoded ca cert data directly as an alternative to caCert
+        #caCertData: "<base64-encoded-ca-cert>"
 
         # client cert file (PEM format)
         #
         # for variant `gcp-iot-core`, this field MUST be empty
         cert: /path/to/client.crt
+        # You can specify base64 encoded cert data directly as an alternative to cert
+        #certData: "<base64-encoded-tls-cert>"
 
         # client private key file (PEM format)
         #
         # for variant `gcp-iot-core`
         #   the private key is used to sign the JWT token, and its format can also be `ASN.1`
         key:  /path/to/client.key
+        # You can specify base64 encoded tls key directly as an alternative to `key`
+        #keyData: "<base64-encoded-tls-key>"
 
         # tls server name override
         serverName: foo.example.com
@@ -165,9 +174,6 @@ connectivity:
       # grpc server address
       endpoint: grpc.example.com
 
-      # priority of grpc connectivity, used to determine connection priority when method is auto, defaults to 0
-      priority: 1
-
       # TLS settings for grpc connection
       #
       # fields in this section are identical to those in
@@ -182,9 +188,6 @@ connectivity:
       # coap broker address with port
       endpoint: coap.example.com:5684
 
-      # priority of coap connectivity, used to determine connection priority when method is auto, defaults to 0
-      priority: 1
-
       # transport protocol
       #
       # value can be one of the following
@@ -196,7 +199,13 @@ connectivity:
       # usually coap brokers are integrated into mqtt broker
       # so it's like a mqtt topic namespace but with some
       # server specific prefix (ususally `/ps/`)
-      pathNamespace: /ps/exmaple/topic/foo
+      pathNamespaceFrom:
+        # read a file, and use the file content as pathNamespace
+        #file: /path/to/pathNamespace/file
+        # execute a command and take the output as pathNamespace
+        #exec: []
+        # set pathNamespace explicitly
+        text: /ps/exmaple/topic/foo
 
       # custom string key value pair for coap uri-query options
       uriQueries:
