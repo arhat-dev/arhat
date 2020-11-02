@@ -259,3 +259,6 @@ arhat-none.plan9.all: \
 	arhat-none.plan9.x86 \
 	arhat-none.plan9.armv5 \
 	arhat-none.plan9.armv6
+
+arhat-none.js.wasm:
+	sh scripts/build/build.sh $@

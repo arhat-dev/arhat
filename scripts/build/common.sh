@@ -30,6 +30,9 @@ _get_goarch() {
   arm64 | amd64 | ppc64 | ppc64le | riscv64 | s390x | mips*)
     printf "%s" "${arch}"
     ;;
+  wasm)
+    printf "wasm"
+    ;;
   *)
     echo "unmapped arch ${arch} to goarch" >&2
     exit 1
@@ -107,6 +110,9 @@ _get_debian_arch() {
   mips*)
     printf "%s" "$(_get_goarch "${arch}")"
     ;;
+  wasm)
+    # debian has no wasm support for now
+    ;;
   *)
     echo "unmapped arch ${arch} to debian arch" >&2
     exit 1
@@ -153,6 +159,9 @@ _get_debian_triple() {
     ;;
   riscv64 | s390x)
     printf "%s-linux-gnu" "${arch}"
+    ;;
+  wasm)
+    # debian has no wasm support for now
     ;;
   *)
     echo "unmapped arch ${arch} to debian triple" >&2
@@ -202,6 +211,9 @@ _get_alpine_arch() {
   riscv64 | s390x)
     printf "%s" "${arch}"
     ;;
+  wasm)
+    # alpine has no wasm support for now
+    ;;
   *)
     echo "unmapped arch ${arch} to alpine arch" >&2
     exit 1
@@ -248,6 +260,9 @@ _get_alpine_triple() {
     ;;
   riscv64 | s390x)
     printf "%s-linux-musl" "${arch}"
+    ;;
+  wasm)
+    # alpine has no wasm support for now
     ;;
   *)
     echo "unmapped arch ${arch} to alpine triple" >&2

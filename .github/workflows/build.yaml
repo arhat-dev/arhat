@@ -373,6 +373,16 @@ jobs:
         asset_path: build/md5.txt
         asset_content_type: text/plain
 
+    - name: upload arhat-none.js.wasm
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat-none.js.wasm
+        asset_path: build/arhat-none.js.wasm
+        asset_content_type: application/wasm
+
     - name: Upload arhat-none.darwin.amd64
       uses: actions/upload-release-asset@v1
       env:

@@ -60,6 +60,9 @@ fi
 GOEXE=""
 PREDEFINED_BUILD_TAGS=""
 case "${GOOS}" in
+  js)
+    PREDEFINED_BUILD_TAGS="nometrics noexectry nocoap nogrpc"
+  ;;
   darwin)
     PREDEFINED_BUILD_TAGS=""
   ;;
