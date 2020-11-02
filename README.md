@@ -10,7 +10,7 @@ The reference `EdgeDevice` agent for `aranya`
 
 ## Features
 
-- Easy deployment for anywhere, even in browser (need wasm support)
+- Easy deployment for anywhere, [even in browser](./cicd/scripts/wasm) (requires wasm support)
 - Detailed and customizable node infromation report
   - Customize Kubernetes `Node` annotations and labels in conjunction with `aranya`
 - Flexible connectivity
@@ -39,7 +39,7 @@ see [docs/Configuration](./docs/Configuration.md)
 
 ## Build
 
-__TL;DR:__ have a look at the `build-on-{linux,darwin,windows}` jobs in [build workflow](./.github/workflows/build.yaml)
+__TL;DR:__ have a look at the `build-on-{linux,darwin,windows}` jobs in the [build workflow](./.github/workflows/build.yaml)
 
 ### Binary Targets
 
