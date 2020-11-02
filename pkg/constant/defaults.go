@@ -37,7 +37,7 @@ const (
 // Extension defaults
 const (
 	// peripheral
-	DefaultPeripheralMetricsMaxCacheTime = 30 * time.Minute
+	DefaultPeripheralMetricsCacheTimeout = 30 * time.Minute
 )
 
 const (

@@ -28,7 +28,7 @@ type ExtensionEndpoint struct {
 }
 
 type PeripheralExtensionConfig struct {
-	MaxMetricsCacheTime time.Duration `json:"maxMetricsCacheTime" yaml:"maxMetricsCacheTime"`
+	MetricsCacheTimeout time.Duration `json:"metricsCacheTimeout" yaml:"metricsCacheTimeout"`
 }
 
 func FlagsForExtensionConfig(prefix string, config *ExtensionConfig) *pflag.FlagSet {
@@ -36,8 +36,8 @@ func FlagsForExtensionConfig(prefix string, config *ExtensionConfig) *pflag.Flag
 
 	fs.BoolVar(&config.Enabled, prefix+"enable", false, "enable extension server")
 
-	fs.DurationVar(&config.Peripherals.MaxMetricsCacheTime, prefix+"maxMetricsCacheTime",
-		constant.DefaultPeripheralMetricsMaxCacheTime, "peripheral metrics cache timeout")
+	fs.DurationVar(&config.Peripherals.MetricsCacheTimeout, prefix+"metricsCacheTimeout",
+		constant.DefaultPeripheralMetricsCacheTimeout, "peripheral metrics cache timeout")
 
 	return fs
 }

@@ -6,6 +6,7 @@ import (
 
 	"arhat.dev/arhat/pkg/client"
 	"arhat.dev/arhat/pkg/client/clientutil"
+	"arhat.dev/arhat/pkg/conf"
 )
 
 func init() {
@@ -17,10 +18,10 @@ func init() {
 					MaxPayloadSize: aranyagoconst.MaxCoAPDataSize,
 					TLS:            confhelper.TLSConfig{},
 				},
-				PathNamespace: "",
-				Transport:     "tcp",
-				URIQueries:    make(map[string]string),
-				Keepalive:     60,
+				PathNamespaceFrom: conf.ValueFromSpec{},
+				Transport:         "tcp",
+				URIQueries:        make(map[string]string),
+				Keepalive:         60,
 			}
 		},
 		NewCoAPClient,

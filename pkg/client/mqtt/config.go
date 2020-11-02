@@ -14,19 +14,20 @@ import (
 	"github.com/dgrijalva/jwt-go"
 
 	"arhat.dev/arhat/pkg/client/clientutil"
+	"arhat.dev/arhat/pkg/conf"
 )
 
 type ConnectivityMQTT struct {
 	clientutil.ConnectivityCommonConfig `json:",inline" yaml:",inline"`
 
-	Version        string `json:"version" yaml:"version"`
-	Variant        string `json:"variant" yaml:"variant"`
-	Transport      string `json:"transport" yaml:"transport"`
-	TopicNamespace string `json:"topicNamespace" yaml:"topicNamespace"`
-	ClientID       string `json:"clientID" yaml:"clientID"`
-	Username       string `json:"username" yaml:"username"`
-	Password       string `json:"password" yaml:"password"`
-	Keepalive      int32  `json:"keepalive" yaml:"keepalive"`
+	Version            string             `json:"version" yaml:"version"`
+	Variant            string             `json:"variant" yaml:"variant"`
+	Transport          string             `json:"transport" yaml:"transport"`
+	TopicNamespaceFrom conf.ValueFromSpec `json:"topicNamespaceFrom" yaml:"topicNamespaceFrom"`
+	ClientID           string             `json:"clientID" yaml:"clientID"`
+	Username           string             `json:"username" yaml:"username"`
+	Password           string             `json:"password" yaml:"password"`
+	Keepalive          int32              `json:"keepalive" yaml:"keepalive"`
 }
 
 type ConnectivityMQTTConnectInfo struct {
@@ -49,6 +50,11 @@ func (c *ConnectivityMQTT) GetConnectInfo() (*ConnectivityMQTTConnectInfo, error
 
 	result.MaxPayloadSize = c.MaxPayloadSize
 
+	topicNamespace, err := c.TopicNamespaceFrom.Get()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get topic namespace value: %w", err)
+	}
+
 	variant := strings.ToLower(c.Variant)
 	switch variant {
 	case aranyagoconst.VariantAzureIoTHub:
@@ -59,9 +65,9 @@ func (c *ConnectivityMQTT) GetConnectInfo() (*ConnectivityMQTTConnectInfo, error
 		deviceID := c.ClientID
 		result.ClientID = deviceID
 
-		propertyBag, err := url.ParseQuery(c.TopicNamespace)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse property bag: %w", err)
+		propertyBag, err2 := url.ParseQuery(topicNamespace)
+		if err2 != nil {
+			return nil, fmt.Errorf("failed to parse property bag: %w", err2)
 		}
 		propertyBag["dev"] = []string{deviceID}
 		propertyBag["arhat"] = []string{""}
@@ -102,9 +108,9 @@ func (c *ConnectivityMQTT) GetConnectInfo() (*ConnectivityMQTTConnectInfo, error
 			ExpiresAt: time.Now().Add(24 * time.Hour).Unix(),
 		}
 
-		keyBytes, err := ioutil.ReadFile(c.TLS.Key)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read private key file: %w", err)
+		keyBytes, err2 := ioutil.ReadFile(c.TLS.Key)
+		if err2 != nil {
+			return nil, fmt.Errorf("failed to read private key file: %w", err2)
 		}
 
 		var (
@@ -128,16 +134,16 @@ func (c *ConnectivityMQTT) GetConnectInfo() (*ConnectivityMQTTConnectInfo, error
 		}
 
 		token := jwt.NewWithClaims(signMethod, claims)
-		jwtToken, err := token.SignedString(key)
-		if err != nil {
-			return nil, fmt.Errorf("failed to sign jwt token: %w", err)
+		jwtToken, err2 := token.SignedString(key)
+		if err2 != nil {
+			return nil, fmt.Errorf("failed to sign jwt token: %w", err2)
 		}
 
 		// last section is the device id
 		deviceID := parts[7]
 		result.MsgPubTopic = fmt.Sprintf("/devices/%s/events", deviceID)
-		if c.TopicNamespace != "" {
-			result.MsgPubTopic = fmt.Sprintf("/devices/%s/events/%s", deviceID, c.TopicNamespace)
+		if topicNamespace != "" {
+			result.MsgPubTopic = fmt.Sprintf("/devices/%s/events/%s", deviceID, topicNamespace)
 		}
 		result.CmdSubTopic = fmt.Sprintf("/devices/%s/commands/#", deviceID)
 		result.CmdSubTopicHandle = fmt.Sprintf("/devices/%s/commands.*", deviceID)
@@ -153,7 +159,7 @@ func (c *ConnectivityMQTT) GetConnectInfo() (*ConnectivityMQTTConnectInfo, error
 		}
 
 		result.ClientID = c.ClientID
-		result.CmdSubTopic, result.MsgPubTopic, result.WillPubTopic = aranyagoconst.MQTTTopics(c.TopicNamespace)
+		result.CmdSubTopic, result.MsgPubTopic, result.WillPubTopic = aranyagoconst.MQTTTopics(topicNamespace)
 		result.CmdSubTopicHandle = result.CmdSubTopic
 	case "", "standard":
 		if result.MaxPayloadSize <= 0 {
@@ -165,13 +171,12 @@ func (c *ConnectivityMQTT) GetConnectInfo() (*ConnectivityMQTTConnectInfo, error
 		result.ClientID = c.ClientID
 		result.SupportRetain = true
 
-		result.CmdSubTopic, result.MsgPubTopic, result.WillPubTopic = aranyagoconst.MQTTTopics(c.TopicNamespace)
+		result.CmdSubTopic, result.MsgPubTopic, result.WillPubTopic = aranyagoconst.MQTTTopics(topicNamespace)
 		result.CmdSubTopicHandle = result.CmdSubTopic
 	default:
 		return nil, fmt.Errorf("unsupported variant type")
 	}
 
-	var err error
 	result.TLSConfig, err = c.TLS.GetTLSConfig(false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client tls config: %w", err)

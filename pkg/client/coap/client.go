@@ -51,7 +51,12 @@ func NewCoAPClient(agent types.Agent, cfg interface{}) (_ types.ConnectivityClie
 		}
 	}
 
-	observeTopic, putTopic, willTopic := aranyagoconst.CoAPTopics(config.PathNamespace)
+	pathNamespace, err := config.PathNamespaceFrom.Get()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get path namespace value: %w", err)
+	}
+
+	observeTopic, putTopic, willTopic := aranyagoconst.CoAPTopics(pathNamespace)
 
 	willMsgOpts, _, err := new(coapmsg.Options).SetPath(make([]byte, len(willTopic)*2), willTopic)
 	if err != nil {

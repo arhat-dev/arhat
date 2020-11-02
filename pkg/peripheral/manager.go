@@ -26,7 +26,7 @@ func NewManager(ctx context.Context, config *conf.PeripheralExtensionConfig) *Ma
 		peripherals:      make(map[string]*Peripheral),
 		metricsReporters: make(map[string]*MetricsReporter),
 
-		metricsCache: NewMetricsCache(config.MaxMetricsCacheTime),
+		metricsCache: NewMetricsCache(config.MetricsCacheTimeout),
 
 		mu: new(sync.RWMutex),
 	}

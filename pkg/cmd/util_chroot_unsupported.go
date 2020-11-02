@@ -1,4 +1,4 @@
-// +build windows zos plan9
+// +build windows zos plan9 js
 
 package cmd
 
