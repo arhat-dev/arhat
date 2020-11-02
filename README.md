@@ -10,16 +10,20 @@ The reference `EdgeDevice` agent for `aranya`
 
 ## Features
 
-- Detailed and Customizable Node Infromation Report
+- Easy deployment for anywhere, even in browser (need wasm support)
+- Detailed and customizable node infromation report
   - Customize Kubernetes `Node` annotations and labels in conjunction with `aranya`
 - Flexible connectivity
   - `MQTT 3.1.1` (including `aws-iot-core`, `azure-iot-hub`, `gcp-iot-core`)
-  - `CoAP` (including `tcp`, `tcp/tls`, `udp`, `udp/dtls`)
+    - supports `tcp`, `tcp/tls`, `websocket`, `websocket/tls`
+  - `CoAP`
+    - supports `tcp`, `tcp/tls`, `udp`, `udp/dtls`
   - `gRPC`
-- Extensible plugin system
-  - Create your own peripheral controller and integrate into Kubernetes API with ease (e.g. use `kubectl` to operate peripheral)
-- Unified Metrics Collection
-  - Collect all kinds of metrics from `aranya` and Kubernetes API, including metrics of peripherals
+- Extensible plugin system with [`libext`](arhat.dev/libext)
+  - Create your own peripheral controller and integrate all kinds of peripherals into Kubernetes API with ease (e.g. use `kubectl` to turn on/off lights)
+- Unified metrics collection
+  - Efficient prometheus node exporter with no port exposed (on windows and unix-like systems)
+  - Collect all kinds of metrics with `aranya` and Kubernetes API, including metrics from peripherals
 
 ## Design
 
@@ -36,6 +40,19 @@ see [docs/Configuration](./docs/Configuration.md)
 ## Build
 
 __TL;DR:__ have a look at the `build-on-{linux,darwin,windows}` jobs in [build workflow](./.github/workflows/build.yaml)
+
+### Binary Targets
+
+Target format `arhat-{runtime}.{os}.{arch}`
+
+To find all binary targets, run:
+
+```bash
+make -qp \
+  | awk -F':' '/^[a-zA-Z0-9][^$#\/\t=]*:([^=]|$)/ {split($1,A,/ /);for(i in A)print A[i]}' \
+  | sort -u \
+  | grep ^arhat
+```
 
 ## LICENSE
 
