@@ -136,7 +136,7 @@ require (
 	arhat.dev/aranya-proto v0.1.4
 	arhat.dev/arhat-proto v0.3.1
 	arhat.dev/libext v0.3.0
-	arhat.dev/pkg v0.1.1
+	arhat.dev/pkg v0.2.11
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/containers/common v0.22.0
 	github.com/containers/image/v5 v5.7.0
