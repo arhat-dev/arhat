@@ -28,7 +28,7 @@ By this means, `arhat` don't have to know `abbot-proto` at all
 
 ### Container Network Design
 
-__NOTE:__ if `arhat` has no container runtime support (e.g. `arhat-none`), container network support is totally dropped
+__NOTE:__ if `arhat` has no container runtime support (e.g. `arhat`), container network support is totally dropped
 
 - `aranya` manages the `Node` resource, so it knows the pod CIDRs of the node, and these pod CIDRs are for connected `arhat`
 - if `arhat` supports container runtime (`arhat-docker`, `arhat-libpod`), `aranya` will update container network config everytime `arhat` get connected to the `aranya`

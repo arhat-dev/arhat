@@ -15,72 +15,72 @@
 #
 # linux
 #
-package.arhat-none.deb.amd64:
+package.arhat.deb.amd64:
 	sh scripts/package/package.sh $@
 
-package.arhat-none.deb.armv6:
+package.arhat.deb.armv6:
 	sh scripts/package/package.sh $@
 
-package.arhat-none.deb.armv7:
+package.arhat.deb.armv7:
 	sh scripts/package/package.sh $@
 
-package.arhat-none.deb.arm64:
+package.arhat.deb.arm64:
 	sh scripts/package/package.sh $@
 
-package.arhat-none.deb.all: \
-	package.arhat-none.deb.amd64 \
-	package.arhat-none.deb.armv6 \
-	package.arhat-none.deb.armv7 \
-	package.arhat-none.deb.arm64
+package.arhat.deb.all: \
+	package.arhat.deb.amd64 \
+	package.arhat.deb.armv6 \
+	package.arhat.deb.armv7 \
+	package.arhat.deb.arm64
 
-package.arhat-none.rpm.amd64:
+package.arhat.rpm.amd64:
 	sh scripts/package/package.sh $@
 
-package.arhat-none.rpm.armv7:
+package.arhat.rpm.armv7:
 	sh scripts/package/package.sh $@
 
-package.arhat-none.rpm.arm64:
+package.arhat.rpm.arm64:
 	sh scripts/package/package.sh $@
 
-package.arhat-none.rpm.all: \
-	package.arhat-none.rpm.amd64 \
-	package.arhat-none.rpm.armv7 \
-	package.arhat-none.rpm.arm64
+package.arhat.rpm.all: \
+	package.arhat.rpm.amd64 \
+	package.arhat.rpm.armv7 \
+	package.arhat.rpm.arm64
 
-package.arhat-none.linux.all: \
-	package.arhat-none.deb.all \
-	package.arhat-none.rpm.all
+package.arhat.linux.all: \
+	package.arhat.deb.all \
+	package.arhat.rpm.all
 
 #
 # windows
 #
 
-package.arhat-none.msi.amd64:
+package.arhat.msi.amd64:
 	sh scripts/package/package.sh $@
 
-package.arhat-none.msi.arm64:
+package.arhat.msi.arm64:
 	sh scripts/package/package.sh $@
 
-package.arhat-none.msi.all: \
-	package.arhat-none.msi.amd64 \
-	package.arhat-none.msi.arm64
+package.arhat.msi.all: \
+	package.arhat.msi.amd64 \
+	package.arhat.msi.arm64
 
-package.arhat-none.windows.all: \
-	package.arhat-none.msi.all
+package.arhat.windows.all: \
+	package.arhat.msi.all
 
 #
 # darwin
 #
 
-package.arhat-none.pkg.amd64:
+package.arhat.pkg.amd64:
 	sh scripts/package/package.sh $@
 
-package.arhat-none.pkg.arm64:
+package.arhat.pkg.arm64:
 	sh scripts/package/package.sh $@
 
-package.arhat-none.pkg.all: \
-	package.arhat-none.pkg.amd64 \
-	package.arhat-none.pkg.arm64
+package.arhat.pkg.all: \
+	package.arhat.pkg.amd64 \
+	package.arhat.pkg.arm64
 
-package.arhat-none.darwin.all: \
-	package.arhat-none.pkg.all
+package.arhat.darwin.all: \
+	package.arhat.pkg.all

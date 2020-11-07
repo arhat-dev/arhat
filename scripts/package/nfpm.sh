@@ -142,7 +142,7 @@ EOF
   cat >> "${nfpm_config_file}" <<EOF
 description: <some description>
 conflicts:
-- arhat-none
+- arhat
 - arhat-libpod
 
 provides: []
@@ -193,7 +193,7 @@ EOF
 description: arhat with libpod container runtime
 conflicts:
 - arhat-docker
-- arhat-none
+- arhat
 
 provides: []
 
@@ -224,7 +224,7 @@ EOF
   _do_package
 }
 
-package_arhat_none() {
+package_arhat() {
   arhat_config_file="${PACKAGE_DIR}/${COMP}-${ARCH}.config.yaml"
   create_arhat_common_config "${arhat_config_file}"
 

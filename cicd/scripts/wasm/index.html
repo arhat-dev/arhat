@@ -35,9 +35,9 @@
 
           function done() {
             const go = new Go();
-            go.argv = ["arhat-none.js.wasm", "-c", "/config.yaml"];
+            go.argv = ["arhat.js.wasm", "-c", "/config.yaml"];
 
-            fetch("/arhat-none.js.wasm")
+            fetch("/arhat.js.wasm")
               .then((response) => response.arrayBuffer())
               .then((bytes) => WebAssembly.instantiate(bytes, go.importObject))
               .then((obj) => {

@@ -25,7 +25,7 @@ lint.go:
 	${RUN_LINTER} golangci/golangci-lint:v1.32.2 golangci-lint run --fix
 
 lint.yaml:
-	${RUN_LINTER} arhatdev/yamllint:latest yamllint -c .yaml-lint.yml .
+	${RUN_LINTER} ghcr.io/arhat-dev/yamllint:latest yamllint -c .yaml-lint.yml .
 
 # TODO: enable linter for go once fixed build issue with btrfs (CGO)
 lint.all: \

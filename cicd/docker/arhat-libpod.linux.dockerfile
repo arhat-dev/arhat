@@ -1,6 +1,6 @@
 ARG ARCH=amd64
 
-FROM arhatdev/base-go:debian-amd64 as builder
+FROM ghcr.io/arhat-dev/base-go:debian-amd64 as builder
 ARG ARCH=amd64
 
 ENV CGO_ENABLED=1
@@ -11,7 +11,7 @@ WORKDIR /app
 COPY . /app
 RUN make arhat-libpod.linux.${ARCH}
 
-FROM arhatdev/go:debian-${ARCH}
+FROM ghcr.io/arhat-dev/go:debian-${ARCH}
 ARG APP=arhat-libpod
 
 ENTRYPOINT [ "/arhat-libpod" ]

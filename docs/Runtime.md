@@ -6,7 +6,7 @@ Kubernetes defines its runtime API as `CRI` (container runtime interface)
 
 ## Configuration
 
-__NOTE:__ this configuration section is ignored by `arhat-none`, which has no container runtime support
+__NOTE:__ this configuration section is ignored by `arhat`, which has no container runtime support
 
 ```yaml
 runtime:

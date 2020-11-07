@@ -1,25 +1,25 @@
 # wasm
 
-Run `arhat-none.js.wasm` in browser
+Run `arhat` in browser
 
 ## Files
 
 - `config.yaml` - Sample config with mqtt websocket connection
-- `index.html` - Sample html page to load `arhat-none.js.wasm`
+- `index.html` - Sample html page to load `arhat.js.wasm`
 - `wasm_exec.js` - Sample wasm runtime setup script
-- `arhat-none.js.wasm` - The wasm binary
+- `arhat.js.wasm` - The wasm binary
 
 ## Example Setup
 
-1. Build the wasm binary with `make arhat-none.js.wasm`, you can find the binary in `{PROJECT_ROOT}/build`, copy it to this directory:
+1. Build the wasm binary with `make arhat.js.wasm`, you can find the binary in `{PROJECT_ROOT}/build`, copy it to this directory:
 
     ```bash
     # in PROJECT_ROOT
-    make arhat-none.js.wasm
-    mv build/arhat-none.js.wasm cicd/scripts/wasm/arhat-none.js.wasm
+    make arhat.js.wasm
+    mv build/arhat.js.wasm cicd/scripts/wasm/arhat.js.wasm
     ```
 
-2. Create the `wasm_exec.js` according to the version of the `go` toolchain you used to build `arhat-none.js.wasm` (run `go version`, only MAJOR and MINOR version number used):
+2. Create the `wasm_exec.js` according to the version of the `go` toolchain you used to build `arhat.js.wasm` (run `go version`, only MAJOR and MINOR version number used):
 
     ```bash
     # in PROJECT_ROOT

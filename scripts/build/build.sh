@@ -30,8 +30,8 @@ _build() {
   eval "$1"
 }
 
-arhat_none() {
-  _build "${GOBUILD} -tags='arhat netgo nokube nocloud rt_none ${PREDEFINED_BUILD_TAGS} ${TAGS}' ./cmd/arhat-none"
+arhat() {
+  _build "${GOBUILD} -tags='arhat netgo nokube nocloud rt_none ${PREDEFINED_BUILD_TAGS} ${TAGS}' ./cmd/arhat"
 }
 
 arhat_docker() {

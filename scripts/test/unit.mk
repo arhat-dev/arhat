@@ -19,12 +19,12 @@ test.cmd:
 	sh scripts/test/unit.sh cmd
 
 test.tags:
-	$(MAKE) arhat-none TAGS='nometrics'
+	$(MAKE) arhat TAGS='nometrics'
 
-	$(MAKE) arhat-none TAGS='nomqtt'
-	$(MAKE) arhat-none TAGS='nogrpc'
-	$(MAKE) arhat-none TAGS='nocoap'
-	$(MAKE) arhat-none TAGS='nogrpc nomqtt'
-	$(MAKE) arhat-none TAGS='nocoap nogrpc'
-	$(MAKE) arhat-none TAGS='nocoap nomqtt'
-	$(MAKE) arhat-none TAGS='nomqtt nogrpc nocoap'
+	$(MAKE) arhat TAGS='nomqtt'
+	$(MAKE) arhat TAGS='nogrpc'
+	$(MAKE) arhat TAGS='nocoap'
+	$(MAKE) arhat TAGS='nogrpc nomqtt'
+	$(MAKE) arhat TAGS='nocoap nogrpc'
+	$(MAKE) arhat TAGS='nocoap nomqtt'
+	$(MAKE) arhat TAGS='nomqtt nogrpc nocoap'

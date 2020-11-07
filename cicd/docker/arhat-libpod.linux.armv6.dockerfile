@@ -1,6 +1,6 @@
 ARG ARCH=armv6
 
-FROM arhatdev/base-go:debian-amd64 as builder
+FROM ghcr.io/arhat-dev/base-go:debian-amd64 as builder
 ARG ARCH=armv6
 
 ENV CGO_ENABLED=1
@@ -13,7 +13,7 @@ RUN make arhat-libpod.linux.${ARCH}
 
 # since arhat-libpod uses cgo, alpine using musl-libc and debian glibc
 # this container will not run, just for content delivery
-FROM arhatdev/go:alpine-${ARCH}
+FROM ghcr.io/arhat-dev/go:alpine-${ARCH}
 ARG APP=arhat-libpod
 
 ENTRYPOINT [ "/arhat-libpod" ]

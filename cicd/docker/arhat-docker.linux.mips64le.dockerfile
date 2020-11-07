@@ -1,9 +1,9 @@
 ARG ARCH=amd64
 
-FROM arhatdev/builder-go:alpine as builder
+FROM ghcr.io/arhat-dev/builder-go:alpine as builder
 ENV CGO_ENABLED=0
 
-FROM arhatdev/go:debian-${ARCH}
+FROM ghcr.io/arhat-dev/go:debian-${ARCH}
 ARG APP=arhat-docker
 
 ENTRYPOINT [ "/arhat-docker" ]

@@ -1,6 +1,6 @@
 ARG ARCH=amd64
 
-FROM arhatdev/builder-go:alpine as builder
+FROM ghcr.io/arhat-dev/builder-go:alpine as builder
 ENV CGO_ENABLED=0
 
 # TODO: support multiarch build

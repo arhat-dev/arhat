@@ -1,4 +1,4 @@
-build:image:linux:arhat-none:
+build:image:linux:arhat:
   stage: build-images
   image: docker:stable
   services:
@@ -14,14 +14,14 @@ build:image:linux:arhat-none:
   tags:
   - linux
   dependencies:
-  - test:unit:linux:arhat-none
+  - test:unit:linux:arhat
 
 # TODO: build windows containers
-# build:image:windows:arhat-none:
+# build:image:windows:arhat:
 #   script:
 #   - make image.build.windows.all
 #   - make image.push.windows.all
 #   tags:
 #   - windows
 #   dependencies:
-#   - test:unit:windows:arhat-none
+#   - test:unit:windows:arhat

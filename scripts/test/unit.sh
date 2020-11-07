@@ -38,9 +38,9 @@ pkg() {
 cmd() {
     _run_go_test \
         "CGO_ENABLED=0" \
-        "-coverprofile=coverage.cmd.txt -coverpkg=./cmd/arhat-none/... " \
+        "-coverprofile=coverage.cmd.txt -coverpkg=./cmd/arhat/... " \
         "arhat netgo nokube nocloud rt_none nometrics nodevices" \
-        "./cmd/arhat-none/..."
+        "./cmd/arhat/..."
 
     _run_go_test \
         "CGO_ENABLED=0" \

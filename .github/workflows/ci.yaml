@@ -57,7 +57,7 @@ jobs:
   unit-tests:
     if: contains(github.head_ref, 'deps/') == false
     container:
-      image: arhatdev/builder-go:debian
+      image: ghcr.io/arhat-dev/builder-go:debian
     needs:
     - stylecheck
     runs-on: ubuntu-latest
