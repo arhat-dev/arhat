@@ -51,7 +51,15 @@ func (o *Observation) Cancel(ctx context.Context) error {
 	defer pool.ReleaseMessage(req)
 	req.SetObserve(1)
 	req.SetToken(o.token)
-	return o.cc.WriteMessage(req)
+	resp, err := o.cc.Do(req)
+	if err != nil {
+		return err
+	}
+	defer pool.ReleaseMessage(resp)
+	if resp.Code() != codes.Content {
+		return fmt.Errorf("unexpected return code(%v)", resp.Code())
+	}
+	return nil
 }
 
 func (o *Observation) wantBeNotified(r *pool.Message) bool {
@@ -122,7 +130,7 @@ func (cc *ClientConn) Observe(ctx context.Context, path string, observeFunc func
 		return nil, err
 	case respCode := <-respCodeChan:
 		if respCode != codes.Content {
-			err = fmt.Errorf("unexected return code(%v)", respCode)
+			err = fmt.Errorf("unexpected return code(%v)", respCode)
 			return nil, err
 		}
 		return o, nil

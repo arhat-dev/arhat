@@ -18,6 +18,9 @@ import (
 type EventFunc func()
 
 type Session struct {
+	// This field needs to be the first in the struct to ensure proper word alignment on 32-bit platforms.
+	// See: https://golang.org/pkg/sync/atomic/#pkg-note-BUG
+	sequence              uint64
 	connection *coapNet.Conn
 
 	maxMessageSize                  int
@@ -27,8 +30,8 @@ type Session struct {
 	disableTCPSignalMessageCSM      bool
 	goPool                          GoPoolFunc
 	errors                          ErrorFunc
+	closeSocket                     bool
 
-	sequence              uint64
 	tokenHandlerContainer *HandlerContainer
 	midHandlerContainer   *HandlerContainer
 	handler               HandlerFunc
@@ -40,7 +43,7 @@ type Session struct {
 	onClose []EventFunc
 
 	cancel context.CancelFunc
-	ctx    context.Context
+	ctx    atomic.Value
 
 	errSendCSM error
 }
@@ -56,7 +59,7 @@ func NewSession(
 	blockWise *blockwise.BlockWise,
 	disablePeerTCPSignalMessageCSMs bool,
 	disableTCPSignalMessageCSM bool,
-
+	closeSocket bool,
 ) *Session {
 	ctx, cancel := context.WithCancel(ctx)
 	if errors == nil {
@@ -64,7 +67,6 @@ func NewSession(
 	}
 
 	s := &Session{
-		ctx:                             ctx,
 		cancel:                          cancel,
 		connection:                      connection,
 		handler:                         handler,
@@ -77,7 +79,10 @@ func NewSession(
 		blockwiseSZX:                    blockwiseSZX,
 		disablePeerTCPSignalMessageCSMs: disablePeerTCPSignalMessageCSMs,
 		disableTCPSignalMessageCSM:      disableTCPSignalMessageCSM,
+		closeSocket:                     closeSocket,
 	}
+	s.ctx.Store(&ctx)
+
 	if !disableTCPSignalMessageCSM {
 		err := s.sendCSM()
 		if err != nil {
@@ -88,8 +93,16 @@ func NewSession(
 	return s
 }
 
+// SetContextValue stores the value associated with key to context of connection.
+func (s *Session) SetContextValue(key interface{}, val interface{}) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	ctx := context.WithValue(s.Context(), key, val)
+	s.ctx.Store(&ctx)
+}
+
 func (s *Session) Done() <-chan struct{} {
-	return s.ctx.Done()
+	return s.Context().Done()
 }
 
 func (s *Session) AddOnClose(f EventFunc) {
@@ -106,10 +119,14 @@ func (s *Session) popOnClose() []EventFunc {
 	return tmp
 }
 
-func (s *Session) close() {
+func (s *Session) close() error {
 	for _, f := range s.popOnClose() {
 		f()
 	}
+	if s.closeSocket {
+		return s.connection.Close()
+	}
+	return nil
 }
 
 func (s *Session) Close() error {
@@ -122,7 +139,7 @@ func (s *Session) Sequence() uint64 {
 }
 
 func (s *Session) Context() context.Context {
-	return s.ctx
+	return *s.ctx.Load().(*context.Context)
 }
 
 func (s *Session) PeerMaxMessageSize() uint32 {
@@ -233,7 +250,7 @@ func (s *Session) processBuffer(buffer *bytes.Buffer, cc *ClientConn) error {
 		if n != hdr.TotalLen {
 			return fmt.Errorf("invalid data: %w", err)
 		}
-		req := pool.AcquireMessage(s.ctx)
+		req := pool.AcquireMessage(s.Context())
 		_, err = req.Unmarshal(msgRaw)
 		if err != nil {
 			pool.ReleaseMessage(req)
@@ -241,7 +258,7 @@ func (s *Session) processBuffer(buffer *bytes.Buffer, cc *ClientConn) error {
 		}
 		req.SetSequence(s.Sequence())
 		s.goPool(func() {
-			origResp := pool.AcquireMessage(s.ctx)
+			origResp := pool.AcquireMessage(s.Context())
 			origResp.SetToken(req.Token())
 			w := NewResponseWriter(origResp, cc, req.Options())
 			s.Handle(w, req)
@@ -274,7 +291,7 @@ func (s *Session) sendCSM() error {
 	if err != nil {
 		return fmt.Errorf("cannot get token: %w", err)
 	}
-	req := pool.AcquireMessage(s.ctx)
+	req := pool.AcquireMessage(s.Context())
 	defer pool.ReleaseMessage(req)
 	req.SetCode(codes.CSM)
 	req.SetToken(token)
@@ -292,7 +309,10 @@ func (s *Session) Run(cc *ClientConn) (err error) {
 		if err == nil {
 			err = err1
 		}
-		s.close()
+		err1 = s.close()
+		if err == nil {
+			err = err1
+		}
 	}()
 	if s.errSendCSM != nil {
 		return s.errSendCSM
@@ -304,7 +324,7 @@ func (s *Session) Run(cc *ClientConn) (err error) {
 		if err != nil {
 			return err
 		}
-		readLen, err := s.connection.ReadWithContext(s.ctx, readBuf)
+		readLen, err := s.connection.ReadWithContext(s.Context(), readBuf)
 		if err != nil {
 			return err
 		}

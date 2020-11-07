@@ -2,15 +2,16 @@ package tcp
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"sync"
 	"time"
 
-	kitSync "github.com/plgd-dev/kit/sync"
 	"github.com/plgd-dev/go-coap/v2/message"
 	"github.com/plgd-dev/go-coap/v2/net/blockwise"
 	"github.com/plgd-dev/go-coap/v2/tcp/message/pool"
+	kitSync "github.com/plgd-dev/kit/sync"
 
 	"github.com/plgd-dev/go-coap/v2/net/keepalive"
 
@@ -34,7 +35,11 @@ type GoPoolFunc = func(func()) error
 
 type BlockwiseFactoryFunc = func(getSendedRequest func(token message.Token) (blockwise.Message, bool)) *blockwise.BlockWise
 
-type OnNewClientConnFunc = func(cc *ClientConn)
+// OnNewClientConnFunc is the callback for new connections.
+//
+// Note: Calling `tlscon.Close()` is forbidden, and `tlscon` should be treated as a
+// "read-only" parameter, mainly used to get the peer certificate from the underlining connection
+type OnNewClientConnFunc = func(cc *ClientConn, tlscon *tls.Conn)
 
 var defaultServerOptions = serverOptions{
 	ctx:            context.Background(),
@@ -55,7 +60,7 @@ var defaultServerOptions = serverOptions{
 	blockwiseEnable:          true,
 	blockwiseSZX:             blockwise.SZX1024,
 	blockwiseTransferTimeout: time.Second * 3,
-	onNewClientConn:          func(cc *ClientConn) {},
+	onNewClientConn:          func(cc *ClientConn, tlscon *tls.Conn) {},
 	heartBeat:                time.Millisecond * 100,
 }
 
@@ -123,7 +128,7 @@ func NewServer(opt ...ServerOption) *Server {
 		blockwiseTransferTimeout:        opts.blockwiseTransferTimeout,
 		heartBeat:                       opts.heartBeat,
 		disablePeerTCPSignalMessageCSMs: opts.disablePeerTCPSignalMessageCSMs,
-		disableTCPSignalMessageCSM:      opts.disablePeerTCPSignalMessageCSMs,
+		disableTCPSignalMessageCSM:      opts.disableTCPSignalMessageCSM,
 		onNewClientConn:                 opts.onNewClientConn,
 	}
 }
@@ -189,7 +194,11 @@ func (s *Server) Serve(l Listener) error {
 			wg.Add(1)
 			cc := s.createClientConn(coapNet.NewConn(rw, coapNet.WithHeartBeat(s.heartBeat)))
 			if s.onNewClientConn != nil {
-				s.onNewClientConn(cc)
+				if tlscon, ok := rw.(*tls.Conn); ok {
+					s.onNewClientConn(cc, tlscon)
+				} else {
+					s.onNewClientConn(cc, nil)
+				}
 			}
 			go func() {
 				defer wg.Done()
@@ -237,7 +246,7 @@ func (s *Server) createClientConn(connection *coapNet.Conn) *ClientConn {
 			s.ctx,
 			connection,
 			NewObservationHandler(obsHandler, s.handler),
-			s.maxMessageSize, s.goPool, s.errors, s.blockwiseSZX, blockWise, s.disablePeerTCPSignalMessageCSMs, s.disableTCPSignalMessageCSM),
+			s.maxMessageSize, s.goPool, s.errors, s.blockwiseSZX, blockWise, s.disablePeerTCPSignalMessageCSMs, s.disableTCPSignalMessageCSM, true),
 		obsHandler, kitSync.NewMap(),
 	)
 

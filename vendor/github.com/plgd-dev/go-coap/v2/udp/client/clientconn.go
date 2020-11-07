@@ -31,10 +31,14 @@ type Session interface {
 	WriteMessage(req *pool.Message) error
 	Run(cc *ClientConn) error
 	AddOnClose(f EventFunc)
+	SetContextValue(key interface{}, val interface{})
 }
 
 // ClientConn represents a virtual connection to a conceptual endpoint, to perform COAPs commands.
 type ClientConn struct {
+	// This field needs to be the first in the struct to ensure proper word alignment on 32-bit platforms.
+	// See: https://golang.org/pkg/sync/atomic/#pkg-note-BUG
+	sequence              uint64
 	session                        Session
 	handler                        HandlerFunc
 	observationTokenHandler        *HandlerContainer
@@ -50,7 +54,6 @@ type ClientConn struct {
 
 	tokenHandlerContainer *HandlerContainer
 	midHandlerContainer   *HandlerContainer
-	sequence              uint64
 }
 
 // NewClientConn creates connection over session and observation.
@@ -93,6 +96,10 @@ func NewClientConn(
 	}
 }
 
+func (cc *ClientConn) Session() Session {
+	return cc.session
+}
+
 // Close closes connection without wait of ends Run function.
 func (cc *ClientConn) Close() error {
 	return cc.session.Close()
@@ -124,7 +131,7 @@ func (cc *ClientConn) do(req *pool.Message) (*pool.Message, error) {
 	case <-req.Context().Done():
 		return nil, req.Context().Err()
 	case <-cc.session.Context().Done():
-		return nil, fmt.Errorf("connection was closed: %w", cc.Context().Err())
+		return nil, fmt.Errorf("connection was closed: %w", cc.session.Context().Err())
 	case resp := <-respChan:
 		return resp, nil
 	}
@@ -224,7 +231,7 @@ func (cc *ClientConn) doWithMID(req *pool.Message) (*pool.Message, error) {
 	case <-req.Context().Done():
 		return nil, req.Context().Err()
 	case <-cc.session.Context().Done():
-		return nil, fmt.Errorf("connection was closed: %w", cc.Context().Err())
+		return nil, fmt.Errorf("connection was closed: %w", cc.session.Context().Err())
 	case resp := <-respChan:
 		return resp, nil
 	}
@@ -518,4 +525,9 @@ func (cc *ClientConn) Process(datagram []byte) error {
 
 func (cc *ClientConn) Client() *Client {
 	return NewClient(cc)
+}
+
+// SetContextValue stores the value associated with key to context of connection.
+func (cc *ClientConn) SetContextValue(key interface{}, val interface{}) {
+	cc.session.SetContextValue(key, val)
 }

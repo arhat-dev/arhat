@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package server
 
 import (
@@ -22,12 +23,14 @@ import (
 	"io"
 	"net"
 	"net/url"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
 
 	"arhat.dev/arhat-proto/arhatgopb"
 	"arhat.dev/pkg/log"
+	"arhat.dev/pkg/pipenet"
 	"golang.org/x/sync/errgroup"
 
 	"arhat.dev/libext/types"
@@ -87,10 +90,16 @@ func NewServer(
 		case "unix": // nolint:goconst
 			addr, err = net.ResolveUnixAddr(s, u.Path)
 			createConnMgr = newStreamConnectionManager
-		//case "fifo":
-		//	connector = func() (net.Conn, error) {
-		//		return nil, err
-		//	}
+		case "pipe":
+			err = nil
+			switch runtime.GOOS {
+			case "windows":
+				// pipe://PipeName
+				addr = &pipenet.PipeAddr{Path: fmt.Sprintf(`\\.\pipe\%s%s`, u.Host, u.Path)}
+			default:
+				addr = &pipenet.PipeAddr{Path: u.Path}
+			}
+			createConnMgr = newStreamConnectionManager
 		default:
 			return nil, fmt.Errorf("unsupported protocol %q", u.Scheme)
 		}

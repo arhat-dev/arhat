@@ -188,6 +188,9 @@ func (o OnNewClientConnOpt) apply(opts *serverOptions) {
 }
 
 // WithOnNewClientConn server's notify about new client connection.
+//
+// Note: Calling `dtlsConn.Close()` is forbidden, and `dtlsConn` should be treated as a
+// "read-only" parameter, mainly used to get the peer certificate from the underlining connection
 func WithOnNewClientConn(onNewClientConn OnNewClientConnFunc) OnNewClientConnOpt {
 	return OnNewClientConnOpt{
 		onNewClientConn: onNewClientConn,
@@ -240,4 +243,17 @@ func (o GetMIDOpt) applyDial(opts *dialOptions) {
 // WithGetMID allows to set own getMID function to server/client.
 func WithGetMID(getMID GetMIDFunc) GetMIDOpt {
 	return GetMIDOpt{getMID: getMID}
+}
+
+// CloseSocketOpt close socket option.
+type CloseSocketOpt struct {
+}
+
+func (o CloseSocketOpt) applyDial(opts *dialOptions) {
+	opts.closeSocket = true
+}
+
+// WithCloseSocket closes socket at the close connection.
+func WithCloseSocket() CloseSocketOpt {
+	return CloseSocketOpt{}
 }
