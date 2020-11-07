@@ -22,7 +22,7 @@ lint.shell:
 		sh -c "find . | grep -E -e '.sh\$$' | grep -v vendor | xargs -I'{}' shellcheck -S warning -e SC1008 -e SC1090 -e SC1091 {} ;"
 
 lint.go:
-	${RUN_LINTER} golangci/golangci-lint:v1.30.0 golangci-lint run --fix
+	${RUN_LINTER} golangci/golangci-lint:v1.32.2 golangci-lint run --fix
 
 lint.yaml:
 	${RUN_LINTER} arhatdev/yamllint:latest yamllint -c .yaml-lint.yml .
