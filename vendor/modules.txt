@@ -13,7 +13,7 @@ arhat.dev/libext/codec/codecpb
 arhat.dev/libext/server
 arhat.dev/libext/types
 arhat.dev/libext/util
-# arhat.dev/pkg v0.1.1
+# arhat.dev/pkg v0.2.11
 ## explicit
 arhat.dev/pkg/backoff
 arhat.dev/pkg/confhelper
@@ -31,7 +31,7 @@ github.com/Azure/go-ansiterm/winterm
 github.com/BurntSushi/toml
 # github.com/DataDog/sketches-go v0.0.1
 github.com/DataDog/sketches-go/ddsketch
-# github.com/Microsoft/go-winio v0.4.15-0.20200113171025-3fe6c5262873 => github.com/Microsoft/go-winio v0.4.14
+# github.com/Microsoft/go-winio v0.4.15 => github.com/Microsoft/go-winio v0.4.14
 github.com/Microsoft/go-winio
 github.com/Microsoft/go-winio/archive/tar
 github.com/Microsoft/go-winio/backuptar
