@@ -31,16 +31,7 @@ _build() {
 }
 
 arhat() {
-  _build "${GOBUILD} -tags='arhat netgo nokube nocloud rt_none ${PREDEFINED_BUILD_TAGS} ${TAGS}' ./cmd/arhat"
-}
-
-arhat_docker() {
-  _build "${GOBUILD} -tags='arhat netgo nokube nocloud rt_docker ${PREDEFINED_BUILD_TAGS} ${TAGS}' ./cmd/arhat-docker"
-}
-
-arhat_libpod() {
-  _install_deps
-  _build "${GOBUILD} -tags='arhat netgo nokube nocloud rt_libpod containers_image_openpgp ${PREDEFINED_BUILD_TAGS} ${TAGS}' ./cmd/arhat-libpod"
+  _build "${GOBUILD} -tags='arhat netgo ${PREDEFINED_BUILD_TAGS} ${TAGS}' ./cmd/arhat"
 }
 
 COMP=$(printf "%s" "$@" | cut -d. -f1)
@@ -121,9 +112,8 @@ if [ -n "${PM_DEB}" ]; then
     LDFLAGS="-L/lib/${TRIPLE} -L/usr/lib/${TRIPLE}"
   fi
 
-  deb_packages="libbtrfs-dev libc6-dev libglib2.0-dev libgpgme-dev libseccomp-dev libdevmapper-dev libglib2.0-dev-bin"
+  deb_packages=""
 
-  # TODO: inspect why install packages directly will not setup pkgconfig files
   INSTALL="apt-get install -y ${deb_packages}"
   debian_arch="$(_get_debian_arch "${ARCH}")"
   if [ -n "${debian_arch}" ]; then
@@ -132,7 +122,7 @@ if [ -n "${PM_DEB}" ]; then
       packages_with_arch="${pkg}:${debian_arch} ${packages_with_arch}"
     done
 
-    INSTALL="dpkg --add-architecture ${debian_arch} && ${INSTALL} && apt-get install -y ${packages_with_arch}"
+    INSTALL=""
   fi
 fi
 
@@ -144,7 +134,7 @@ if [ -n "${PM_APK}" ]; then
     LDFLAGS="-L/${TRIPLE}/lib -L/${TRIPLE}/usr/lib"
   fi
 
-  apk_packages="btrfs-progs-dev lvm2-dev libc-dev glib-dev gpgme-dev libseccomp-dev ostree-dev"
+  apk_packages=""
 
   INSTALL="apk add ${apk_packages}"
   alpine_arch="$(_get_alpine_arch "${ARCH}")"
@@ -156,7 +146,7 @@ if [ -n "${PM_APK}" ]; then
       apk_dirs_for_triple="/${TRIPLE}${d} ${apk_dirs_for_triple}"
     done
 
-    INSTALL="mkdir -p ${apk_dirs_for_triple} && apk add --root /${TRIPLE} --arch ${alpine_arch} ${apk_packages}"
+    INSTALL=""
   fi
 fi
 
