@@ -89,7 +89,13 @@ func (b *Agent) handlePeripheralDelete(sid uint64, data []byte) {
 			return
 		}
 
-		err = b.PostMsg(sid, aranyagopb.MSG_PERIPHERAL_STATUS_LIST, &aranyagopb.PeripheralStatusListMsg{Peripherals: status})
+		err = b.PostMsg(
+			sid,
+			aranyagopb.MSG_PERIPHERAL_STATUS_LIST,
+			&aranyagopb.PeripheralStatusListMsg{
+				Peripherals: status,
+			},
+		)
 		if err != nil {
 			b.handleConnectivityError(sid, err)
 			return

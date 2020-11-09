@@ -17,11 +17,11 @@ import (
 	"arhat.dev/pkg/exechelper"
 	"arhat.dev/pkg/iohelper"
 	"arhat.dev/pkg/wellknownerrors"
+	"ext.arhat.dev/runtimeutil"
 
 	"arhat.dev/arhat/pkg/constant"
 	"arhat.dev/arhat/pkg/util/errconv"
 	"arhat.dev/arhat/pkg/util/exec"
-	"ext.arhat.dev/runtimeutil"
 )
 
 func (b *Agent) handlePodContainerExec(sid uint64, data []byte) {
@@ -287,15 +287,16 @@ func (b *Agent) handlePodPortForward(sid uint64, data []byte) {
 		// 	)
 		// }()
 
-		protocol := cmd.Protocol
-		if protocol == "" {
-			protocol = "tcp"
-		}
+		_ = cmd
+		// protocol := cmd.Protocol
+		// if protocol == "" {
+		// 	protocol = "tcp"
+		// }
 
-		if !b.hostConfig.AllowPortForward {
-			err = wellknownerrors.ErrNotSupported
-			return
-		}
+		// if !b.hostConfig.AllowPortForward {
+		// 	err = wellknownerrors.ErrNotSupported
+		// 	return
+		// }
 
 		// err = runtimeutil.PortForward(b.ctx, "localhost", protocol, cmd.Port, downstream)
 	})
