@@ -33,39 +33,27 @@ include scripts/test/e2e.mk
 
 # binary build
 include scripts/build/arhat.mk
-include scripts/build/arhat-docker.mk
-include scripts/build/arhat-libpod.mk
 
 # image
 include scripts/image/arhat.mk
-include scripts/image/arhat-docker.mk
-include scripts/image/arhat-libpod.mk
 
 image.build.linux.all: \
-	image.build.arhat.linux.all \
-	image.build.arhat-docker.linux.all \
-	image.build.arhat-libpod.linux.all
+	image.build.arhat.linux.all
 
 image.build.windows.all: \
-	image.build.arhat.windows.all \
-	image.build.arhat-docker.windows.all
+	image.build.arhat.windows.all
 
 image.push.linux.all: \
-	image.push.arhat.linux.all \
-	image.push.arhat-docker.linux.all \
-	image.push.arhat-libpod.linux.all
+	image.push.arhat.linux.all
 
 image.push.windows.all: \
-	image.push.arhat.windows.all \
-	image.push.arhat-docker.windows.all
+	image.push.arhat.windows.all
 
 # manifest generation
 include scripts/gen/manifests.mk
 
 # packaging
 include scripts/package/arhat.mk
-include scripts/package/arhat-docker.mk
-include scripts/package/arhat-libpod.mk
 
 # optional private scripts
 -include private/scripts.mk
