@@ -1,0 +1,34 @@
+root = true
+
+[*]
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+end_of_line = lf
+
+[*.go]
+indent_style = tab
+indent_size = 4
+
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+[*.json]
+indent_style = space
+indent_size = 2
+
+[*.{js,jsx,ts}]
+indent_style = space
+indent_size = 2
+
+[*.{css,html}]
+indent_style = space
+indent_size = 2
+
+[*.{sh,bash,fish}]
+indent_style = space
+indent_size = 2
+
+[{Makefile,*.mk}]
+indent_style = tab

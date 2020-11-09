@@ -261,9 +261,12 @@ func (m *Manager) Delete(ids ...string) (result []*aranyagopb.PeripheralStatusMs
 		}()
 
 		if !found {
-			result = append(result,
-				aranyagopb.NewPeripheralStatusMsg(kind, id, aranyagopb.PERIPHERAL_STATE_UNKNOWN, "Not found"),
-			)
+			result = append(result, &aranyagopb.PeripheralStatusMsg{
+				Kind:    kind,
+				Name:    id,
+				State:   aranyagopb.PERIPHERAL_STATE_UNKNOWN,
+				Message: "Not found",
+			})
 			continue
 		}
 
@@ -276,9 +279,12 @@ func (m *Manager) Delete(ids ...string) (result []*aranyagopb.PeripheralStatusMs
 		}
 		m.mu.Unlock()
 
-		result = append(result,
-			aranyagopb.NewPeripheralStatusMsg(kind, name, aranyagopb.PERIPHERAL_STATE_REMOVED, "Removed"),
-		)
+		result = append(result, &aranyagopb.PeripheralStatusMsg{
+			Kind:    kind,
+			Name:    name,
+			State:   aranyagopb.PERIPHERAL_STATE_REMOVED,
+			Message: "Removed",
+		})
 	}
 	return
 }

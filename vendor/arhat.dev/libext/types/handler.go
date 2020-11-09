@@ -17,11 +17,25 @@ limitations under the License.
 package types
 
 import (
+	"context"
+
 	"arhat.dev/arhat-proto/arhatgopb"
+)
+
+type (
+	ResizeHandleFunc func(cols, rows uint32)
+	MsgSendFunc      func(msg *arhatgopb.Msg) error
 )
 
 // Handler for controller
 type Handler interface {
+	// SetMsgSendFunc is called by controller when new connection established, handler
+	// should use the latest message send func for SendMsg function call
+	SetMsgSendFunc(sendMsg MsgSendFunc)
+
+	// SendMsg send out of band message to the extension hub
+	SendMsg(msg *arhatgopb.Msg) error
+
 	// HandleCmd process one command per function call, payload is non stream data
-	HandleCmd(id uint64, kind arhatgopb.CmdType, payload []byte) (interface{}, error)
+	HandleCmd(ctx context.Context, id, seq uint64, kind arhatgopb.CmdType, payload []byte) (interface{}, error)
 }

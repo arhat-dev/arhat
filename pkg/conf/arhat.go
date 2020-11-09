@@ -20,19 +20,18 @@ import (
 	"context"
 	"io/ioutil"
 
-	"arhat.dev/pkg/confhelper"
 	"arhat.dev/pkg/exechelper"
 	"arhat.dev/pkg/log"
+	"ext.arhat.dev/runtimeutil/storage"
 	"github.com/spf13/pflag"
 )
 
 // Config
 type Config struct {
-	Arhat        AppConfig          `json:"arhat" yaml:"arhat"`
-	Connectivity ConnectivityConfig `json:"connectivity" yaml:"connectivity"`
-	Runtime      RuntimeConfig      `json:"runtime" yaml:"runtime"`
-	Storage      StorageConfig      `json:"storage" yaml:"storage"`
-	Extension    ExtensionConfig    `json:"extension" yaml:"extension"`
+	Arhat        AppConfig            `json:"arhat" yaml:"arhat"`
+	Connectivity ConnectivityConfig   `json:"connectivity" yaml:"connectivity"`
+	Storage      storage.ClientConfig `json:"storage" yaml:"storage"`
+	Extension    ExtensionConfig      `json:"extension" yaml:"extension"`
 }
 
 // AppConfig configuration for arhat application behavior
@@ -45,8 +44,7 @@ type AppConfig struct {
 	Node NodeConfig `json:"node" yaml:"node"`
 
 	Optimization struct {
-		PProf         confhelper.PProfConfig `json:"pprof" yaml:"pprof"`
-		MaxProcessors int                    `json:"maxProcessors" yaml:"maxProcessors"`
+		MaxProcessors int `json:"maxProcessors" yaml:"maxProcessors"`
 	} `json:"optimization" yaml:"optimization"`
 }
 
@@ -97,7 +95,11 @@ func (vf *ValueFromSpec) Get() (string, error) {
 	}
 
 	if len(vf.Exec) > 0 {
-		cmd := exechelper.Prepare(context.TODO(), vf.Exec, false, nil)
+		cmd, err := exechelper.Prepare(context.TODO(), vf.Exec, nil, false, nil)
+		if err != nil {
+			return "", err
+		}
+
 		data, err := cmd.CombinedOutput()
 		if err != nil {
 			return "", err

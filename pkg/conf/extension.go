@@ -3,7 +3,7 @@ package conf
 import (
 	"time"
 
-	"arhat.dev/pkg/confhelper"
+	"arhat.dev/pkg/tlshelper"
 	"github.com/spf13/pflag"
 
 	"arhat.dev/arhat/pkg/constant"
@@ -19,8 +19,8 @@ type ExtensionConfig struct {
 type ExtensionEndpoint struct {
 	Listen string `json:"listen" yaml:"listen"`
 	TLS    struct {
-		confhelper.TLSConfig `json:",inline" yaml:",inline"`
-		VerifyClientCert     bool `json:"verifyClientCert" yaml:"verifyClientCert"`
+		tlshelper.TLSConfig `json:",inline" yaml:",inline"`
+		VerifyClientCert    bool `json:"verifyClientCert" yaml:"verifyClientCert"`
 	} `json:"tls" yaml:"tls"`
 
 	KeepaliveInterval time.Duration `json:"keepaliveInterval" yaml:"keepaliveInterval"`

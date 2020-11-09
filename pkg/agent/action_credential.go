@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"arhat.dev/aranya-proto/aranyagopb"
-	"arhat.dev/pkg/hashhelper"
 )
 
 func (b *Agent) handleCredentialEnsure(sid uint64, data []byte) {
@@ -32,13 +31,13 @@ func (b *Agent) handleCredentialEnsure(sid uint64, data []byte) {
 		return
 	}
 
-	b.processInNewGoroutine(sid, "storage.credential.update", func() {
-		b.storage.SetCredentials(cmd)
+	// b.processInNewGoroutine(sid, "storage.credential.update", func() {
+	// 	b.storage.SetCredentials(cmd)
 
-		msg := aranyagopb.NewCredentialStatusMsg(hashhelper.Sha256SumHex(cmd.SshPrivateKey))
-		if err := b.PostMsg(sid, aranyagopb.MSG_CRED_STATUS, msg); err != nil {
-			b.handleConnectivityError(sid, err)
-			// do not make early return, let server make reject decision
-		}
-	})
+	// 	msg := aranyagopb.NewCredentialStatusMsg(hashhelper.Sha256SumHex(cmd.SshPrivateKey))
+	// 	if err := b.PostMsg(sid, aranyagopb.MSG_CRED_STATUS, msg); err != nil {
+	// 		b.handleConnectivityError(sid, err)
+	// 		// do not make early return, let server make reject decision
+	// 	}
+	// })
 }

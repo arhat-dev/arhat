@@ -24,9 +24,6 @@ import (
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/exechelper"
-	"arhat.dev/pkg/wellknownerrors"
-
-	"arhat.dev/arhat/pkg/constant"
 )
 
 var (
@@ -43,29 +40,26 @@ func DoIfTryFailed(
 	command []string,
 	tty bool,
 	env map[string]string,
-) (int, error) {
+) (*exechelper.Cmd, error) {
 	var err error
 	tryExec, ok := tryCommands[command[0]]
 	if ok {
 		err = tryExec(stdin, stdout, stderr, resizeCh, command, tty)
 	}
 
-	if !ok || err == wellknownerrors.ErrNotSupported {
-		return exechelper.Do(exechelper.Spec{
-			Context:        ctx,
-			Env:            env,
-			Command:        command,
-			Stdin:          stdin,
-			Stdout:         stdout,
-			Stderr:         stderr,
-			Tty:            tty,
-			OnResizeSignal: ResizeChannelToHandlerFunc(ctx.Done(), resizeCh),
-		})
+	if ok && err == nil {
+		// handled
+		return nil, nil
 	}
 
-	if err != nil {
-		return constant.DefaultExitCodeOnError, err
-	}
-
-	return 0, nil
+	// not handled, do it locally
+	return exechelper.Do(exechelper.Spec{
+		Context: ctx,
+		Env:     env,
+		Command: command,
+		Stdin:   stdin,
+		Stdout:  stdout,
+		Stderr:  stderr,
+		Tty:     tty,
+	})
 }

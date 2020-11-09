@@ -34,7 +34,9 @@ func (b *Agent) handlePeripheralList(sid uint64, data []byte) {
 	}
 
 	b.processInNewGoroutine(sid, "peripheral.list", func() {
-		statusList := aranyagopb.NewPeripheralStatusListMsg(b.peripheralManager.GetAllStatuses())
+		statusList := &aranyagopb.PeripheralStatusListMsg{
+			Peripherals: b.peripheralManager.GetAllStatuses(),
+		}
 		err = b.PostMsg(sid, aranyagopb.MSG_PERIPHERAL_STATUS_LIST, statusList)
 		if err != nil {
 			b.handleConnectivityError(sid, err)
@@ -87,7 +89,7 @@ func (b *Agent) handlePeripheralDelete(sid uint64, data []byte) {
 			return
 		}
 
-		err = b.PostMsg(sid, aranyagopb.MSG_PERIPHERAL_STATUS_LIST, aranyagopb.NewPeripheralStatusListMsg(status))
+		err = b.PostMsg(sid, aranyagopb.MSG_PERIPHERAL_STATUS_LIST, &aranyagopb.PeripheralStatusListMsg{Peripherals: status})
 		if err != nil {
 			b.handleConnectivityError(sid, err)
 			return
@@ -114,7 +116,9 @@ func (b *Agent) handlePeripheralOperation(sid uint64, data []byte) {
 		err = b.PostMsg(
 			sid,
 			aranyagopb.MSG_PERIPHERAL_OPERATION_RESULT,
-			aranyagopb.NewPeripheralOperationResultMsg(result),
+			&aranyagopb.PeripheralOperationResultMsg{
+				Data: result,
+			},
 		)
 		if err != nil {
 			b.handleConnectivityError(sid, err)

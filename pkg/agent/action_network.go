@@ -31,7 +31,7 @@ func (b *Agent) handleNetwork(sid uint64, data []byte) {
 	}
 
 	b.processInNewGoroutine(sid, "net", func() {
-		respBytes, err2 := b.runtime.DelegateExec(cmd.AbbotRequestBytes, -1, "")
+		respBytes, err2 := b.networkClient.Do(b.ctx, cmd.AbbotRequestBytes, 0, "")
 		if err2 != nil {
 			b.handleConnectivityError(sid, err2)
 			return

@@ -23,27 +23,24 @@ import (
 	"os/exec"
 
 	"github.com/creack/pty"
-
-	"arhat.dev/pkg/log"
 )
 
 func startCmdWithTty(
-	logger log.Interface,
 	cmd *exec.Cmd,
 	stdin io.Reader,
 	stdout io.Writer,
-	onResizeSig TtyResizeSignalFunc,
-) (func(), error) {
+	onCopyErr func(error),
+) (resizeFunc, func(), error) {
 	f, err := pty.Start(cmd)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if stdin != nil {
 		go func() {
 			_, err := io.Copy(f, stdin)
-			if err != nil && logger != nil {
-				logger.V("exception in writing stdin data", log.Error(err))
+			if err != nil {
+				onCopyErr(err)
 			}
 		}()
 	}
@@ -51,23 +48,13 @@ func startCmdWithTty(
 	if stdout != nil {
 		go func() {
 			_, err := io.Copy(stdout, f)
-			if err != nil && logger != nil {
-				logger.V("exception in reading stdout data", log.Error(err))
+			if err != nil {
+				onCopyErr(err)
 			}
 		}()
 	}
 
-	if onResizeSig != nil {
-		go func() {
-			doResize := func(cols, rows uint64) error {
-				return pty.Setsize(f, &pty.Winsize{Cols: uint16(cols), Rows: uint16(rows)})
-			}
-
-			// this is actually a channel, but channel type is not compatible between docker and libpod
-			for onResizeSig(doResize) {
-			}
-		}()
-	}
-
-	return func() { _ = f.Close() }, nil
+	return func(cols, rows int64) error {
+		return pty.Setsize(f, &pty.Winsize{Cols: uint16(cols), Rows: uint16(rows)})
+	}, func() { _ = f.Close() }, nil
 }

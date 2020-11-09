@@ -187,7 +187,7 @@ func (d *Decoder) Reset(r io.Reader) error {
 		d.current.err = err
 		d.current.flushed = true
 		if debug {
-			println("sync decode to", len(dst), "bytes, err:", err)
+			println("sync decode to ", len(dst), "bytes, err:", err)
 		}
 		return nil
 	}
@@ -303,9 +303,6 @@ func (d *Decoder) DecodeAll(input, dst []byte) ([]byte, error) {
 		frame.history.reset()
 		err := frame.reset(&frame.bBuf)
 		if err == io.EOF {
-			if debug {
-				println("frame reset return EOF")
-			}
 			return dst, nil
 		}
 		if frame.DictionaryID != nil {
@@ -344,9 +341,6 @@ func (d *Decoder) DecodeAll(input, dst []byte) ([]byte, error) {
 			return dst, err
 		}
 		if len(frame.bBuf) == 0 {
-			if debug {
-				println("frame dbuf empty")
-			}
 			break
 		}
 	}

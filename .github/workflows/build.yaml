@@ -87,9 +87,9 @@ jobs:
 
         cd build
         for os in ${os_list}; do
-          sha256sum arhat-*.${os}* > sha256.${os}.txt
-          sha512sum arhat-*.${os}* > sha512.${os}.txt
-          md5sum arhat-*.${os}* > md5.${os}.txt
+          sha256sum arhat.${os}* > sha256.${os}.txt
+          sha512sum arhat.${os}* > sha512.${os}.txt
+          md5sum arhat.${os}* > md5.${os}.txt
         done
         cd -
 
@@ -182,9 +182,9 @@ jobs:
     - name: Hash
       run: |
         cd build
-        shasum -a 256 arhat-*.darwin* > sha256.darwin.txt
-        shasum -a 512 arhat-*.darwin* > sha512.darwin.txt
-        md5sum arhat-*.darwin* > md5.darwin.txt
+        shasum -a 256 arhat.darwin* > sha256.darwin.txt
+        shasum -a 512 arhat.darwin* > sha512.darwin.txt
+        md5sum arhat.darwin* > md5.darwin.txt
         cd -
 
     - name: Upload Artifact
@@ -223,9 +223,9 @@ jobs:
     - name: Hash
       run: |
         cd build
-        sha256sum arhat-*.windows* > sha256.windows.txt
-        sha512sum arhat-*.windows* > sha512.windows.txt
-        md5sum arhat-*.windows* > md5.windows.txt
+        sha256sum arhat.windows* > sha256.windows.txt
+        sha512sum arhat.windows* > sha512.windows.txt
+        md5sum arhat.windows* > md5.windows.txt
         cd -
 
     - name: Upload Artifact

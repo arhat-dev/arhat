@@ -22,10 +22,14 @@ import (
 	"io"
 	"os/exec"
 
-	"arhat.dev/pkg/log"
 	"arhat.dev/pkg/wellknownerrors"
 )
 
-func startCmdWithTty(logger log.Interface, cmd *exec.Cmd, stdin io.Reader, stdout io.Writer, resizeH TtyResizeSignalFunc) (func(), error) {
-	return nil, wellknownerrors.ErrNotSupported
+func startCmdWithTty(
+	cmd *exec.Cmd,
+	stdin io.Reader,
+	stdout io.Writer,
+	onCopyErr func(error),
+) (resizeFunc, func(), error) {
+	return nil, nil, wellknownerrors.ErrNotSupported
 }

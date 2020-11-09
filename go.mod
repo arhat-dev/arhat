@@ -133,28 +133,18 @@ replace (
 )
 
 require (
-	arhat.dev/aranya-proto v0.1.4
-	arhat.dev/arhat-proto v0.3.1
-	arhat.dev/libext v0.3.2
-	arhat.dev/pkg v0.2.11
+	arhat.dev/aranya-proto v0.2.3
+	arhat.dev/arhat-proto v0.4.2
+	arhat.dev/libext v0.4.1
+	arhat.dev/pkg v0.3.1
+	ext.arhat.dev/runtimeutil v0.1.2
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
-	github.com/containers/common v0.22.0
-	github.com/containers/image/v5 v5.7.0
-	github.com/containers/podman/v2 v2.1.1
-	github.com/containers/storage v1.23.6
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/docker/docker v17.12.0-ce-rc1.0.20200917150144-3956a86b6235+incompatible
-	github.com/docker/go-connections v0.4.0
-	github.com/fsnotify/fsnotify v1.4.9
 	github.com/gogo/protobuf v1.3.1
 	github.com/goiiot/libmqtt v0.9.6
-	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/mholt/archiver/v3 v3.5.0
-	github.com/mistifyio/go-zfs v2.1.2-0.20190413222219-f784269be439+incompatible // indirect
 	github.com/mssola/user_agent v0.5.2
-	github.com/opencontainers/image-spec v1.0.2-0.20190823105129-775207bd45b6
-	github.com/opencontainers/runtime-spec v1.0.3-0.20200817204227-f9c09b4ea1df
 	github.com/pbnjay/memory v0.0.0-20190104145345-974d429e7ae4
 	github.com/pion/dtls/v2 v2.0.3
 	github.com/pion/logging v0.2.2
@@ -166,14 +156,8 @@ require (
 	github.com/prometheus/node_exporter v1.0.1
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.6.1
-	github.com/vishvananda/netns v0.0.0-20200520041808-52d707b772fe // indirect
-	go.uber.org/multierr v1.6.0
 	golang.org/x/sys v0.0.0-20201107080550-4d91cf3a1aaf
-	golang.org/x/tools v0.0.0-20201023174141-c8cfbd0f21e6 // indirect
-	google.golang.org/grpc v1.33.1
+	google.golang.org/grpc v1.33.2
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/yaml.v2 v2.3.0
-	k8s.io/client-go v0.18.10
-	k8s.io/utils v0.0.0-20201015054608-420da100c033 // indirect
 )

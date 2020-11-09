@@ -21,20 +21,6 @@ const (
 	IdentifierLogFile = "[file]"
 )
 
-const (
-	ContainerNamePause = "_pause"
-	ContainerNameAbbot = "abbot"
-)
-
-const (
-	StorageBackendSSHFS = "sshfs"
-)
-
-const (
-	StorageArgEnvRemotePath = "ARHAT_STORAGE_REMOTE_PATH"
-	StorageArgEnvLocalPath  = "ARHAT_STORAGE_LOCAL_PATH"
-)
-
 func PrevLogFile(name string) string {
 	return name + ".old"
 }

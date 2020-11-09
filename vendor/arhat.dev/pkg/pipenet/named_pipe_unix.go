@@ -36,8 +36,6 @@ import (
 	"time"
 	"unsafe"
 
-	"go.uber.org/multierr"
-
 	"arhat.dev/pkg/hashhelper"
 	"arhat.dev/pkg/iohelper"
 )
@@ -117,12 +115,22 @@ func (c *pipeConn) Write(b []byte) (n int, err error) {
 
 // Close pipe connection
 func (c *pipeConn) Close() error {
-	err := multierr.Combine(c.r.Close(), c.remoteWrite.Close())
+	err := c.r.Close()
+
+	_ = c.remoteWrite.Close()
 	_ = os.Remove(c.r.Name())
 	_ = os.Remove(c.remoteWrite.Name())
 
 	if c.w != nil {
-		_ = c.w.Close()
+		err2 := c.w.Close()
+		if err2 != nil {
+			if err != nil {
+				err = fmt.Errorf("%s; %w", err.Error(), err2)
+			} else {
+				err = err2
+			}
+		}
+
 		_ = os.Remove(c.w.Name())
 	}
 
@@ -138,7 +146,17 @@ func (c *pipeConn) RemoteAddr() net.Addr {
 }
 
 func (c *pipeConn) SetDeadline(t time.Time) error {
-	return multierr.Append(c.r.SetDeadline(t), c.w.SetDeadline(t))
+	err := c.r.SetDeadline(t)
+	err2 := c.w.SetDeadline(t)
+	if err2 != nil {
+		if err != nil {
+			err = fmt.Errorf("%s; %w", err.Error(), err2)
+		} else {
+			err = err2
+		}
+	}
+
+	return err
 }
 
 func (c *pipeConn) SetReadDeadline(t time.Time) error {

@@ -23,6 +23,7 @@ import (
 	"arhat.dev/aranya-proto/aranyagopb"
 
 	"arhat.dev/arhat/pkg/util/sysinfo"
+	"arhat.dev/arhat/pkg/version"
 )
 
 func (b *Agent) handleNodeInfoGet(sid uint64, cmdBytes []byte) {
@@ -48,17 +49,13 @@ func (b *Agent) handleNodeInfoGet(sid uint64, cmdBytes []byte) {
 			}
 
 			systemInfo := &aranyagopb.NodeSystemInfo{
-				Os:            b.runtime.OS(),
-				Arch:          b.runtime.Arch(),
+				Os:            runtime.GOOS,
+				Arch:          version.Arch(),
 				OsImage:       sysinfo.GetOSImage(),
-				KernelVersion: b.runtime.KernelVersion(),
+				KernelVersion: sysinfo.GetKernelVersion(),
 				MachineId:     machineID,
 				BootId:        sysinfo.GetBootID(),
 				SystemUuid:    sysinfo.GetSystemUUID(),
-				RuntimeInfo: &aranyagopb.NodeContainerRuntimeInfo{
-					Name:    b.runtime.Name(),
-					Version: b.runtime.Version(),
-				},
 			}
 
 			nodeMsg := aranyagopb.NewNodeStatusMsg(systemInfo, capacity, b.getNodeConditions(), b.extInfo)

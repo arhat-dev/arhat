@@ -37,5 +37,10 @@ func (d *basePeripheral) Status() *aranyagopb.PeripheralStatusMsg {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
-	return aranyagopb.NewPeripheralStatusMsg(aranyagopb.PERIPHERAL_TYPE_NORMAL, d.name, d.state, d.stateMsg)
+	return &aranyagopb.PeripheralStatusMsg{
+		Kind:    aranyagopb.PERIPHERAL_TYPE_NORMAL,
+		Name:    d.name,
+		State:   d.state,
+		Message: d.stateMsg,
+	}
 }

@@ -26,7 +26,7 @@ var bytesBufPool = &sync.Pool{
 }
 
 func GetBytesBuf(size int) []byte {
-	buf := *bytesBufPool.Get().(*([]byte))
+	buf := *bytesBufPool.Get().(*[]byte)
 	if len(buf) >= size {
 		return buf
 	}
@@ -39,6 +39,6 @@ func GetBytesBuf(size int) []byte {
 	return append(make([]byte, extend), buf...)
 }
 
-func PutBytesBuf(b *([]byte)) {
+func PutBytesBuf(b *[]byte) {
 	bytesBufPool.Put(b)
 }

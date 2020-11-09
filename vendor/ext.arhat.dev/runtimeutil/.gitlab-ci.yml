@@ -1,0 +1,52 @@
+variables:
+  CI_DEBUG_TRACE: "false"
+
+  DOCKER_CLI_EXPERIMENTAL: enabled # required to enable `docker manifests`
+  DOCKER_HOST: tcp://localhost:2375
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""  # https://gitlab.com/gitlab-org/gitlab-runner/issues/4501
+
+stages:
+- stylecheck
+- unit-tests
+
+stylecheck:
+  image: docker:stable
+  stage: stylecheck
+  services:
+  - docker:stable-dind
+  before_script:
+  - apk add --update make bash git
+  script:
+  - make lint.all
+
+.test:
+  stage: unit-tests
+  image: arhatdev/builder-go:debian
+  script:
+  - make test.unit
+  dependencies:
+  - stylecheck
+
+test:unit:linux:
+  extends: .test
+  tags:
+  - linux
+
+test:unit:windows:
+  extends: .test
+  tags:
+  - windows
+
+test:unit:darwin:
+  extends: .test
+  tags:
+  - darwin
+
+test:fuzz:
+  extends: .test
+  script:
+  - make install.fuzz
+  - make test.fuzz
+  dependencies:
+  - stylecheck

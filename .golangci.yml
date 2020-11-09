@@ -1,9 +1,3 @@
-service:
-  prepare:
-  - export CGO_ENABLED=1
-  - export GOOS=darwin
-  - export GOARCH=$(go env GOHOSTARCH)
-
 run:
   deadline: 10m
   tests: true
@@ -11,12 +5,7 @@ run:
   skip-dirs-use-default: true
   skip-dirs:
   - vendor
-  - pkg/runtime/libpod
   build-tags:
-  - containers_image_openpgp
-  - rt_docker
-  - nokube
-  - nocloud
   - arhat
 
 output:

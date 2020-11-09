@@ -23,6 +23,7 @@ import (
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
+	"arhat.dev/aranya-proto/aranyagopb/rpcpb"
 	"arhat.dev/pkg/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -33,20 +34,14 @@ import (
 	"arhat.dev/arhat/pkg/types"
 )
 
-var (
-	defaultCallOptions = []grpc.CallOption{
-		grpc.WaitForReady(true),
-	}
-)
-
 type Client struct {
 	*clientutil.BaseClient
 
 	serverAddress string
 	dialOpts      []grpc.DialOption
 	conn          *grpc.ClientConn
-	client        aranyagopb.EdgeDeviceClient
-	syncClient    aranyagopb.EdgeDevice_SyncClient
+	client        rpcpb.EdgeDeviceClient
+	syncClient    rpcpb.EdgeDevice_SyncClient
 
 	mu *sync.RWMutex
 }
@@ -103,7 +98,7 @@ func (c *Client) Connect(dialCtx context.Context) error {
 	}
 
 	c.conn = conn
-	c.client = aranyagopb.NewEdgeDeviceClient(conn)
+	c.client = rpcpb.NewEdgeDeviceClient(conn)
 
 	return nil
 }
@@ -117,7 +112,7 @@ func (c *Client) Start(ctx context.Context) error {
 			return clientutil.ErrClientAlreadyConnected
 		}
 
-		syncClient, err := c.client.Sync(ctx, defaultCallOptions...)
+		syncClient, err := c.client.Sync(ctx, grpc.WaitForReady(true))
 		if err != nil {
 			return err
 		}

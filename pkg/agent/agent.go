@@ -23,7 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	goruntime "runtime"
+	"runtime"
 	"sync"
 	"sync/atomic"
 
@@ -31,12 +31,11 @@ import (
 	"arhat.dev/libext/server"
 	"arhat.dev/pkg/log"
 	"arhat.dev/pkg/wellknownerrors"
+	"ext.arhat.dev/runtimeutil"
+	"ext.arhat.dev/runtimeutil/storage"
 	"github.com/gogo/protobuf/proto"
 
 	"arhat.dev/arhat/pkg/conf"
-	"arhat.dev/arhat/pkg/runtime"
-	"arhat.dev/arhat/pkg/runtime/none"
-	"arhat.dev/arhat/pkg/storage"
 	"arhat.dev/arhat/pkg/types"
 	"arhat.dev/arhat/pkg/util/errconv"
 	"arhat.dev/arhat/pkg/util/manager"
@@ -49,7 +48,7 @@ var (
 	errCommandNotProvided      = errors.New("command not provided for exec")
 )
 
-var _ types.Agent = &Agent{}
+var _ types.Agent = (*Agent)(nil)
 
 func NewAgent(appCtx context.Context, config *conf.Config) (*Agent, error) {
 	ctx, exit := context.WithCancel(appCtx)
@@ -66,27 +65,9 @@ func NewAgent(appCtx context.Context, config *conf.Config) (*Agent, error) {
 		return nil, err
 	}
 
-	st, err := storage.NewStorage(ctx, &config.Storage)
+	st, err := config.Storage.CreateClient(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create storage handler: %w", err)
-	}
-
-	var rt types.Runtime
-	if config.Runtime.Enabled {
-		rt, err = runtime.NewRuntime(appCtx, st, &config.Runtime)
-	} else {
-		rt, err = none.NewNoneRuntime(appCtx, st, nil)
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to create runtime: %w", err)
-	}
-
-	rt.SetContext(ctx)
-
-	err = rt.InitRuntime()
-	if err != nil {
-		return nil, fmt.Errorf("failed to init runtime: %w", err)
+		return nil, fmt.Errorf("failed to create storage client: %w", err)
 	}
 
 	agent := &Agent{
@@ -102,10 +83,9 @@ func NewAgent(appCtx context.Context, config *conf.Config) (*Agent, error) {
 
 		metricsMU: new(sync.RWMutex),
 
-		cmdMgr:  manager.NewCmdManager(),
-		runtime: rt,
-		storage: st,
-		streams: manager.NewStreamManager(),
+		cmdMgr:        manager.NewCmdManager(),
+		storageClient: st,
+		streams:       manager.NewStreamManager(),
 
 		gzipPool: &sync.Pool{
 			New: func() interface{} {
@@ -113,6 +93,32 @@ func NewAgent(appCtx context.Context, config *conf.Config) (*Agent, error) {
 				return w
 			},
 		},
+	}
+
+	agent.funcMap = map[aranyagopb.CmdType]types.RawCmdHandleFunc{
+		aranyagopb.CMD_SESSION_CLOSE: agent.handleSessionClose,
+
+		aranyagopb.CMD_NODE_INFO_GET: agent.handleNodeInfoGet,
+
+		aranyagopb.CMD_PERIPHERAL_LIST:            agent.handlePeripheralList,
+		aranyagopb.CMD_PERIPHERAL_ENSURE:          agent.handlePeripheralEnsure,
+		aranyagopb.CMD_PERIPHERAL_DELETE:          agent.handlePeripheralDelete,
+		aranyagopb.CMD_PERIPHERAL_OPERATE:         agent.handlePeripheralOperation,
+		aranyagopb.CMD_PERIPHERAL_COLLECT_METRICS: agent.handlePeripheralMetricsCollect,
+
+		aranyagopb.CMD_METRICS_CONFIG:  agent.handleMetricsConfig,
+		aranyagopb.CMD_METRICS_COLLECT: agent.handleMetricsCollect,
+
+		aranyagopb.CMD_EXEC:         agent.handlePodContainerExec,
+		aranyagopb.CMD_ATTACH:       agent.handlePodContainerAttach,
+		aranyagopb.CMD_LOGS:         agent.handlePodContainerLogs,
+		aranyagopb.CMD_TTY_RESIZE:   agent.handlePodContainerTerminalResize,
+		aranyagopb.CMD_PORT_FORWARD: agent.handlePodPortForward,
+
+		aranyagopb.CMD_CRED_ENSURE: agent.handleCredentialEnsure,
+		aranyagopb.CMD_REJECT:      agent.handleRejectCmd,
+
+		aranyagopb.CMD_NET: agent.handleNetwork,
 	}
 
 	if config.Extension.Enabled {
@@ -171,9 +177,11 @@ type Agent struct {
 	collectNodeMetrics      types.MetricsCollectFunc
 	collectContainerMetrics types.MetricsCollectFunc
 
-	cmdMgr  *manager.CmdManager
-	runtime types.Runtime
-	storage types.Storage
+	cmdMgr *manager.CmdManager
+
+	storageClient *storage.Client
+	networkClient *runtimeutil.NetworkClient
+
 	streams *manager.StreamManager
 
 	agentComponentPeripheral
@@ -182,28 +190,30 @@ type Agent struct {
 
 	settingClient uint32
 	client        types.ConnectivityClient
+
+	funcMap map[aranyagopb.CmdType]types.RawCmdHandleFunc
 }
 
 func (b *Agent) SetClient(client types.ConnectivityClient) {
 	for !atomic.CompareAndSwapUint32(&b.settingClient, 0, 1) {
-		goruntime.Gosched()
+		runtime.Gosched()
 	}
 
 	b.client = client
 
 	for !atomic.CompareAndSwapUint32(&b.settingClient, 1, 0) {
-		goruntime.Gosched()
+		runtime.Gosched()
 	}
 }
 
 func (b *Agent) GetClient() types.ConnectivityClient {
 	for !atomic.CompareAndSwapUint32(&b.settingClient, 0, 1) {
-		goruntime.Gosched()
+		runtime.Gosched()
 	}
 
 	defer func() {
 		for !atomic.CompareAndSwapUint32(&b.settingClient, 1, 0) {
-			goruntime.Gosched()
+			runtime.Gosched()
 		}
 	}()
 
@@ -269,7 +279,7 @@ func (b *Agent) HandleCmd(cmd *aranyagopb.Cmd) {
 			return
 		}
 
-		if !b.streams.Write(sid, cmd.Seq, cmd.Body) {
+		if !b.streams.Write(sid, cmd.Seq, cmd.Payload) {
 			b.handleRuntimeError(sid, errStreamSessionClosed)
 			return
 		}
@@ -282,40 +292,7 @@ func (b *Agent) HandleCmd(cmd *aranyagopb.Cmd) {
 		return
 	}
 
-	handleCmd, ok := map[aranyagopb.CmdType]types.RawCmdHandleFunc{
-		aranyagopb.CMD_SESSION_CLOSE: b.handleSessionClose,
-
-		aranyagopb.CMD_NODE_INFO_GET: b.handleNodeInfoGet,
-
-		aranyagopb.CMD_PERIPHERAL_LIST:            b.handlePeripheralList,
-		aranyagopb.CMD_PERIPHERAL_ENSURE:          b.handlePeripheralEnsure,
-		aranyagopb.CMD_PERIPHERAL_DELETE:          b.handlePeripheralDelete,
-		aranyagopb.CMD_PERIPHERAL_OPERATE:         b.handlePeripheralOperation,
-		aranyagopb.CMD_PERIPHERAL_COLLECT_METRICS: b.handlePeripheralMetricsCollect,
-
-		aranyagopb.CMD_METRICS_CONFIG:  b.handleMetricsConfig,
-		aranyagopb.CMD_METRICS_COLLECT: b.handleMetricsCollect,
-
-		aranyagopb.CMD_IMAGE_LIST:   b.handleImageList,
-		aranyagopb.CMD_IMAGE_ENSURE: b.handleImageEnsure,
-		aranyagopb.CMD_IMAGE_DELETE: b.handleImageDelete,
-
-		aranyagopb.CMD_POD_LIST:   b.handlePodList,
-		aranyagopb.CMD_POD_ENSURE: b.handlePodEnsure,
-		aranyagopb.CMD_POD_DELETE: b.handlePodDelete,
-
-		aranyagopb.CMD_EXEC:         b.handlePodContainerExec,
-		aranyagopb.CMD_ATTACH:       b.handlePodContainerAttach,
-		aranyagopb.CMD_LOGS:         b.handlePodContainerLogs,
-		aranyagopb.CMD_TTY_RESIZE:   b.handlePodContainerTerminalResize,
-		aranyagopb.CMD_PORT_FORWARD: b.handlePodPortForward,
-
-		aranyagopb.CMD_CRED_ENSURE: b.handleCredentialEnsure,
-		aranyagopb.CMD_REJECT:      b.handleRejectCmd,
-
-		aranyagopb.CMD_NET: b.handleNetwork,
-	}[cmd.Kind]
-
+	handleCmd, ok := b.funcMap[cmd.Kind]
 	if handleCmd == nil || !ok {
 		b.handleUnknownCmd(sid, "unknown or unsupported cmd", cmd)
 		return

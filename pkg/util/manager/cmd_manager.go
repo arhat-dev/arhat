@@ -34,7 +34,7 @@ func (m *CmdManager) Process(cmd *aranyagopb.Cmd) (cmdBytes []byte, complete boo
 		m.sessionSQ[sid] = sq
 	}
 
-	cmdByteChunks, complete := sq.Offer(cmd.Seq, cmd.Body)
+	cmdByteChunks, complete := sq.Offer(cmd.Seq, cmd.Payload)
 	for _, ck := range cmdByteChunks {
 		if ck == nil {
 			continue

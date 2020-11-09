@@ -19,14 +19,11 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"os"
 	"runtime"
 	"sort"
 	"time"
 
 	"arhat.dev/pkg/backoff"
-	"arhat.dev/pkg/confhelper"
 	"arhat.dev/pkg/log"
 	"github.com/spf13/cobra"
 
@@ -34,7 +31,6 @@ import (
 	"arhat.dev/arhat/pkg/client"
 	"arhat.dev/arhat/pkg/conf"
 	"arhat.dev/arhat/pkg/constant"
-	"arhat.dev/arhat/pkg/util/manager"
 
 	_ "arhat.dev/arhat/pkg/client/clientadd" // add clients
 )
@@ -76,22 +72,9 @@ func NewArhatCmd() *cobra.Command {
 	// agent host options
 	flags.AddFlagSet(conf.FlagsForArhatHostConfig("host.", &config.Arhat.Host))
 	// optimization options
-	flags.AddFlagSet(confhelper.FlagsForPProfConfig("opt.pprof.", &config.Arhat.Optimization.PProf))
 	flags.IntVar(&config.Arhat.Optimization.MaxProcessors, "opt.maxProcessors", 0, "set GOMAXPROCS")
-	// runtime flags
-	flags.AddFlagSet(conf.FlagsForArhatRuntimeConfig("runtime.", &config.Runtime))
-
-	// storage flags
-	flags.DurationVar(
-		&config.Storage.ProcessCheckTimeout,
-		"storage.processCheckTimeout",
-		5*time.Second,
-		"assume command execution successful after this time period",
-	)
 
 	flags.AddFlagSet(conf.FlagsForExtensionConfig("ext.", &config.Extension))
-
-	arhatCmd.AddCommand(newCheckCmd(&appCtx))
 
 	return arhatCmd
 }
@@ -108,21 +91,21 @@ func run(appCtx context.Context, config *conf.Config) error {
 
 	logger := log.Log.WithName("cmd")
 
-	// handle pprof
-	if cfg := config.Arhat.Optimization.PProf; cfg.Enabled {
-		mgr, err := manager.NewPProfManager(cfg.Listen, cfg.HTTPPath, cfg.MutexProfileFraction, cfg.BlockProfileRate)
-		if err != nil {
-			return fmt.Errorf("failed to listen tcp for pprof server: %w", err)
-		}
+	// // handle pprof
+	// if cfg := config.Arhat.Optimization.PProf; cfg.Enabled {
+	// 	mgr, err := manager.NewPProfManager(cfg.Listen, cfg.HTTPPath, cfg.MutexProfileFraction, cfg.BlockProfileRate)
+	// 	if err != nil {
+	// 		return fmt.Errorf("failed to listen tcp for pprof server: %w", err)
+	// 	}
 
-		logger.D("serving pprof stats")
-		go func() {
-			if err := mgr.Start(); err != nil && err != http.ErrServerClosed {
-				logger.E("failed to start pprof server", log.Error(err))
-				os.Exit(1)
-			}
-		}()
-	}
+	// 	logger.D("serving pprof stats")
+	// 	go func() {
+	// 		if err := mgr.Start(); err != nil && err != http.ErrServerClosed {
+	// 			logger.E("failed to start pprof server", log.Error(err))
+	// 			os.Exit(1)
+	// 		}
+	// 	}()
+	// }
 
 	ag, err := agent.NewAgent(appCtx, config)
 	if err != nil {

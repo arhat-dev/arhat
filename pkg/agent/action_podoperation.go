@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -17,13 +16,12 @@ import (
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/exechelper"
 	"arhat.dev/pkg/iohelper"
-	"arhat.dev/pkg/log"
 	"arhat.dev/pkg/wellknownerrors"
 
 	"arhat.dev/arhat/pkg/constant"
-	"arhat.dev/arhat/pkg/runtime/runtimeutil"
 	"arhat.dev/arhat/pkg/util/errconv"
 	"arhat.dev/arhat/pkg/util/exec"
+	"ext.arhat.dev/runtimeutil"
 )
 
 func (b *Agent) handlePodContainerExec(sid uint64, data []byte) {
@@ -55,16 +53,6 @@ func (b *Agent) handlePodContainerExec(sid uint64, data []byte) {
 			},
 			// run
 			func(stdout, stderr io.WriteCloser) *aranyagopb.ErrorMsg {
-				// container exec
-				if cmd.PodUid != "" {
-					return b.runtime.ExecInContainer(
-						cmd.PodUid, cmd.Container,
-						stdin, stdout, stderr,
-						resizeCh, cmd.Command, cmd.Tty,
-					)
-				}
-
-				// host exec
 				if !b.hostConfig.AllowExec {
 					return errconv.ToConnectivityError(wellknownerrors.ErrNotSupported)
 				}
@@ -72,14 +60,15 @@ func (b *Agent) handlePodContainerExec(sid uint64, data []byte) {
 				ctx, cancel := context.WithCancel(b.ctx)
 				defer cancel()
 
-				exitCode, err := exec.DoIfTryFailed(
+				cmd, err := exec.DoIfTryFailed(
 					ctx,
 					stdin, stdout, stderr,
 					resizeCh,
 					cmd.Command, cmd.Tty, cmd.Envs,
 				)
 				if err != nil {
-					return aranyagopb.NewCommonErrorMsgWithCode(int64(exitCode), err.Error())
+					_ = cmd
+					// return aranyagopb.NewCommonErrorMsgWithCode(int64(exitCode), err.Error())
 				}
 				return nil
 			},
@@ -104,7 +93,7 @@ func (b *Agent) handlePodContainerAttach(sid uint64, data []byte) {
 			stdin = nil
 		}
 
-		resizeCh := s.ResizeCh()
+		// resizeCh := s.ResizeCh()
 
 		b.handleStreamOperation(sid, cmd.Stdin, cmd.Stdout, cmd.Stderr, cmd.Tty || cmd.PodUid == "",
 			// preRun check
@@ -113,16 +102,6 @@ func (b *Agent) handlePodContainerAttach(sid uint64, data []byte) {
 			func(stdout, stderr io.WriteCloser) *aranyagopb.ErrorMsg {
 				if !cmd.Stdin {
 					stdin = nil
-				}
-
-				// container attach
-				if cmd.PodUid != "" {
-					return errconv.ToConnectivityError(
-						b.runtime.AttachContainer(
-							cmd.PodUid, cmd.Container,
-							stdin, stdout, stderr, resizeCh,
-						),
-					)
 				}
 
 				// host attach
@@ -143,17 +122,17 @@ func (b *Agent) handlePodContainerAttach(sid uint64, data []byte) {
 				ctx, cancel := context.WithCancel(b.ctx)
 				defer cancel()
 
-				exitCode, err := exechelper.Do(exechelper.Spec{
-					Context:        ctx,
-					Command:        []string{shell},
-					Stdin:          stdin,
-					Stdout:         stdout,
-					Stderr:         stderr,
-					Tty:            true,
-					OnResizeSignal: exec.ResizeChannelToHandlerFunc(ctx.Done(), resizeCh),
+				cmd, err := exechelper.Do(exechelper.Spec{
+					Context: ctx,
+					Command: []string{shell},
+					Stdin:   stdin,
+					Stdout:  stdout,
+					Stderr:  stderr,
+					Tty:     true,
 				})
 				if err != nil {
-					return aranyagopb.NewCommonErrorMsgWithCode(int64(exitCode), err.Error())
+					_ = cmd
+					// return aranyagopb.NewCommonErrorMsgWithCode(int64(exitCode), err.Error())
 				}
 
 				return nil
@@ -179,18 +158,6 @@ func (b *Agent) handlePodContainerLogs(sid uint64, data []byte) {
 			nil,
 			// run
 			func(stdout, stderr io.WriteCloser) *aranyagopb.ErrorMsg {
-				// handle /containerLogs
-				if cmd.PodUid != "" {
-					return errconv.ToConnectivityError(
-						b.runtime.GetContainerLogs(
-							cmd.PodUid,
-							cmd,
-							stdout, stderr,
-							s.Context(),
-						),
-					)
-				}
-
 				// handle host log
 				if !b.hostConfig.AllowLog {
 					return errconv.ToConnectivityError(wellknownerrors.ErrNotSupported)
@@ -271,73 +238,66 @@ func (b *Agent) handlePodPortForward(sid uint64, data []byte) {
 		return
 	}
 
-	s := b.streams.NewStream(b.ctx, sid, true, false)
+	// s := b.streams.NewStream(b.ctx, sid, true, false)
 
 	b.processInNewGoroutine(sid, "pod.port-forward", func() {
 		var (
-			seq uint64
-			err error
+		// seq uint64
+		// err error
 
-			upstream, downstream = net.Pipe()
-			logger               = b.logger.WithFields(log.Uint64("sid", sid))
+		// upstream, downstream = net.Pipe()
+		// logger = b.logger.WithFields(log.Uint64("sid", sid))
 		)
 
-		defer func() {
-			_ = upstream.Close()
+		// defer func() {
+		// 	_ = upstream.Close()
 
-			// close this session locally (no more input data should be delivered to this session)
-			b.streams.Close(sid)
-		}()
+		// 	// close this session locally (no more input data should be delivered to this session)
+		// 	b.streams.Close(sid)
+		// }()
 
-		go func() {
-			// pipe received remote data into upstream
-			n, err2 := io.Copy(upstream, s.Reader())
-			if err2 != nil && n == 0 {
-				logger.I("failed to send remote data", log.Error(err2))
-				return
-			}
+		// go func() {
+		// 	// pipe received remote data into upstream
+		// 	n, err2 := io.Copy(upstream, s.Reader())
+		// 	if err2 != nil && n == 0 {
+		// 		logger.I("failed to send remote data", log.Error(err2))
+		// 		return
+		// 	}
 
-			logger.V("sent remote data", log.Int64("bytes", n), log.Error(err))
-		}()
+		// 	logger.V("sent remote data", log.Int64("bytes", n), log.Error(err))
+		// }()
 
-		go func() {
-			defer func() {
-				// send fin msg to close input in aranya
-				if err != nil {
-					data, _ = errconv.ToConnectivityError(err).Marshal()
-					_, _ = b.PostData(sid, aranyagopb.MSG_ERROR, nextSeq(&seq), true, data)
-				} else {
-					_, _ = b.PostData(sid, aranyagopb.MSG_DATA_DEFAULT, nextSeq(&seq), true, nil)
-				}
-			}()
+		// go func() {
+		// 	defer func() {
+		// 		// send fin msg to close input in aranya
+		// 		if err != nil {
+		// 			data, _ = errconv.ToConnectivityError(err).Marshal()
+		// 			_, _ = b.PostData(sid, aranyagopb.MSG_ERROR, nextSeq(&seq), true, data)
+		// 		} else {
+		// 			_, _ = b.PostData(sid, aranyagopb.MSG_DATA_DEFAULT, nextSeq(&seq), true, nil)
+		// 		}
+		// 	}()
 
-			// pipe upstream received data to kubectl
-			b.uploadDataOutput(
-				sid, upstream,
-				aranyagopb.MSG_DATA_STDOUT,
-				constant.DefaultPortForwardStreamReadTimeout,
-				&seq, nil,
-			)
-		}()
+		// 	// pipe upstream received data to kubectl
+		// 	b.uploadDataOutput(
+		// 		sid, upstream,
+		// 		aranyagopb.MSG_DATA_STDOUT,
+		// 		constant.DefaultPortForwardStreamReadTimeout,
+		// 		&seq, nil,
+		// 	)
+		// }()
 
 		protocol := cmd.Protocol
 		if protocol == "" {
 			protocol = "tcp"
 		}
 
-		// container port-forward
-		if cmd.PodUid != "" {
-			err = b.runtime.PortForward(cmd.PodUid, protocol, cmd.Port, downstream)
-			return
-		}
-
-		// host port-forward
 		if !b.hostConfig.AllowPortForward {
 			err = wellknownerrors.ErrNotSupported
 			return
 		}
 
-		err = runtimeutil.PortForward(b.ctx, "localhost", protocol, cmd.Port, downstream)
+		// err = runtimeutil.PortForward(b.ctx, "localhost", protocol, cmd.Port, downstream)
 	})
 }
 

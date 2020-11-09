@@ -1,9 +1,9 @@
 package clientutil
 
-import "arhat.dev/pkg/confhelper"
+import "arhat.dev/pkg/tlshelper"
 
 type ConnectivityCommonConfig struct {
-	Endpoint       string               `json:"endpoint" yaml:"endpoint"`
-	MaxPayloadSize int                  `json:"maxPayloadSize" yaml:"maxPayloadSize"`
-	TLS            confhelper.TLSConfig `json:"tls" yaml:"tls"`
+	Endpoint       string              `json:"endpoint" yaml:"endpoint"`
+	MaxPayloadSize int                 `json:"maxPayloadSize" yaml:"maxPayloadSize"`
+	TLS            tlshelper.TLSConfig `json:"tls" yaml:"tls"`
 }

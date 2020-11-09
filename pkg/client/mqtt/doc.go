@@ -2,7 +2,7 @@ package mqtt
 
 import (
 	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
-	"arhat.dev/pkg/confhelper"
+	"arhat.dev/pkg/tlshelper"
 
 	"arhat.dev/arhat/pkg/client"
 	"arhat.dev/arhat/pkg/client/clientutil"
@@ -16,7 +16,7 @@ func init() {
 				ConnectivityCommonConfig: clientutil.ConnectivityCommonConfig{
 					Endpoint:       "",
 					MaxPayloadSize: aranyagoconst.MaxMQTTDataSize,
-					TLS:            confhelper.TLSConfig{},
+					TLS:            tlshelper.TLSConfig{},
 				},
 				Version:            "3.1.1",
 				Variant:            "standard",
