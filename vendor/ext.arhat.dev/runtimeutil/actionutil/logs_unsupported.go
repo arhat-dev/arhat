@@ -1,3 +1,5 @@
+// +build js plan9 aix
+
 /*
 Copyright 2020 The arhat.dev Authors.
 
@@ -14,14 +16,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package pipenet
+package actionutil
 
 import (
-	"golang.org/x/sys/unix"
+	"context"
+	"io"
+
+	"arhat.dev/aranya-proto/aranyagopb"
+	"arhat.dev/pkg/wellknownerrors"
 )
 
-const syscallRead = 3
-
-func mkfifo(path string, perm uint32) error {
-	return unix.Mkfifo(path, perm)
+func ReadLogs(ctx context.Context, path string, options *aranyagopb.LogsCmd, stdout, stderr io.Writer) error {
+	return wellknownerrors.ErrNotSupported
 }

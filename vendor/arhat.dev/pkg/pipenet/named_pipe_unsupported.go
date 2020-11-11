@@ -36,7 +36,6 @@ func (c *PipeListener) Close() error { return nil }
 
 func (c *PipeListener) Addr() net.Addr { return &PipeAddr{} }
 
-// ListenPipe will create a named pipe at path and listen incomming message
 func ListenPipe(path, connDir string, perm os.FileMode) (net.Listener, error) {
 	return nil, wellknownerrors.ErrNotSupported
 }

@@ -1,4 +1,4 @@
-// +build !windows,!plan9
+// +build !windows,!plan9,!js
 
 /*
 Copyright 2020 The arhat.dev Authors.

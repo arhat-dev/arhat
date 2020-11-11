@@ -1,3 +1,5 @@
+// +build !linux,!windows
+
 /*
 Copyright 2020 The arhat.dev Authors.
 
@@ -14,14 +16,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package pipenet
+package iohelper
 
-import (
-	"golang.org/x/sys/unix"
+// nolint:golint
+const (
+	_FIONREAD = 0x4004667f
 )
-
-const syscallRead = 3
-
-func mkfifo(path string, perm uint32) error {
-	return unix.Mkfifo(path, perm)
-}

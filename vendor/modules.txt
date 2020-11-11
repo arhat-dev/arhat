@@ -7,7 +7,7 @@ arhat.dev/aranya-proto/aranyagopb/runtimepb
 # arhat.dev/arhat-proto v0.4.2
 ## explicit
 arhat.dev/arhat-proto/arhatgopb
-# arhat.dev/libext v0.4.1
+# arhat.dev/libext v0.4.3
 ## explicit
 arhat.dev/libext/codec
 arhat.dev/libext/codec/codecjson
@@ -15,7 +15,7 @@ arhat.dev/libext/codec/codecpb
 arhat.dev/libext/server
 arhat.dev/libext/types
 arhat.dev/libext/util
-# arhat.dev/pkg v0.3.1
+# arhat.dev/pkg v0.3.5
 ## explicit
 arhat.dev/pkg/backoff
 arhat.dev/pkg/envhelper
@@ -27,10 +27,13 @@ arhat.dev/pkg/pipenet
 arhat.dev/pkg/queue
 arhat.dev/pkg/tlshelper
 arhat.dev/pkg/wellknownerrors
-# ext.arhat.dev/runtimeutil v0.1.2
+# ext.arhat.dev/runtimeutil v0.1.5
 ## explicit
-ext.arhat.dev/runtimeutil
-ext.arhat.dev/runtimeutil/storage
+ext.arhat.dev/runtimeutil/actionutil
+ext.arhat.dev/runtimeutil/networkutil
+ext.arhat.dev/runtimeutil/storageutil
+ext.arhat.dev/runtimeutil/storageutil/general
+ext.arhat.dev/runtimeutil/storageutil/sshfs
 # github.com/Microsoft/go-winio v0.4.15 => github.com/Microsoft/go-winio v0.4.15
 github.com/Microsoft/go-winio
 github.com/Microsoft/go-winio/pkg/guid
@@ -129,8 +132,6 @@ github.com/golang/protobuf/ptypes/timestamp
 github.com/golang/snappy
 # github.com/hodgesds/perf-utils v0.0.8
 github.com/hodgesds/perf-utils
-# github.com/inconshreveable/mousetrap v1.0.0
-github.com/inconshreveable/mousetrap
 # github.com/klauspost/compress v1.10.10
 github.com/klauspost/compress/flate
 github.com/klauspost/compress/fse
@@ -251,9 +252,6 @@ github.com/siebenmann/go-kstat
 github.com/sirupsen/logrus
 # github.com/soundcloud/go-runit v0.0.0-20150630195641-06ad41a06c4a
 github.com/soundcloud/go-runit/runit
-# github.com/spf13/cobra v1.1.1 => github.com/spf13/cobra v1.1.1
-## explicit
-github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.5
 ## explicit
 github.com/spf13/pflag
@@ -270,9 +268,9 @@ go.opencensus.io/internal
 go.opencensus.io/trace
 go.opencensus.io/trace/internal
 go.opencensus.io/trace/tracestate
-# go.uber.org/atomic v1.7.0 => go.uber.org/atomic v1.6.0
+# go.uber.org/atomic v1.6.0 => go.uber.org/atomic v1.6.0
 go.uber.org/atomic
-# go.uber.org/multierr v1.6.0
+# go.uber.org/multierr v1.5.0
 go.uber.org/multierr
 # go.uber.org/zap v1.16.0 => go.uber.org/zap v1.16.0
 go.uber.org/zap
@@ -316,7 +314,7 @@ golang.org/x/xerrors
 golang.org/x/xerrors/internal
 # google.golang.org/genproto v0.0.0-20200904004341-0bd0a958aa1d
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.33.2 => github.com/grpc/grpc-go v1.33.1
+# google.golang.org/grpc v1.33.2 => github.com/grpc/grpc-go v1.33.2
 ## explicit
 google.golang.org/grpc
 google.golang.org/grpc/attributes
@@ -388,13 +386,11 @@ google.golang.org/protobuf/runtime/protoimpl
 google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/timestamppb
-# gopkg.in/alecthomas/kingpin.v2 v2.2.6
+# gopkg.in/alecthomas/kingpin.v2 v2.2.6 => gopkg.in/alecthomas/kingpin.v2 v2.2.6
 ## explicit
 gopkg.in/alecthomas/kingpin.v2
-# gopkg.in/yaml.v2 v2.3.0 => gopkg.in/yaml.v2 v2.3.0
-## explicit
-gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
+## explicit
 gopkg.in/yaml.v3
 # nhooyr.io/websocket v1.8.6
 nhooyr.io/websocket
@@ -409,7 +405,8 @@ nhooyr.io/websocket/internal/xsync
 # github.com/spf13/cobra => github.com/spf13/cobra v1.1.1
 # go.uber.org/atomic => go.uber.org/atomic v1.6.0
 # go.uber.org/zap => go.uber.org/zap v1.16.0
-# google.golang.org/grpc => github.com/grpc/grpc-go v1.33.1
+# google.golang.org/grpc => github.com/grpc/grpc-go v1.33.2
+# gopkg.in/alecthomas/kingpin.v2 => gopkg.in/alecthomas/kingpin.v2 v2.2.6
 # gopkg.in/yaml.v2 => gopkg.in/yaml.v2 v2.3.0
 # github.com/Microsoft/go-winio => github.com/Microsoft/go-winio v0.4.15
 # github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.10

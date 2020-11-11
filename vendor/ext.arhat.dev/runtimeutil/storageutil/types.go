@@ -14,14 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package pipenet
+package storageutil
 
-import (
-	"golang.org/x/sys/unix"
-)
+type ExitHandleFunc func(remotePath, mountPoint string, err error)
 
-const syscallRead = 3
-
-func mkfifo(path string, perm uint32) error {
-	return unix.Mkfifo(path, perm)
+type Interface interface {
+	GetMountCmd(remotePath, mountPoint string) []string
+	GetUnmountCmd(mountPoint string) []string
 }

@@ -66,7 +66,7 @@ func (c *ExtensionContext) Close() {
 type (
 	// Stateful command send func, used to send command to and receive correspond
 	// message from the connected extension
-	CmdSendFunc func(cmd *arhatgopb.Cmd) (*arhatgopb.Msg, error)
+	CmdSendFunc func(cmd *arhatgopb.Cmd, waitForResponse bool) (*arhatgopb.Msg, error)
 
 	// Handle message received from extension without previous command request,
 	// all messages passed to this function belongs to one extension
@@ -184,24 +184,28 @@ func (m *ExtensionManager) HandleStream(
 	})
 
 	msgWait := new(sync.Map)
-	sendCmd := func(cmd *arhatgopb.Cmd) (*arhatgopb.Msg, error) {
-		waitV := newMsgWaitValue()
-		key := msgWaitKey{
-			id:  cmd.Id,
-			seq: cmd.Seq,
-		}
-		_, loaded := msgWait.LoadOrStore(key, waitV)
-		if loaded {
-			waitV.close()
-			return nil, fmt.Errorf("cmd sent before, no response yet")
-		}
-		_ = tq.OfferWithDelay(key, nil, messageTimeout)
-		defer func() {
-			tq.Remove(key)
+	sendCmd := func(cmd *arhatgopb.Cmd, waitForResponse bool) (*arhatgopb.Msg, error) {
+		var waitV *msgWaitValue
+		// prepare for message response wait
+		if waitForResponse {
+			waitV = newMsgWaitValue()
+			key := msgWaitKey{
+				id:  cmd.Id,
+				seq: cmd.Seq,
+			}
+			_, loaded := msgWait.LoadOrStore(key, waitV)
+			if loaded {
+				waitV.close()
+				return nil, fmt.Errorf("cmd sent before, no response yet")
+			}
+			_ = tq.OfferWithDelay(key, nil, messageTimeout)
+			defer func() {
+				tq.Remove(key)
 
-			waitV.close()
-			msgWait.Delete(key)
-		}()
+				waitV.close()
+				msgWait.Delete(key)
+			}()
+		}
 		// send cmd
 		select {
 		case <-ctx.Done():
@@ -209,17 +213,21 @@ func (m *ExtensionManager) HandleStream(
 		case cmdWriteCh <- cmd:
 		}
 
-		// wait for message response
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case msg, more := <-waitV.msgCh:
-			if !more {
-				return nil, fmt.Errorf("timeout")
-			}
+		// wait for message response if required
+		if waitForResponse {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case msg, more := <-waitV.msgCh:
+				if !more {
+					return nil, fmt.Errorf("timeout")
+				}
 
-			return msg, nil
+				return msg, nil
+			}
 		}
+
+		return nil, nil
 	}
 
 	wg.Go(func() error {

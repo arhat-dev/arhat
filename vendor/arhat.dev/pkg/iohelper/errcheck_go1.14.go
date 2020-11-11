@@ -1,3 +1,5 @@
+// +build !go1.15
+
 /*
 Copyright 2020 The arhat.dev Authors.
 
@@ -14,14 +16,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package pipenet
+package iohelper
 
 import (
-	"golang.org/x/sys/unix"
+	"errors"
+	"strings"
 )
 
-const syscallRead = 3
+var (
+	ErrDeadlineExceeded = errors.New("i/o timeout")
+)
 
-func mkfifo(path string, perm uint32) error {
-	return unix.Mkfifo(path, perm)
+func isDeadlineExceeded(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	return strings.HasSuffix(err.Error(), "i/o timeout")
 }
