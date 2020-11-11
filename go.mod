@@ -5,9 +5,9 @@ go 1.15
 require (
 	arhat.dev/aranya-proto v0.2.3
 	arhat.dev/arhat-proto v0.4.2
-	arhat.dev/libext v0.4.1
-	arhat.dev/pkg v0.3.1
-	ext.arhat.dev/runtimeutil v0.1.2
+	arhat.dev/libext v0.4.3
+	arhat.dev/pkg v0.3.5
+	ext.arhat.dev/runtimeutil v0.1.5
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
@@ -24,12 +24,11 @@ require (
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.14.0
 	github.com/prometheus/node_exporter v1.0.1
-	github.com/spf13/cobra v1.1.1
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/sys v0.0.0-20201107080550-4d91cf3a1aaf
 	google.golang.org/grpc v1.33.2
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
-	gopkg.in/yaml.v2 v2.3.0
+	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
 )
 
 replace (
@@ -40,7 +39,8 @@ replace (
 	github.com/spf13/cobra => github.com/spf13/cobra v1.1.1
 	go.uber.org/atomic => go.uber.org/atomic v1.6.0
 	go.uber.org/zap => go.uber.org/zap v1.16.0
-	google.golang.org/grpc => github.com/grpc/grpc-go v1.33.1
+	google.golang.org/grpc => github.com/grpc/grpc-go v1.33.2
+	gopkg.in/alecthomas/kingpin.v2 => gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/yaml.v2 => gopkg.in/yaml.v2 v2.3.0
 )
 

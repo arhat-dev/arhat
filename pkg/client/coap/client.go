@@ -33,7 +33,11 @@ import (
 )
 
 // nolint:gocyclo
-func NewCoAPClient(agent types.Agent, cfg interface{}) (_ types.ConnectivityClient, err error) {
+func NewCoAPClient(
+	ctx context.Context,
+	handleCmd types.AgentCmdHandleFunc,
+	cfg interface{},
+) (_ types.ConnectivityClient, err error) {
 	config, ok := cfg.(*ConnectivityCoAP)
 	if !ok {
 		return nil, fmt.Errorf("unepxected non coap config")
@@ -99,7 +103,7 @@ func NewCoAPClient(agent types.Agent, cfg interface{}) (_ types.ConnectivityClie
 		mu: new(sync.Mutex),
 	}
 
-	coapClient.BaseClient, err = clientutil.NewBaseClient(agent, maxPayloadSize)
+	coapClient.BaseClient, err = clientutil.NewBaseClient(ctx, handleCmd, maxPayloadSize)
 	if err != nil {
 		return nil, err
 	}

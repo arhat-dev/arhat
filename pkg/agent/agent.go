@@ -29,10 +29,11 @@ import (
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/libext/server"
+	"arhat.dev/pkg/exechelper"
 	"arhat.dev/pkg/log"
 	"arhat.dev/pkg/wellknownerrors"
-	"ext.arhat.dev/runtimeutil"
-	"ext.arhat.dev/runtimeutil/storage"
+	"ext.arhat.dev/runtimeutil/networkutil"
+	"ext.arhat.dev/runtimeutil/storageutil"
 	"github.com/gogo/protobuf/proto"
 
 	"arhat.dev/arhat/pkg/conf"
@@ -50,25 +51,49 @@ var (
 
 var _ types.Agent = (*Agent)(nil)
 
-func NewAgent(appCtx context.Context, config *conf.Config) (*Agent, error) {
-	ctx, exit := context.WithCancel(appCtx)
+type (
+	rawCmdHandleFunc func(sid uint64, data []byte)
+)
 
+func NewAgent(appCtx context.Context, logger log.Interface, config *conf.Config) (_ *Agent, err error) {
 	extInfo, err := convertNodeExtInfo(config.Arhat.Node.ExtInfo)
-
-	defer func() {
-		if err != nil {
-			exit()
-		}
-	}()
-
 	if err != nil {
 		return nil, err
 	}
 
-	st, err := config.Storage.CreateClient(ctx)
+	sc, err := config.Storage.CreateClient(appCtx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create storage client: %w", err)
 	}
+
+	nc := networkutil.NewClient(
+		func(
+			ctx context.Context,
+			env map[string]string,
+			stdin io.Reader,
+			stdout, stderr io.Writer,
+		) error {
+			if !config.Network.Enabled {
+				return wellknownerrors.ErrNotSupported
+			}
+
+			// execute host command for abbot request
+			cmd, err := exechelper.Do(exechelper.Spec{
+				Context: ctx,
+				Command: config.Network.AbbotRequestExec,
+				Env:     env,
+				Stdin:   stdin,
+				Stdout:  stdout,
+				Stderr:  stderr,
+			})
+			if err != nil {
+				return err
+			}
+
+			_, err = cmd.Wait()
+			return err
+		},
+	)
 
 	agent := &Agent{
 		hostConfig:    &config.Arhat.Host,
@@ -76,16 +101,17 @@ func NewAgent(appCtx context.Context, config *conf.Config) (*Agent, error) {
 		kubeLogFile:   config.Arhat.Log.KubeLogFile(),
 		extInfo:       extInfo,
 
-		ctx:  ctx,
-		exit: exit,
+		ctx: appCtx,
 
-		logger: log.Log.WithName("agent"),
+		logger: logger,
 
 		metricsMU: new(sync.RWMutex),
 
 		cmdMgr:        manager.NewCmdManager(),
-		storageClient: st,
-		streams:       manager.NewStreamManager(),
+		storageClient: sc,
+		networkClient: nc,
+
+		streams: manager.NewStreamManager(),
 
 		gzipPool: &sync.Pool{
 			New: func() interface{} {
@@ -95,30 +121,30 @@ func NewAgent(appCtx context.Context, config *conf.Config) (*Agent, error) {
 		},
 	}
 
-	agent.funcMap = map[aranyagopb.CmdType]types.RawCmdHandleFunc{
+	agent.funcMap = map[aranyagopb.CmdType]rawCmdHandleFunc{
 		aranyagopb.CMD_SESSION_CLOSE: agent.handleSessionClose,
+		aranyagopb.CMD_REJECT:        agent.handleRejectCmd,
+
+		aranyagopb.CMD_NET:     agent.handleNetwork,
+		aranyagopb.CMD_RUNTIME: agent.handleRuntime,
 
 		aranyagopb.CMD_NODE_INFO_GET: agent.handleNodeInfoGet,
+		aranyagopb.CMD_EXEC:          agent.handlePodContainerExec,
+		aranyagopb.CMD_ATTACH:        agent.handlePodContainerAttach,
+		aranyagopb.CMD_LOGS:          agent.handlePodContainerLogs,
+		aranyagopb.CMD_TTY_RESIZE:    agent.handlePodContainerTerminalResize,
+		aranyagopb.CMD_PORT_FORWARD:  agent.handlePodPortForward,
+
+		aranyagopb.CMD_METRICS_CONFIG:  agent.handleMetricsConfig,
+		aranyagopb.CMD_METRICS_COLLECT: agent.handleMetricsCollect,
+
+		aranyagopb.CMD_CRED_ENSURE: agent.handleCredentialEnsure,
 
 		aranyagopb.CMD_PERIPHERAL_LIST:            agent.handlePeripheralList,
 		aranyagopb.CMD_PERIPHERAL_ENSURE:          agent.handlePeripheralEnsure,
 		aranyagopb.CMD_PERIPHERAL_DELETE:          agent.handlePeripheralDelete,
 		aranyagopb.CMD_PERIPHERAL_OPERATE:         agent.handlePeripheralOperation,
 		aranyagopb.CMD_PERIPHERAL_COLLECT_METRICS: agent.handlePeripheralMetricsCollect,
-
-		aranyagopb.CMD_METRICS_CONFIG:  agent.handleMetricsConfig,
-		aranyagopb.CMD_METRICS_COLLECT: agent.handleMetricsCollect,
-
-		aranyagopb.CMD_EXEC:         agent.handlePodContainerExec,
-		aranyagopb.CMD_ATTACH:       agent.handlePodContainerAttach,
-		aranyagopb.CMD_LOGS:         agent.handlePodContainerLogs,
-		aranyagopb.CMD_TTY_RESIZE:   agent.handlePodContainerTerminalResize,
-		aranyagopb.CMD_PORT_FORWARD: agent.handlePodPortForward,
-
-		aranyagopb.CMD_CRED_ENSURE: agent.handleCredentialEnsure,
-		aranyagopb.CMD_REJECT:      agent.handleRejectCmd,
-
-		aranyagopb.CMD_NET: agent.handleNetwork,
 	}
 
 	if config.Extension.Enabled {
@@ -157,19 +183,18 @@ func NewAgent(appCtx context.Context, config *conf.Config) (*Agent, error) {
 		}()
 	}
 
-	agent.streams.Start(ctx.Done())
+	agent.streams.Start(appCtx.Done())
 
 	return agent, nil
 }
 
 type Agent struct {
+	ctx context.Context
+
 	hostConfig    *conf.HostConfig
 	machineIDFrom *conf.ValueFromSpec
 	kubeLogFile   string
 	extInfo       []*aranyagopb.NodeExtInfo
-
-	ctx  context.Context
-	exit context.CancelFunc
 
 	logger log.Interface
 
@@ -179,8 +204,8 @@ type Agent struct {
 
 	cmdMgr *manager.CmdManager
 
-	storageClient *storage.Client
-	networkClient *runtimeutil.NetworkClient
+	storageClient *storageutil.Client
+	networkClient *networkutil.Client
 
 	streams *manager.StreamManager
 
@@ -191,7 +216,7 @@ type Agent struct {
 	settingClient uint32
 	client        types.ConnectivityClient
 
-	funcMap map[aranyagopb.CmdType]types.RawCmdHandleFunc
+	funcMap map[aranyagopb.CmdType]rawCmdHandleFunc
 }
 
 func (b *Agent) SetClient(client types.ConnectivityClient) {
@@ -258,10 +283,6 @@ func (b *Agent) PostMsg(sid uint64, kind aranyagopb.MsgType, msg proto.Marshaler
 
 	_, err = b.PostData(sid, kind, 0, true, data)
 	return err
-}
-
-func (b *Agent) Context() context.Context {
-	return b.ctx
 }
 
 func (b *Agent) HandleCmd(cmd *aranyagopb.Cmd) {

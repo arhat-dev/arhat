@@ -1,8 +1,20 @@
 # Extension
 
-Edge device usually comes with special peripherals like sensors for data collecting, we would like to address this to provide a unified way to integrate existing peripherals into Kubernetes
+## Background
 
-__TL;DR:__ To get started with your own extension plugin, we recommend you having a look at [this extension template project (golang)](https://github.com/arhat-dev/template-arhat-ext-go)
+Edge/IoT devices usually comes with special peripherals like sensors for data collecting.
+
+In kubernetes you the most relative idea to manage these peripherals is the device plugin, the workflow is like:
+
+- develop a device plugin
+- deploy the device plugin to host
+- register plugin in kubelet plugins dir
+- develop a device management app
+- deploy the management app with special resource requests for your peripheral
+
+we would like to address this and provide a unified way to integrate existing peripherals into Kubernetes with ease.
+
+__TL;DR:__ To get started with your own extension plugin, we recommend you having a look at [this extension template project (golang)](https://github.com/arhat-dev/template-go)
 
 ## Purpose
 
@@ -13,26 +25,29 @@ __TL;DR:__ To get started with your own extension plugin, we recommend you havin
 
 There are two major parts contributing to the extension system:
 
-- `extension server` (actuall a http server, embedded in `arhat`)
-- `extension plugin` (actuall a http client)
+- `hub` (embedded in `arhat`)
+- `plugin` (custom apps)
 
-The interaction between the `arhat` and `extension plugin`:
+The interaction between the `hub` and `plugin`s:
 
-- `extension server` listen on one port (`tcp`/`unix`) as configured
-- `extension plugin` connect to the address that `extension server` listening
-  - once connected, `extension plugin` will post a http request, but different from the normal http request, this post request will never end unless interrupped by user or error. To put this simple: send a infinite post request to `extension server`
-- `extension server` knows how to handle this kind of post request, and maintains it until network error happened
-- `extension plugin` will register itself with a unique name (locally to `extension server`) in the initial post request
-- `extension server` will interact with registered `extension plugin` when necessary (e.g. received certain command from message queue)
+- `server` listen on some addresses (`tcp`, `unix`, etc.)
+- `plugin` connect to one of these addresses that `hub` is listening
+  - once connected, `plugin` will register itself to the `hub` with a unique name
+- `hub` maintains all valid connections from `plugin`s until network error happened
+- `hub` will interact with registered `extension plugin` when necessary (e.g. received certain command from upstream controller)
+- `plugin` can send messages to `hub` at any time
 
-## Extension Endpoints
+## Extensions
 
-Extension endpoints are just http paths
+### `peripheral`s: Interact with physical world
 
-### `/peripherals`: Interact with physical world
+- This extension is designed to support operations and metrics collections for all kinds of physical peripherals
+  - e.g. lights, sensors, routers...
 
-- This extension is designed to support operations and metrics collections for all kinds of physical peripherals, sensors, routers...
-- More peripheral extension apps are comming soon
+### `runtime`s: Workload management made easy
+
+- This extension is designed to support various runtime engine not just oci containers
+  - e.g. `LXC`, `BSD Jail`, `Systemd Unit`...
 
 ## Configuration
 
@@ -103,8 +118,11 @@ extension:
       cipherSuites: []
       # - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
 
-  # peripheral extension config
+  # peripheral extension hub config
   peripherals:
     # cache unhandled metrics for at most this time
     metricsCacheTimeout: 1h
+
+  # runtime extension hub config
+  runtime: {}
 ```

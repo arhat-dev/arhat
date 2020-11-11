@@ -22,23 +22,23 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"arhat.dev/pkg/envhelper"
 	"arhat.dev/pkg/log"
-	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
+	"github.com/spf13/pflag"
+	"gopkg.in/yaml.v3"
 
 	"arhat.dev/arhat/pkg/constant"
 )
 
 func ReadConfig(
-	cmd *cobra.Command,
+	flags *pflag.FlagSet,
 	configFile *string,
 	cliLogConfig *log.Config,
 	config *Config,
 ) (context.Context, error) {
-	flags := cmd.Flags()
 	configBytes, err := ioutil.ReadFile(*configFile)
 	if err != nil && flags.Changed("config") {
 		return nil, fmt.Errorf("failed to read config file %s: %v", *configFile, err)
@@ -58,7 +58,9 @@ func ReadConfig(
 			}
 		})
 
-		if err = yaml.UnmarshalStrict([]byte(configStr), config); err != nil {
+		dec := yaml.NewDecoder(strings.NewReader(configStr))
+		dec.KnownFields(true)
+		if err = dec.Decode(config); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal config file %s: %v", *configFile, err)
 		}
 	}
@@ -79,7 +81,7 @@ func ReadConfig(
 		config.Arhat.Log = append(config.Arhat.Log, *cliLogConfig)
 	}
 
-	if err = cmd.ParseFlags(os.Args); err != nil {
+	if err = flags.Parse(os.Args); err != nil {
 		return nil, err
 	}
 

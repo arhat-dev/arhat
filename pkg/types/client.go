@@ -14,23 +14,31 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package metricsutils
+package types
 
 import (
-	"io"
+	"context"
 
-	dto "github.com/prometheus/client_model/go"
-
-	"github.com/prometheus/common/expfmt"
+	"arhat.dev/aranya-proto/aranyagopb"
 )
 
-func EncodeMetrics(w io.Writer, mfs []*dto.MetricFamily) error {
-	enc := expfmt.NewEncoder(w, expfmt.FmtProtoDelim)
-	for _, mf := range mfs {
-		if err := enc.Encode(mf); err != nil {
-			return err
-		}
-	}
+type ConnectivityClient interface {
+	// Context of this client
+	Context() context.Context
 
-	return nil
+	// Connect to server/broker
+	Connect(dialCtx context.Context) error
+
+	// Start internal logic to get prepared for communicating with aranya
+	// usually send online state message
+	Start(appCtx context.Context) error
+
+	// PostMsg to aranya
+	PostMsg(msg *aranyagopb.Msg) error
+
+	// Close this client
+	Close() error
+
+	// MaxPayloadSize of a single message for this client
+	MaxPayloadSize() int
 }

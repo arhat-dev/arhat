@@ -30,7 +30,11 @@ import (
 	"arhat.dev/arhat/pkg/types"
 )
 
-func NewMQTTClient(agent types.Agent, cfg interface{}) (_ types.ConnectivityClient, err error) {
+func NewMQTTClient(
+	ctx context.Context,
+	handleCmd types.AgentCmdHandleFunc,
+	cfg interface{},
+) (_ types.ConnectivityClient, err error) {
 	config, ok := cfg.(*ConnectivityMQTT)
 	if !ok {
 		return nil, fmt.Errorf("unexpected non mqtt config")
@@ -112,7 +116,7 @@ func NewMQTTClient(agent types.Agent, cfg interface{}) (_ types.ConnectivityClie
 		subErrCh:  make(chan error),
 	}
 
-	c.BaseClient, err = clientutil.NewBaseClient(agent, connInfo.MaxPayloadSize)
+	c.BaseClient, err = clientutil.NewBaseClient(ctx, handleCmd, connInfo.MaxPayloadSize)
 	if err != nil {
 		return nil, err
 	}

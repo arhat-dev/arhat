@@ -1,6 +1,6 @@
 // +build windows zos plan9 js
 
-package cmd
+package main
 
 import "fmt"
 

@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
@@ -41,12 +42,17 @@ type Client struct {
 	dialOpts      []grpc.DialOption
 	conn          *grpc.ClientConn
 	client        rpcpb.EdgeDeviceClient
-	syncClient    rpcpb.EdgeDevice_SyncClient
+
+	syncClientStore *atomic.Value
 
 	mu *sync.RWMutex
 }
 
-func NewGRPCClient(agent types.Agent, cfg interface{}) (types.ConnectivityClient, error) {
+func NewGRPCClient(
+	ctx context.Context,
+	handleCmd types.AgentCmdHandleFunc,
+	cfg interface{},
+) (types.ConnectivityClient, error) {
 	config, ok := cfg.(*ConnectivityGRPC)
 	if !ok {
 		return nil, fmt.Errorf("unexpected non grpc config")
@@ -77,10 +83,12 @@ func NewGRPCClient(agent types.Agent, cfg interface{}) (types.ConnectivityClient
 		serverAddress: config.Endpoint,
 		dialOpts:      dialOpts,
 
+		syncClientStore: new(atomic.Value),
+
 		mu: new(sync.RWMutex),
 	}
 
-	c.BaseClient, err = clientutil.NewBaseClient(agent, maxPayloadSize)
+	c.BaseClient, err = clientutil.NewBaseClient(ctx, handleCmd, maxPayloadSize)
 	if err != nil {
 		return nil, err
 	}
@@ -104,28 +112,31 @@ func (c *Client) Connect(dialCtx context.Context) error {
 }
 
 func (c *Client) Start(ctx context.Context) error {
-	if err := func() error {
-		c.mu.Lock()
-		defer c.mu.Unlock()
+	c.mu.Lock()
+	// check if connected before
+	if prevClient, ok := c.syncClientStore.Load().(rpcpb.EdgeDevice_SyncClient); ok && prevClient != nil {
+		c.mu.Unlock()
+		return clientutil.ErrClientAlreadyConnected
+	}
 
-		if c.syncClient != nil {
-			return clientutil.ErrClientAlreadyConnected
-		}
-
-		syncClient, err := c.client.Sync(ctx, grpc.WaitForReady(true))
-		if err != nil {
-			return err
-		}
-		c.syncClient = syncClient
-		return nil
-	}(); err != nil {
+	syncClient, err := c.client.Sync(ctx, grpc.WaitForReady(true))
+	if err != nil {
+		c.mu.Unlock()
 		return err
 	}
+	c.syncClientStore.Store(syncClient)
+	c.mu.Unlock()
+
+	defer func() {
+		c.mu.Lock()
+		c.syncClientStore.Store((*rpcpb.EdgeDevice_SyncClient)(nil))
+		c.mu.Unlock()
+	}()
 
 	cmdCh := make(chan *aranyagopb.Cmd, 1)
 	go func() {
 		for {
-			cmd, err := c.syncClient.Recv()
+			cmd, err := syncClient.Recv()
 			if err != nil {
 				close(cmdCh)
 
@@ -139,22 +150,23 @@ func (c *Client) Start(ctx context.Context) error {
 				return
 			}
 
-			cmdCh <- cmd
+			select {
+			case <-syncClient.Context().Done():
+				// disconnected from cloud controller
+				return
+			case <-ctx.Done():
+				// leaving
+				return
+			case cmdCh <- cmd:
+			}
 		}
-	}()
-
-	defer func() {
-		c.mu.Lock()
-		defer c.mu.Unlock()
-
-		c.syncClient = nil
 	}()
 
 	for {
 		select {
-		case <-c.syncClient.Context().Done():
+		case <-syncClient.Context().Done():
 			// disconnected from cloud controller
-			return c.syncClient.Context().Err()
+			return syncClient.Context().Err()
 		case <-ctx.Done():
 			// leaving
 			return nil
@@ -168,14 +180,12 @@ func (c *Client) Start(ctx context.Context) error {
 }
 
 func (c *Client) PostMsg(msg *aranyagopb.Msg) error {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	if c.syncClient == nil {
+	client, ok := c.syncClientStore.Load().(rpcpb.EdgeDevice_SyncClient)
+	if !ok || client == nil {
 		return clientutil.ErrClientNotConnected
 	}
 
-	return c.syncClient.Send(msg)
+	return client.Send(msg)
 }
 
 func (c *Client) Close() error {
@@ -183,8 +193,9 @@ func (c *Client) Close() error {
 		c.mu.Lock()
 		defer c.mu.Unlock()
 
-		if c.syncClient != nil {
-			_ = c.syncClient.CloseSend()
+		client, ok := c.syncClientStore.Load().(rpcpb.EdgeDevice_SyncClient)
+		if ok && client == nil {
+			_ = client.CloseSend()
 		}
 
 		if c.conn != nil {

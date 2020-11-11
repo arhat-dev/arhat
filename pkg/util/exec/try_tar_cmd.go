@@ -1,4 +1,5 @@
-// +build !noexectry,!noexectry_tar,!js
+// +build !noexectry,!noexectry_tar
+// +build !js
 
 /*
 Copyright 2020 The arhat.dev Authors.
@@ -28,7 +29,7 @@ import (
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/wellknownerrors"
 	"github.com/mholt/archiver/v3"
-	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 func init() {
@@ -92,24 +93,7 @@ func tryTarCmd(
 		opts       = new(untarOpts)
 	)
 
-	cmd := &cobra.Command{
-		SilenceUsage:  true,
-		SilenceErrors: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			w := stdout
-			if stderr != nil {
-				w = stderr
-			}
-
-			if w == nil {
-				w = ioutil.Discard
-			}
-
-			return runTarCmd(stdin, w, opts)
-		},
-	}
-
-	flags := cmd.Flags()
+	flags := pflag.NewFlagSet("tar", pflag.ContinueOnError)
 	flags.BoolVarP(&extract, "extract", "x", false, "")
 	flags.StringVarP(&sourceFile, "file", "f", "", "")
 	flags.StringVarP(&opts.targetDir, "change-dir", "C", "", "")
@@ -117,8 +101,7 @@ func tryTarCmd(
 	flags.BoolVar(&opts.noSameOwner, "no-same-owner", false, "")
 	flags.BoolVar(&opts.noSamePermission, "no-same-permissions", false, "")
 
-	cmd.SetArgs(command[1:])
-	if err := cmd.ParseFlags(command[1:]); err != nil {
+	if err := flags.Parse(command[1:]); err != nil {
 		return wellknownerrors.ErrNotSupported
 	}
 
@@ -126,7 +109,16 @@ func tryTarCmd(
 		return wellknownerrors.ErrNotSupported
 	}
 
-	return cmd.Execute()
+	w := stdout
+	if stderr != nil {
+		w = stderr
+	}
+
+	if w == nil {
+		w = ioutil.Discard
+	}
+
+	return runTarCmd(stdin, w, opts)
 }
 
 func runTarCmd(stdin io.Reader, w io.Writer, opts *untarOpts) error {

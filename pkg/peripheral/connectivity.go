@@ -31,7 +31,7 @@ func NewConnectivity(
 			return nil, fmt.Errorf("failed to create peripheral cmd: %w", err)
 		}
 
-		return ec.SendCmd(cmd)
+		return ec.SendCmd(cmd, true)
 	}
 
 	return c

@@ -17,9 +17,10 @@ storage:
   # backend used to mount remote volume
   #
   # value can be one of the following
-  #   - "none" or "" (disabled)
+  #   - "none" or ""
+  #   - general
   #   - sshfs
-  backend: sshfs
+  driver: sshfs
 
   # stdout file for backend's mount program
   #

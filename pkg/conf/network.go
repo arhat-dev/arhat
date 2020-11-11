@@ -14,23 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package metricsutils
+package conf
 
-import (
-	"io"
+type NetworkConfig struct {
+	Enabled bool `json:"enabled" yaml:"enabled"`
 
-	dto "github.com/prometheus/client_model/go"
-
-	"github.com/prometheus/common/expfmt"
-)
-
-func EncodeMetrics(w io.Writer, mfs []*dto.MetricFamily) error {
-	enc := expfmt.NewEncoder(w, expfmt.FmtProtoDelim)
-	for _, mf := range mfs {
-		if err := enc.Encode(mf); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	AbbotRequestExec []string `json:"abbotRequestExec" yaml:"abbotRequestExec"`
 }

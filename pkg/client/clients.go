@@ -17,6 +17,7 @@ limitations under the License.
 package client
 
 import (
+	"context"
 	"fmt"
 
 	"arhat.dev/arhat/pkg/types"
@@ -24,7 +25,11 @@ import (
 
 type (
 	ConfigFactoryFunc func() interface{}
-	FactoryFunc       func(agent types.Agent, cfg interface{}) (types.ConnectivityClient, error)
+	FactoryFunc       func(
+		ctx context.Context,
+		handleCmd types.AgentCmdHandleFunc,
+		cfg interface{},
+	) (types.ConnectivityClient, error)
 )
 
 type factory struct {
@@ -57,11 +62,16 @@ func NewConfig(name string) (interface{}, error) {
 	return newConfig.newConfig(), nil
 }
 
-func NewConnectivityClient(name string, agent types.Agent, config interface{}) (types.ConnectivityClient, error) {
+func NewConnectivityClient(
+	ctx context.Context,
+	name string,
+	handleCmd types.AgentCmdHandleFunc,
+	config interface{},
+) (types.ConnectivityClient, error) {
 	newClient, ok := supportedConnectivityClients[name]
 	if !ok {
 		return nil, fmt.Errorf("unsupported connectivity method: %s", name)
 	}
 
-	return newClient.newClient(agent, config)
+	return newClient.newClient(ctx, handleCmd, config)
 }

@@ -33,11 +33,14 @@ var (
 	ErrCmdRecvClosed          = errors.New("cmd recv closed")
 )
 
-func NewBaseClient(ag types.Agent, maxPayloadSize int) (*BaseClient, error) {
-	ctx, cancel := context.WithCancel(ag.Context())
+func NewBaseClient(
+	ctx context.Context,
+	handleCmd types.AgentCmdHandleFunc,
+	maxPayloadSize int,
+) (*BaseClient, error) {
+	ctx, cancel := context.WithCancel(ctx)
 
-	maxPayloadSize -= aranyagopb.EmptyMsgSize
-	if maxPayloadSize <= 0 {
+	if maxPayloadSize-aranyagopb.EmptyMsgSize <= 0 {
 		cancel()
 		return nil, fmt.Errorf("maxPayloadSize must be greater than %d", aranyagopb.EmptyMsgSize)
 	}
@@ -49,7 +52,7 @@ func NewBaseClient(ag types.Agent, maxPayloadSize int) (*BaseClient, error) {
 		Log:            log.Log.WithName("client"),
 		maxPayloadSize: maxPayloadSize,
 
-		agent: ag,
+		handleCmd: handleCmd,
 	}, nil
 }
 
@@ -59,13 +62,12 @@ type BaseClient struct {
 
 	maxPayloadSize int
 
-	Log   log.Interface
-	agent types.Agent
-	//HandleCmd types.CmdHandleFunc
+	Log       log.Interface
+	handleCmd types.AgentCmdHandleFunc
 }
 
 func (b *BaseClient) HandleCmd(cmd *aranyagopb.Cmd) {
-	b.agent.HandleCmd(cmd)
+	b.handleCmd(cmd)
 }
 
 func (b *BaseClient) OnClose(doExit func() error) error {

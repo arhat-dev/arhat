@@ -1,29 +1,29 @@
+/*
+Copyright 2020 The arhat.dev Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package types
 
 import (
-	"context"
-
 	"arhat.dev/aranya-proto/aranyagopb"
 	"github.com/gogo/protobuf/proto"
 )
 
-type (
-	ConnectivityConfigFactoryFunc func() interface{}
-	ConnectivityClientFactoryFunc func(agent Agent, clientConfig interface{}) (ConnectivityClient, error)
-)
-
-type RawCmdHandleFunc func(sid uint64, data []byte)
-
-type (
-	CmdHandleFunc func(cmd *aranyagopb.Cmd)
-	DataPostFunc  func(sid uint64, kind aranyagopb.MsgType, seq uint64, completed bool, data []byte) (uint64, error)
-	MsgPostFunc   func(sid uint64, kind aranyagopb.MsgType, msg proto.Marshaler) error
-)
+type AgentCmdHandleFunc func(cmd *aranyagopb.Cmd)
 
 type Agent interface {
-	// Context of the agent
-	Context() context.Context
-
 	// HandleCmd received from aranya
 	HandleCmd(cmd *aranyagopb.Cmd)
 
@@ -31,24 +31,4 @@ type Agent interface {
 	PostMsg(sid uint64, kind aranyagopb.MsgType, msg proto.Marshaler) error
 
 	PostData(sid uint64, kind aranyagopb.MsgType, seq uint64, completed bool, data []byte) (lastSeq uint64, _ error)
-}
-
-type ConnectivityClient interface {
-	// Context of this client
-	Context() context.Context
-
-	// Connect to server/broker
-	Connect(dialCtx context.Context) error
-
-	// Start internal logic to get prepared for communication with aranya
-	Start(ctx context.Context) error
-
-	// PostMsg to aranya
-	PostMsg(msg *aranyagopb.Msg) error
-
-	// Close this client
-	Close() error
-
-	// MaxPayloadSize of a single message for this client
-	MaxPayloadSize() int
 }

@@ -22,16 +22,17 @@ import (
 
 	"arhat.dev/pkg/exechelper"
 	"arhat.dev/pkg/log"
-	"ext.arhat.dev/runtimeutil/storage"
+	"ext.arhat.dev/runtimeutil/storageutil"
 	"github.com/spf13/pflag"
 )
 
 // Config
 type Config struct {
-	Arhat        AppConfig            `json:"arhat" yaml:"arhat"`
-	Connectivity ConnectivityConfig   `json:"connectivity" yaml:"connectivity"`
-	Storage      storage.ClientConfig `json:"storage" yaml:"storage"`
-	Extension    ExtensionConfig      `json:"extension" yaml:"extension"`
+	Arhat        AppConfig                `json:"arhat" yaml:"arhat"`
+	Connectivity ConnectivityConfig       `json:"connectivity" yaml:"connectivity"`
+	Storage      storageutil.ClientConfig `json:"storage" yaml:"storage"`
+	Network      NetworkConfig            `json:"network" yaml:"network"`
+	Extension    ExtensionConfig          `json:"extension" yaml:"extension"`
 }
 
 // AppConfig configuration for arhat application behavior

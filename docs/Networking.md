@@ -6,9 +6,9 @@ __NOTE:__ `abbot` is a reference implementation to support remote network, you c
 
 ## Design
 
-General idea: `arhat` is just command executor to invoke external network component, the network option argument are encoded in `base64(protobuf bytes(abbot-proto:REQ))`, so `arhat` just need to invoke a command like `/path/to/abbot process <encoded options>` to get everything working
+General idea: `arhat` is just command executor to invoke external network component, the network options are encoded in protobuf bytes and passed to `abbot` as stdin data, so once got some prepared network options, `arhat` just invoke a command like `/path/to/abbot process` to get everything working.
 
-By this means, `arhat` don't have to know `abbot-proto` at all
+By this way, `arhat` don't have to know `abbot-proto` at all, you can develop your protocol for custom use case.
 
 ### Host Network Desgin
 

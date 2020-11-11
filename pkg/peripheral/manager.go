@@ -132,7 +132,7 @@ func (m *Manager) connectTarget(
 		return nil, fmt.Errorf("failed to create peripheral connect cmd: %w", err)
 	}
 
-	resp, err := ec.SendCmd(cmd)
+	resp, err := ec.SendCmd(cmd, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send peripheral connect cmd: %w", err)
 	}

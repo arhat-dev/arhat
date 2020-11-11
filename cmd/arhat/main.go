@@ -20,31 +20,40 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"strings"
 	"time"
 
-	"github.com/spf13/pflag"
+	"arhat.dev/arhat/pkg/conf"
 
-	"arhat.dev/arhat/pkg/cmd"
-	"arhat.dev/arhat/pkg/version"
+	_ "arhat.dev/arhat/pkg/client/clientadd" // add clients
 )
+
+func printErr(msg string, err error) {
+	_, _ = fmt.Fprintf(os.Stderr, "%s: %v", msg, err)
+}
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
-	rootCmd := cmd.NewArhatCmd()
-	rootCmd.AddCommand(version.NewVersionCmd())
-
-	rootCmd.PersistentFlags().VisitAll(func(f *pflag.Flag) {
-		switch {
-		case strings.HasPrefix(f.Name, "runtime"), strings.HasPrefix(f.Name, "pod"):
-			f.Hidden = true
-		}
-	})
-
-	err := rootCmd.Execute()
+	err := flags.Parse(os.Args)
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "failed to run arhat %v: %v\n", os.Args, err)
+		printErr("failed to parse options", err)
+		os.Exit(128)
+	}
+
+	if showVersion {
+		printVersion()
+		return
+	}
+
+	appCtx, err = conf.ReadConfig(flags, &configFile, cliLogConfig, config)
+	if err != nil {
+		printErr("failed to parse config", err)
+		os.Exit(128)
+	}
+
+	err = runApp(appCtx, config)
+	if err != nil {
+		printErr("failed to run arhat", err)
 		os.Exit(1)
 	}
 }

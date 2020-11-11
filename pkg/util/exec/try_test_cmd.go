@@ -1,4 +1,5 @@
-// +build !noexectry,!noexectry_test,!js
+// +build !noexectry,!noexectry_test
+// +build !js
 
 /*
 Copyright 2020 The arhat.dev Authors.
@@ -25,7 +26,7 @@ import (
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/wellknownerrors"
-	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 func init() {
@@ -43,34 +44,18 @@ func tryTestCmd(
 	command []string,
 	_ bool,
 ) error {
+	if len(command) != 3 {
+		return wellknownerrors.ErrNotSupported
+	}
+
 	var (
 		testingDir bool
 	)
 
-	cmd := &cobra.Command{
-		SilenceUsage:  true,
-		SilenceErrors: true,
-		Args:          cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			dirName := args[0]
-			f, err := os.Stat(dirName)
-			if err != nil {
-				return err
-			}
-
-			if !f.IsDir() {
-				return fmt.Errorf("path is not a dir")
-			}
-
-			return nil
-		},
-	}
-
-	flags := cmd.Flags()
+	flags := pflag.NewFlagSet("test", pflag.ContinueOnError)
 	flags.BoolVarP(&testingDir, "dir", "d", false, "")
 
-	cmd.SetArgs(command[1:])
-	if err := cmd.ParseFlags(command[1:]); err != nil {
+	if err := flags.Parse(command[1:]); err != nil {
 		return wellknownerrors.ErrNotSupported
 	}
 
@@ -78,5 +63,15 @@ func tryTestCmd(
 		return wellknownerrors.ErrNotSupported
 	}
 
-	return cmd.Execute()
+	dirName := command[2]
+	f, err := os.Stat(dirName)
+	if err != nil {
+		return err
+	}
+
+	if !f.IsDir() {
+		return fmt.Errorf("path is not a dir")
+	}
+
+	return nil
 }

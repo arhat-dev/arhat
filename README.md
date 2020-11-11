@@ -6,7 +6,7 @@
 [![GoReportCard](https://goreportcard.com/badge/arhat.dev/arhat)](https://goreportcard.com/report/arhat.dev/arhat)
 [![codecov](https://codecov.io/gh/arhat-dev/arhat/branch/master/graph/badge.svg)](https://codecov.io/gh/arhat-dev/arhat)
 
-The reference `EdgeDevice` agent for `aranya`
+The reference `EdgeDevice` agent for `aranya`, serving as the connectivity hub for real world.
 
 ## Features
 
@@ -28,31 +28,19 @@ The reference `EdgeDevice` agent for `aranya`
 ## Design
 
 - [Connectivity](./docs/Connectivity.md)
-- [Runtime](./docs/Runtime.md)
 - [Networking](./docs/Networking.md)
 - [Storage](./docs/Storage.md)
 - [Extension](./docs/Extension.md)
+  - [Runtime](./docs/Extension-Runtime.md)
+  - [Peripheral](./docs/Extension-Peripheral.md)
+
+## Build
+
+see [docs/Build](./docs/Build.md)
 
 ## Configuration
 
 see [docs/Configuration](./docs/Configuration.md)
-
-## Build
-
-__TL;DR:__ have a look at the `build-on-{linux,darwin,windows}` jobs in the [build workflow](./.github/workflows/build.yaml)
-
-### Binary Targets
-
-Target format `arhat-{runtime}.{os}.{arch}`
-
-To find all binary targets, run:
-
-```bash
-make -qp \
-  | awk -F':' '/^[a-zA-Z0-9][^$#\/\t=]*:([^=]|$)/ {split($1,A,/ /);for(i in A)print A[i]}' \
-  | sort -u \
-  | grep ^arhat
-```
 
 ## LICENSE
 

@@ -14,14 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package unixexporter
+package agent
 
-import (
-	"arhat.dev/aranya-proto/aranyagopb"
-	"arhat.dev/pkg/wellknownerrors"
-	"github.com/prometheus/client_golang/prometheus"
-)
-
-func CreateContainerMetricsGatherer(config *aranyagopb.MetricsConfigCmd) (prometheus.Gatherer, error) {
-	return nil, wellknownerrors.ErrNotSupported
+func (b *Agent) handleRuntime(sid uint64, data []byte) {
 }

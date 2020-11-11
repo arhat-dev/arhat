@@ -1,3 +1,5 @@
+// +build nometrics
+
 /*
 Copyright 2020 The arhat.dev Authors.
 
@@ -14,14 +16,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package windowsexporter
+package agent
 
-import (
-	"arhat.dev/aranya-proto/aranyagopb"
-	"arhat.dev/pkg/wellknownerrors"
-	"github.com/prometheus/client_golang/prometheus"
-)
+func (b *Agent) handleMetricsConfig(sid uint64, data []byte) {
+	b.handleUnknownCmd(sid, "metrics", nil)
+}
 
-func CreateContainerMetricsGatherer(config *aranyagopb.MetricsConfigCmd) (prometheus.Gatherer, error) {
-	return nil, wellknownerrors.ErrNotSupported
+func (b *Agent) handleMetricsCollect(sid uint64, data []byte) {
+	b.handleUnknownCmd(sid, "metrics", nil)
+}
+
+func (b *Agent) handlePeripheralMetricsCollect(sid uint64, data []byte) {
+	b.handleUnknownCmd(sid, "peripheral.metrics.collect", nil)
 }

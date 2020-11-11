@@ -11,13 +11,11 @@
 
 The configuration of `arhat` is defined in a `yaml` or `json` file
 
-The `arhat` configuration file contains five major sections (`arhat`, `runtime`, `storage`, `connectivity` and `extension`):
+The `arhat` configuration file contains four major sections (`arhat`, `storage`, `connectivity` and `extension`):
 
 ```yaml
 # arhat section controls application behavior
 arhat:
-  # ...
-runtime:
   # ...
 storage:
   # ...
@@ -29,11 +27,11 @@ extension:
 
 Each section is used to define a specific aspect of `arhat`'s behavior
 
-__NOTE:__ You can include environment variables (`$FOO` or `${FOO}`) in the config file, they will be expanded when `arhat` loading configuration.
+__NOTE:__ You can include environment variables (`$FOO`, `$(FOO)` or `${FOO}`) in the config file, they will be expanded according to system environment variables when `arhat` loading configuration, if the environment variable was not defined, `arhat` will keep it as is (say, `$FOO` will be `$FOO`, not empty string or `${FOO}`).
 
 ### Section `arhat`
 
-This section defines `arhat`'s behavior
+This section defines `arhat` application behavior
 
 ```yaml
 arhat:
@@ -139,12 +137,6 @@ arhat:
 This section defines how to connect to the server/broker and finally communicate with `aranya`
 
 see [Connectivity Configuration](./Connectivity.md#configuration)
-
-### Section `runtime`
-
-This section defines the container runtime configuration
-
-see [Runtime Configuration](./Runtime.md#configuration)
 
 ### Section `storage`
 

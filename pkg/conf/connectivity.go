@@ -1,13 +1,30 @@
+/*
+Copyright 2020 The arhat.dev Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package conf
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"time"
 
-	"arhat.dev/arhat/pkg/client"
+	"gopkg.in/yaml.v3"
 
-	"gopkg.in/yaml.v2"
+	"arhat.dev/arhat/pkg/client"
 )
 
 // ConnectivityConfig configuration for connectivity part in arhat
@@ -43,10 +60,15 @@ func (c *ConnectivityMethod) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (c *ConnectivityMethod) UnmarshalYAML(unmarshal func(out interface{}) error) error {
+func (c *ConnectivityMethod) UnmarshalYAML(value *yaml.Node) error {
 	m := make(map[string]interface{})
 
-	err := unmarshal(&m)
+	data, err := yaml.Marshal(value)
+	if err != nil {
+		return err
+	}
+
+	err = yaml.Unmarshal(data, m)
 	if err != nil {
 		return err
 	}
@@ -97,7 +119,9 @@ func unmarshalConnectivityMethod(m map[string]interface{}) (name string, priorit
 		}
 	}
 
-	err = yaml.UnmarshalStrict(configData, config)
+	dec := yaml.NewDecoder(bytes.NewReader(configData))
+	dec.KnownFields(true)
+	err = dec.Decode(config)
 	if err != nil {
 		return
 	}

@@ -1,3 +1,19 @@
+/*
+Copyright 2020 The arhat.dev Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package agent
 
 import (
@@ -17,7 +33,7 @@ import (
 	"arhat.dev/pkg/exechelper"
 	"arhat.dev/pkg/iohelper"
 	"arhat.dev/pkg/wellknownerrors"
-	"ext.arhat.dev/runtimeutil"
+	"ext.arhat.dev/runtimeutil/actionutil"
 
 	"arhat.dev/arhat/pkg/constant"
 	"arhat.dev/arhat/pkg/util/errconv"
@@ -218,7 +234,7 @@ func (b *Agent) handlePodContainerLogs(sid uint64, data []byte) {
 					file = constant.PrevLogFile(file)
 				}
 
-				err := runtimeutil.ReadLogs(s.Context(), file, cmd, stdout, stderr)
+				err := actionutil.ReadLogs(s.Context(), file, cmd, stdout, stderr)
 				if err != nil {
 					return errconv.ToConnectivityError(err)
 				}
@@ -420,8 +436,8 @@ func (b *Agent) uploadDataOutput(
 	pSeq *uint64,
 	seqMu *sync.Mutex,
 ) {
-	r := iohelper.NewTimeoutReader(rd, b.GetClient().MaxPayloadSize())
-	go r.StartBackgroundReading()
+	r := iohelper.NewTimeoutReader(rd)
+	go r.FallbackReading()
 
 	stopSig := b.ctx.Done()
 	timer := time.NewTimer(0)
@@ -438,12 +454,16 @@ func (b *Agent) uploadDataOutput(
 		}
 	}()
 
-	for r.WaitUntilHasData(stopSig) {
+	buf := make([]byte, b.GetClient().MaxPayloadSize())
+	for r.WaitForData(stopSig) {
 		timer.Reset(readTimeout)
-		data, isTimeout := r.ReadUntilTimeout(timer.C)
-		if !isTimeout && !timer.Stop() {
-			<-timer.C
+		n, err := r.Read(readTimeout, buf)
+		if err != nil && err != iohelper.ErrDeadlineExceeded {
+			return
 		}
+
+		data := make([]byte, n)
+		_ = copy(data, buf[:n])
 
 		if seqMu != nil {
 			seqMu.Lock()

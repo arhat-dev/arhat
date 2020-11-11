@@ -21,8 +21,6 @@ import "time"
 const (
 	// arhat defaults
 	DefaultArhatConfigFile = "/etc/arhat/config.yaml"
-	DefaultProcfsPath      = "/proc"
-	DefaultSysfsPath       = "/sys"
 )
 
 // Extension defaults

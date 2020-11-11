@@ -31,7 +31,7 @@ _build() {
 }
 
 arhat() {
-  _build "${GOBUILD} -tags='arhat netgo ${PREDEFINED_BUILD_TAGS} ${TAGS}' ./cmd/arhat"
+  _build "${GOBUILD} -tags='arhat netgo noflaghelper ${PREDEFINED_BUILD_TAGS} ${TAGS}' ./cmd/arhat"
 }
 
 COMP=$(printf "%s" "$@" | cut -d. -f1)

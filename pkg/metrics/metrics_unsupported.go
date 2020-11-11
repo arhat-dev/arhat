@@ -13,7 +13,3 @@ import (
 func CreateNodeMetricsCollector(config *aranyagopb.MetricsConfigCmd) (types.MetricsCollectFunc, error) {
 	return nil, wellknownerrors.ErrNotSupported
 }
-
-func CreateContainerMetricsCollector(config *aranyagopb.MetricsConfigCmd) (types.MetricsCollectFunc, error) {
-	return nil, wellknownerrors.ErrNotSupported
-}
