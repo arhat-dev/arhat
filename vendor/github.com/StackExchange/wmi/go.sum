@@ -1,0 +1,14 @@
+github.com/bi-zone/go-ole v1.2.5 h1:/4G2KrTbq1e3FsMkd40quzwIrLb4QdxZJnUUlG7UjcM=
+github.com/bi-zone/go-ole v1.2.5/go.mod h1:BxzT498d9QAq10L6G/pTMscpDzqnpKN6DUBbmFKwyQY=
+github.com/gonuts/commander v0.1.0/go.mod h1:qkb5mSlcWodYgo7vs8ulLnXhfinhZsZcm6+H/z1JjgY=
+github.com/gonuts/flag v0.1.0/go.mod h1:ZTmTGtrSPejTo/SRNhCqwLTmiAgyBdCkLYhHrAoBdz4=
+github.com/hashicorp/errwrap v1.0.0 h1:hLrqtEDnRye3+sgx6z4qVLNuviH3MR5aQ0ykNJa/UYA=
+github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
+github.com/hashicorp/go-multierror v1.0.0 h1:iVjPR7a6H0tWELX5NxNe7bYopibicUzc7uPribsnS6o=
+github.com/hashicorp/go-multierror v1.0.0/go.mod h1:dHtQlpGsu+cZNNAkkCN/P3hoUDHhCYQXV3UM06sGGrk=
+github.com/jeffreystoke/comshim v0.0.0-20201112193758-b0afaf23e130 h1:gBYXDXnDnE88e/qm57gN7nBFQkou4zzXqf3WzKbZxLo=
+github.com/jeffreystoke/comshim v0.0.0-20201112193758-b0afaf23e130/go.mod h1:U6fbqKJOIN6rDScxqa23b897oZzrOf44XOPyl/O/iHo=
+golang.org/x/sys v0.0.0-20190916202348-b4ddaad3f8a3 h1:7TYNF4UdlohbFwpNH04CoPMp1cHUZgO1Ebq5r2hIjfo=
+golang.org/x/sys v0.0.0-20190916202348-b4ddaad3f8a3/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/sys v0.0.0-20200806060901-a37d78b92225 h1:a5kp7Ohh+lqGCGHUBQdPwGHTJXKNhVVWp34F+ncDC9M=
+golang.org/x/sys v0.0.0-20200806060901-a37d78b92225/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=

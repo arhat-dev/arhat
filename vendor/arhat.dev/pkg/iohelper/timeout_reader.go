@@ -121,6 +121,7 @@ func NewTimeoutReader(r io.Reader) *TimeoutReader {
 					if err != nil {
 						return
 					}
+
 					if n != 0 {
 						return
 					}

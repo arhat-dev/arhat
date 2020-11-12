@@ -6,7 +6,7 @@ require (
 	arhat.dev/aranya-proto v0.2.3
 	arhat.dev/arhat-proto v0.4.2
 	arhat.dev/libext v0.4.3
-	arhat.dev/pkg v0.3.5
+	arhat.dev/pkg v0.3.6-0.20201112201959-efe9404198be
 	ext.arhat.dev/runtimeutil v0.1.5
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/denisbrodbeck/machineid v1.0.1
@@ -22,7 +22,7 @@ require (
 	github.com/prometheus-community/windows_exporter v0.15.0
 	github.com/prometheus/client_golang v1.8.0
 	github.com/prometheus/client_model v0.2.0
-	github.com/prometheus/common v0.14.0
+	github.com/prometheus/common v0.15.0
 	github.com/prometheus/node_exporter v1.0.1
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/sys v0.0.0-20201107080550-4d91cf3a1aaf
@@ -48,13 +48,14 @@ replace (
 replace (
 	github.com/Microsoft/go-winio => github.com/Microsoft/go-winio v0.4.15
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.10
-	github.com/StackExchange/wmi => github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d
+	github.com/StackExchange/wmi => github.com/jeffreystoke/wmi v1.1.5-0.20201112195122-b993dc474644
+	github.com/bi-zone/go-ole => github.com/jeffreystoke/go-ole v1.2.6-0.20201112201217-834244b65d29
 	github.com/prometheus-community/windows_exporter => github.com/prometheus-community/windows_exporter v0.15.0
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.8.0
 	github.com/prometheus/client_model => github.com/prometheus/client_model v0.2.0
-	github.com/prometheus/common => github.com/prometheus/common v0.14.0
+	github.com/prometheus/common => github.com/prometheus/common v0.15.0
 	github.com/prometheus/node_exporter => github.com/prometheus/node_exporter v1.0.1
-	github.com/prometheus/procfs => github.com/prometheus/procfs v0.1.3
+	github.com/prometheus/procfs => github.com/prometheus/procfs v0.2.1-0.20201102103729-910e68572b35
 	honnef.co/go/tools => honnef.co/go/tools v0.0.1-2020.1.5
 )
 

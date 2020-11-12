@@ -1,4 +1,4 @@
-// +build windows plan9 solaris
+// +build windows plan9 solaris aix js
 
 /*
 Copyright 2020 The arhat.dev Authors.
