@@ -138,7 +138,8 @@ github.com/hashicorp/go-multierror
 github.com/hodgesds/perf-utils
 # github.com/jeffreystoke/comshim v0.0.0-20201112193758-b0afaf23e130
 github.com/jeffreystoke/comshim
-# github.com/klauspost/compress v1.10.10
+# github.com/klauspost/compress v1.11.2 => github.com/klauspost/compress v1.11.2
+## explicit
 github.com/klauspost/compress/flate
 github.com/klauspost/compress/fse
 github.com/klauspost/compress/gzip
@@ -407,6 +408,7 @@ nhooyr.io/websocket/internal/xsync
 # github.com/creack/pty => github.com/creack/pty v1.1.11
 # github.com/dsnet/golib => github.com/dsnet/golib v0.0.0-20200723050859-c110804dfa93
 # github.com/fsnotify/fsnotify => github.com/fsnotify/fsnotify v1.4.9
+# github.com/klauspost/compress => github.com/klauspost/compress v1.11.2
 # github.com/pion/dtls/v2 => github.com/pion/dtls/v2 v2.0.3
 # github.com/spf13/cobra => github.com/spf13/cobra v1.1.1
 # go.uber.org/atomic => go.uber.org/atomic v1.6.0

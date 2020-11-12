@@ -266,5 +266,17 @@ arhat.plan9.all: \
 	arhat.plan9.armv5 \
 	arhat.plan9.armv6
 
+# TODO: currently tinygo lacks json and tls support
+#
+# docker run \
+# 	-v $(shell pwd):/app/src/arhat.dev/arhat \
+# 	-v $(shell pwd)/vendor:/go/src \
+# 	-e "GOPATH=/go:/app" \
+# 	tinygo/tinygo:0.15.0 \
+# 	tinygo build -o \
+# 		/app/src/arhat.dev/arhat/build/arhat.js.wasm \
+# 		-target wasm -tags 'nometrics' \
+# 		--no-debug \
+# 		/go/src/arhat.dev/arhat/cmd/arhat
 arhat.js.wasm:
 	sh scripts/build/build.sh $@

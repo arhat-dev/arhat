@@ -81,11 +81,11 @@ func (b *Agent) handleMetricsConfig(sid uint64, data []byte) {
 
 func (b *Agent) encodeMetrics(metrics []*dto.MetricFamily) ([]byte, error) {
 	buf := new(bytes.Buffer)
-	gw := b.GetGzipWriter(buf)
+	gw := b.GetZstdWriter(buf)
 
 	defer func() {
 		_ = gw.Close()
-		b.gzipPool.Put(gw)
+		b.zstdPool.Put(gw)
 	}()
 
 	err := metricsutils.EncodeMetrics(gw, metrics)

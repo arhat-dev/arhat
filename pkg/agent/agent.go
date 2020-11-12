@@ -17,7 +17,6 @@ limitations under the License.
 package agent
 
 import (
-	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"errors"
@@ -35,6 +34,7 @@ import (
 	"ext.arhat.dev/runtimeutil/networkutil"
 	"ext.arhat.dev/runtimeutil/storageutil"
 	"github.com/gogo/protobuf/proto"
+	"github.com/klauspost/compress/zstd"
 
 	"arhat.dev/arhat/pkg/conf"
 	"arhat.dev/arhat/pkg/types"
@@ -113,10 +113,13 @@ func NewAgent(appCtx context.Context, logger log.Interface, config *conf.Config)
 
 		streams: manager.NewStreamManager(),
 
-		gzipPool: &sync.Pool{
+		zstdPool: &sync.Pool{
 			New: func() interface{} {
-				w, _ := gzip.NewWriterLevel(nil, gzip.BestCompression)
-				return w
+				enc, _ := zstd.NewWriter(
+					nil,
+					zstd.WithEncoderLevel(zstd.SpeedBestCompression),
+				)
+				return enc
 			},
 		},
 	}
@@ -211,7 +214,7 @@ type Agent struct {
 
 	agentComponentPeripheral
 
-	gzipPool *sync.Pool
+	zstdPool *sync.Pool
 
 	settingClient uint32
 	client        types.ConnectivityClient
@@ -245,8 +248,8 @@ func (b *Agent) GetClient() types.ConnectivityClient {
 	return b.client
 }
 
-func (b *Agent) GetGzipWriter(w io.Writer) *gzip.Writer {
-	gw := b.gzipPool.Get().(*gzip.Writer)
+func (b *Agent) GetZstdWriter(w io.Writer) *zstd.Encoder {
+	gw := b.zstdPool.Get().(*zstd.Encoder)
 	gw.Reset(w)
 	return gw
 }
