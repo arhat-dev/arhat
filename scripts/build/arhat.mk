@@ -16,6 +16,10 @@
 arhat:
 	sh scripts/build/build.sh $@
 
+# any platform
+arhat.%.%:
+	sh scripts/build/build.sh $@
+
 # linux
 arhat.linux.x86:
 	sh scripts/build/build.sh $@
@@ -78,6 +82,7 @@ arhat.linux.all: \
 	arhat.linux.armv6 \
 	arhat.linux.armv7 \
 	arhat.linux.arm64 \
+	arhat.linux.riscv64 \
 	arhat.linux.mips \
 	arhat.linux.mipshf \
 	arhat.linux.mipsle \
@@ -106,8 +111,6 @@ arhat.windows.x86:
 arhat.windows.amd64:
 	sh scripts/build/build.sh $@
 
-# currently windows/arm builds do not support metrics collecting due to
-# https://github.com/go-ole/go-ole/issues/202
 arhat.windows.armv5:
 	sh scripts/build/build.sh $@
 
@@ -123,7 +126,10 @@ arhat.windows.armv7:
 
 arhat.windows.all: \
 	arhat.windows.x86 \
-	arhat.windows.amd64
+	arhat.windows.amd64 \
+	arhat.windows.armv5 \
+	arhat.windows.armv6 \
+	arhat.windows.armv7
 
 # arhat.android.amd64:
 # 	sh scripts/build/build.sh $@

@@ -48,33 +48,30 @@ jobs:
     - name: Build
       run: |
         CGO_ENABLED=0 make -j$(nproc --all) arhat.linux.all
-        CGO_ENABLED=0 make arhat.linux.riscv64 TAGS='nometrics'
+
+        CGO_ENABLED=0 make -j$(nproc --all) arhat.js.wasm \
+          TAGS='nogrpc nocoap nometrics noexectry nostorage_sshfs nostorage_general'
 
         CGO_ENABLED=0 make -j$(nproc --all) arhat.freebsd.all \
-          TAGS='noboottime noexec nomeminfo nonetdev nozfs nofilesystem'
+          TAGS='noboottime noexec nomeminfo nonetdev nozfs'
 
-        CGO_ENABLED=0 make -j$(nproc --all) arhat.netbsd.all \
-          TAGS='noboottime nofilesystem nointerrupts nonetdev noloadavg nomeminfo'
+        CGO_ENABLED=0 make -j$(nproc --all) arhat.netbsd.all TAGS='noboottime'
 
         CGO_ENABLED=0 make -j$(nproc --all) arhat.openbsd.all \
-          TAGS='noboottime nofilesystem nointerrupts nonetdev noloadavg nomeminfo'
+          TAGS='noboottime nofilesystem nointerrupts nonetdev nomeminfo'
 
-        CGO_ENABLED=0 make -j$(nproc --all) arhat.plan9.all \
-          TAGS='nometrics nodev_serial nodev_file nodev_modbus'
+        CGO_ENABLED=0 make -j$(nproc --all) arhat.plan9.all TAGS='norunit'
 
-        CGO_ENABLED=0 make -j$(nproc --all) arhat.solaris.amd64 \
-          TAGS='nometrics nodev_serial nodev_modbus'
+        CGO_ENABLED=0 make -j$(nproc --all) arhat.solaris.amd64 TAGS='nozfs noboottime noloadavg'
 
-        CGO_ENABLED=0 make -j$(nproc --all) arhat.aix.ppc64 \
-          TAGS='nometrics nodev_serial nodev_file nodev_modbus'
+        CGO_ENABLED=0 make -j$(nproc --all) arhat.aix.ppc64
 
         CGO_ENABLED=0 make -j$(nproc --all) arhat.dragonfly.amd64 \
-          TAGS='nometrics nodev_serial nodev_file nodev_modbus'
+          TAGS='noboottime noexec nofilesystem nomeminfo nonetdev'
 
     - name: Package
       run: |
         make package.arhat.linux.all
-        # make package.arhat-docker.linux.all
 
     - name: Hash
       run: |
@@ -105,7 +102,6 @@ jobs:
 
     - name: Build
       run: |
-        # node_exporter requires CGO for darwin, or we can only get useless metrics
         CGO_ENABLED=1 make arhat.darwin.all
 
     # # TODO: Support macos packaging
@@ -144,9 +140,6 @@ jobs:
     - name: Build
       run: |
         CGO_ENABLED=0 make -j$(nproc --all) arhat.windows.all
-        CGO_ENABLED=0 make arhat.windows.armv5 TAGS='nometrics'
-        CGO_ENABLED=0 make arhat.windows.armv6 TAGS='nometrics'
-        CGO_ENABLED=0 make arhat.windows.armv7 TAGS='nometrics'
 
     # # TODO: Support windows packaging
     # - name: Package
@@ -542,6 +535,16 @@ jobs:
         asset_path: build/arhat.linux.mips64lehf
         asset_content_type: application/octet-stream
 
+    - name: Upload arhat.linux.riscv64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat.linux.riscv64
+        asset_path: build/arhat.linux.riscv64
+        asset_content_type: application/octet-stream
+
     - name: Upload arhat.freebsd.x86
       uses: actions/upload-release-asset@v1
       env:
@@ -790,6 +793,16 @@ jobs:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_name: arhat.solaris.amd64
         asset_path: build/arhat.solaris.amd64
+        asset_content_type: application/octet-stream
+
+    - name: Upload arhat.aix.ppc64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_name: arhat.aix.ppc64
+        asset_path: build/arhat.aix.ppc64
         asset_content_type: application/octet-stream
 
     #
