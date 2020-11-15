@@ -554,8 +554,7 @@ github.com/kubernetes/code-generator v0.19.4/go.mod h1:moqLn7w0t9cMs4+5CQyxnfA/H
 github.com/kubernetes/component-base v0.19.4/go.mod h1:ZzuSLlsWhajIDEkKF73j64Gz/5o0AgON08FgRbEPI70=
 github.com/kubernetes/cri-api v0.19.4/go.mod h1:UN/iU9Ua0iYdDREBXNE9vqCJ7MIh/FW3VIL0d8pw7Fw=
 github.com/kubernetes/csi-translation-lib v0.19.4/go.mod h1:Zqw8qVIHp6OU65hvIYeOlkMwHLpKy72h3P15AkY90W0=
-github.com/kubernetes/klog/v2 v2.3.0 h1:xFNikP6Uz6/k9WwNXJ2SPqE0w0ECYyAVpYFfrKjwchI=
-github.com/kubernetes/klog/v2 v2.3.0/go.mod h1:Od+F08eJP+W3HUb4pSrPpgp9DGU4GzlpG/TmITuYh/Y=
+github.com/kubernetes/klog/v2 v2.4.0/go.mod h1:Od+F08eJP+W3HUb4pSrPpgp9DGU4GzlpG/TmITuYh/Y=
 github.com/kubernetes/kube-aggregator v0.19.4/go.mod h1:cTkvun110194d797AuThyydBBlgm+cKIFUeS2uzGJfU=
 github.com/kubernetes/kube-controller-manager v0.19.4/go.mod h1:39Dh9ygYryrvBn6PCeGJRK7qHB0SjSOPmv32h2wT7Kc=
 github.com/kubernetes/kube-proxy v0.19.4/go.mod h1:HqXWMgFOJQB0geLBXeMn2e5k9864NM/t3wrHxJjqqrk=
