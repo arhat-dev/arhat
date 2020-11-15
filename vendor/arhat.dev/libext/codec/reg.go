@@ -26,23 +26,21 @@ package codec
 
 import (
 	"arhat.dev/arhat-proto/arhatgopb"
-
-	"arhat.dev/libext/types"
 )
 
 var (
-	supportedCodec = make(map[arhatgopb.CodecType]types.Codec)
+	supportedCodec = make(map[arhatgopb.CodecType]Interface)
 )
 
-func RegisterCodec(kind arhatgopb.CodecType, codec types.Codec) {
+func Register(kind arhatgopb.CodecType, codec Interface) {
 	supportedCodec[kind] = codec
 }
 
-func GetCodec(kind arhatgopb.CodecType) types.Codec {
+func Get(kind arhatgopb.CodecType) (Interface, bool) {
 	codec, ok := supportedCodec[kind]
 	if !ok {
-		panic("no codec registered for this kind")
+		return nil, false
 	}
 
-	return codec
+	return codec, true
 }

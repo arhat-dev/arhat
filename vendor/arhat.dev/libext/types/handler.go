@@ -37,5 +37,10 @@ type Handler interface {
 	SendMsg(msg *arhatgopb.Msg) error
 
 	// HandleCmd process one command per function call, payload is non stream data
-	HandleCmd(ctx context.Context, id, seq uint64, kind arhatgopb.CmdType, payload []byte) (interface{}, error)
+	HandleCmd(
+		ctx context.Context,
+		id, seq uint64,
+		kind arhatgopb.CmdType,
+		payload []byte,
+	) (arhatgopb.MsgType, interface{}, error)
 }

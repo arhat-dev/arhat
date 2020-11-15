@@ -24,17 +24,16 @@ import (
 	"net"
 
 	"arhat.dev/arhat-proto/arhatgopb"
+	"arhat.dev/libext/codec"
 	"arhat.dev/pkg/log"
-	"arhat.dev/pkg/pipenet"
-
-	"arhat.dev/libext/types"
+	"arhat.dev/pkg/nethelper"
 )
 
 type netConnectionHandleFunc func(
 	listenAddr net.Addr,
 	kind arhatgopb.ExtensionType,
 	name string,
-	codec types.Codec,
+	codec codec.Interface,
 	conn io.ReadWriter,
 ) error
 
@@ -83,28 +82,27 @@ func (m *streamConnectionManager) ListenAndServe() error {
 		defer m.mu.Unlock()
 
 		var (
-			l   net.Listener
-			err error
+			lRaw interface{}
+			err  error
 		)
-		if m.addr.Network() == "pipe" {
-			l, err = pipenet.ListenPipe(m.addr.String(), "", 0666)
-			if err != nil {
-				return nil, err
-			}
+		if m.tlsConfig == nil {
+			lRaw, err = nethelper.Listen(m.ctx, nil, m.addr.Network(), m.addr.String(), nil)
 		} else {
-			l, err = net.Listen(m.addr.Network(), m.addr.String())
-			if err != nil {
-				return nil, err
-			}
+			lRaw, err = nethelper.Listen(m.ctx, nil, m.addr.Network(), m.addr.String(), m.tlsConfig)
+		}
+		if err != nil {
+			return nil, err
 		}
 
-		if m.tlsConfig != nil {
-			l = tls.NewListener(l, m.tlsConfig)
+		switch t := lRaw.(type) {
+		case net.Listener:
+			m.l = t
+			return t, nil
+		case io.Closer:
+			_ = t.Close()
 		}
 
-		m.l = l
-
-		return l, nil
+		return nil, fmt.Errorf("invalid %q network listener", m.addr.Network())
 	}()
 	if err != nil {
 		return err

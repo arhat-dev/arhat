@@ -24,17 +24,16 @@ import (
 	"time"
 
 	"arhat.dev/arhat-proto/arhatgopb"
+	"arhat.dev/libext/codec"
 	"arhat.dev/pkg/log"
 	"arhat.dev/pkg/queue"
 	"golang.org/x/sync/errgroup"
-
-	"arhat.dev/libext/types"
 )
 
 func NewExtensionContext(
 	parent context.Context,
 	name string,
-	codec types.Codec,
+	codec codec.Interface,
 	sendCmd CmdSendFunc,
 ) *ExtensionContext {
 	extCtx, cancel := context.WithCancel(parent)
@@ -53,7 +52,7 @@ type ExtensionContext struct {
 	Context context.Context
 	Name    string
 	SendCmd CmdSendFunc
-	Codec   types.Codec
+	Codec   codec.Interface
 
 	close context.CancelFunc
 }
@@ -117,7 +116,7 @@ type ExtensionManager struct {
 // nolint:gocyclo
 func (m *ExtensionManager) HandleStream(
 	name string,
-	codec types.Codec,
+	codec codec.Interface,
 	keepaliveInterval time.Duration,
 	messageTimeout time.Duration,
 	stream io.ReadWriter,

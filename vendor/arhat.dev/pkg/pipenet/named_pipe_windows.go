@@ -19,34 +19,41 @@ package pipenet
 import (
 	"context"
 	"net"
-	"os"
 
 	"github.com/Microsoft/go-winio"
 )
 
-func ListenPipe(path, connDir string, perm os.FileMode) (net.Listener, error) {
-	_, _ = perm, connDir
-	return winio.ListenPipe(path, &winio.PipeConfig{
-		SecurityDescriptor: "",
-		MessageMode:        false,
-		InputBufferSize:    0,
-		OutputBufferSize:   0,
+func (c *ListenConfig) ListenPipe(path string) (net.Listener, error) {
+	l, err := winio.ListenPipe(path, &winio.PipeConfig{
+		SecurityDescriptor: c.SecurityDescriptor,
+		MessageMode:        c.MessageMode,
+		InputBufferSize:    int32(c.InputBufferSize),
+		OutputBufferSize:   int32(c.OutputBufferSize),
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &PipeListener{l}, nil
 }
 
-func Dial(path string) (net.Conn, error) {
-	return DialPipe(nil, &PipeAddr{Path: path})
+func (d *Dialer) Dial(path string) (net.Conn, error) {
+	return d.DialPipe(&PipeAddr{Path: path})
 }
 
-func DialContext(ctx context.Context, path string) (net.Conn, error) {
-	return DialPipeContext(ctx, nil, &PipeAddr{Path: path})
+func (d *Dialer) DialContext(ctx context.Context, path string) (net.Conn, error) {
+	return d.DialPipeContext(ctx, &PipeAddr{Path: path})
 }
 
-func DialPipe(laddr *PipeAddr, raddr *PipeAddr) (net.Conn, error) {
-	return DialPipeContext(context.TODO(), laddr, raddr)
+func (d *Dialer) DialPipe(raddr *PipeAddr) (net.Conn, error) {
+	return d.DialPipeContext(context.Background(), raddr)
 }
 
-func DialPipeContext(ctx context.Context, laddr *PipeAddr, raddr *PipeAddr) (net.Conn, error) {
-	_ = laddr
-	return winio.DialPipeContext(ctx, raddr.Path)
+func (d *Dialer) DialPipeContext(ctx context.Context, raddr *PipeAddr) (net.Conn, error) {
+	conn, err := winio.DialPipeContext(ctx, raddr.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PipeConn{conn}, nil
 }

@@ -21,37 +21,26 @@ package pipenet
 import (
 	"context"
 	"net"
-	"os"
 
 	"arhat.dev/pkg/wellknownerrors"
 )
 
-type PipeListener struct{}
-
-func (c *PipeListener) Accept() (net.Conn, error) {
+func (c *ListenConfig) ListenPipe(path string) (net.Listener, error) {
 	return nil, wellknownerrors.ErrNotSupported
 }
 
-func (c *PipeListener) Close() error { return nil }
-
-func (c *PipeListener) Addr() net.Addr { return &PipeAddr{} }
-
-func ListenPipe(path, connDir string, perm os.FileMode) (net.Listener, error) {
+func (d *Dialer) Dial(path string) (net.Conn, error) {
 	return nil, wellknownerrors.ErrNotSupported
 }
 
-func Dial(path string) (net.Conn, error) {
+func (d *Dialer) DialContext(ctx context.Context, path string) (net.Conn, error) {
 	return nil, wellknownerrors.ErrNotSupported
 }
 
-func DialContext(ctx context.Context, path string) (net.Conn, error) {
+func (d *Dialer) DialPipe(raddr *PipeAddr) (net.Conn, error) {
 	return nil, wellknownerrors.ErrNotSupported
 }
 
-func DialPipe(laddr *PipeAddr, raddr *PipeAddr) (net.Conn, error) {
-	return DialPipeContext(context.TODO(), laddr, raddr)
-}
-
-func DialPipeContext(ctx context.Context, laddr *PipeAddr, raddr *PipeAddr) (_ net.Conn, err error) {
+func (d *Dialer) DialPipeContext(ctx context.Context, raddr *PipeAddr) (net.Conn, error) {
 	return nil, wellknownerrors.ErrNotSupported
 }

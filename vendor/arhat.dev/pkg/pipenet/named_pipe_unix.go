@@ -113,7 +113,6 @@ func (c *pipeConn) Write(b []byte) (n int, err error) {
 	return c.w.Write(b)
 }
 
-// Close pipe connection
 func (c *pipeConn) Close() error {
 	err := c.r.Close()
 
@@ -167,10 +166,10 @@ func (c *pipeConn) SetWriteDeadline(t time.Time) error {
 	return c.w.SetWriteDeadline(t)
 }
 
-var _ net.Listener = (*PipeListener)(nil)
+var _ net.Listener = (*pipeListener)(nil)
 
-type PipeListener struct {
-	connDir string
+type pipeListener struct {
+	config ListenConfig
 
 	r      *bufio.Reader
 	listen *pipeConn
@@ -186,7 +185,7 @@ type PipeListener struct {
 //
 // If the provided path is a valid named pipe, the listener will create another
 // named pipe for client and write to the pipe provided by the client
-func (c *PipeListener) Accept() (net.Conn, error) {
+func (c *pipeListener) Accept() (net.Conn, error) {
 accept:
 	path, err := c.r.ReadString('\n')
 	if err != nil {
@@ -232,10 +231,10 @@ accept:
 		}
 
 		// open a new pipe writer for this client
-		serverReadFile := filepath.Join(c.connDir, hashhelper.MD5SumHex([]byte(path)))
+		serverReadFile := filepath.Join(c.config.ConnectionDir, hashhelper.MD5SumHex([]byte(path)))
 
 		var serverR, clientW *os.File
-		serverR, clientW, err = createPipe(serverReadFile, 0666)
+		serverR, clientW, err = createPipe(serverReadFile, c.config.Permission)
 		if err != nil {
 			return nil, err
 		}
@@ -296,7 +295,7 @@ accept:
 	return conn, nil
 }
 
-func (c *PipeListener) Close() error {
+func (c *pipeListener) Close() error {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -307,12 +306,12 @@ func (c *PipeListener) Close() error {
 	return c.listen.Close()
 }
 
-func (c *PipeListener) Addr() net.Addr {
+func (c *pipeListener) Addr() net.Addr {
 	return c.listen.LocalAddr()
 }
 
 // ListenPipe will create a named pipe at path and listen incomming message
-func ListenPipe(path, connDir string, perm os.FileMode) (net.Listener, error) {
+func (c *ListenConfig) ListenPipe(path string) (net.Listener, error) {
 	if path == "" {
 		path = os.TempDir()
 	}
@@ -335,6 +334,7 @@ func ListenPipe(path, connDir string, perm os.FileMode) (net.Listener, error) {
 		}
 	}
 
+	connDir := c.ConnectionDir
 	if connDir == "" {
 		connDir, err = ioutil.TempDir(os.TempDir(), "pipe-server-*")
 	} else {
@@ -358,7 +358,12 @@ func ListenPipe(path, connDir string, perm os.FileMode) (net.Listener, error) {
 		return nil, fmt.Errorf("connDir is not a directory")
 	}
 
-	localR, clientReq, err := createPipe(path, uint32(perm))
+	perm := c.Permission
+	if perm == 0 {
+		perm = 0644
+	}
+
+	localR, clientReq, err := createPipe(path, perm)
 	if err != nil {
 		return nil, err
 	}
@@ -375,38 +380,55 @@ func ListenPipe(path, connDir string, perm os.FileMode) (net.Listener, error) {
 		rawConn:     conn,
 	}
 
-	return &PipeListener{
-		connDir: connDir,
+	inputBufSize := c.InputBufferSize
+	outputBufSize := c.OutputBufferSize
+
+	if inputBufSize == 0 {
+		inputBufSize = 65535
+	}
+
+	if outputBufSize == 0 {
+		outputBufSize = 65535
+	}
+
+	return &PipeListener{&pipeListener{
+		config: ListenConfig{
+			ConnectionDir:    connDir,
+			Permission:       perm,
+			InputBufferSize:  inputBufSize,
+			OutputBufferSize: outputBufSize,
+		},
 		// linux path size limit is 4096
 		r:      bufio.NewReaderSize(listen, 4096),
 		listen: listen,
 		pcs:    make(map[string]*pipeConn),
 		mu:     new(sync.RWMutex),
-	}, nil
+	}}, nil
 }
 
-func Dial(path string) (net.Conn, error) {
-	return DialPipe(nil, &PipeAddr{Path: path})
+func (d *Dialer) Dial(path string) (net.Conn, error) {
+	return d.DialPipe(&PipeAddr{Path: path})
 }
 
-func DialContext(ctx context.Context, path string) (net.Conn, error) {
-	return DialPipeContext(ctx, nil, &PipeAddr{Path: path})
+func (d *Dialer) DialContext(ctx context.Context, path string) (net.Conn, error) {
+	return d.DialPipeContext(ctx, &PipeAddr{Path: path})
 }
 
-func DialPipe(laddr *PipeAddr, raddr *PipeAddr) (net.Conn, error) {
-	return DialPipeContext(context.TODO(), laddr, raddr)
+func (d *Dialer) DialPipe(raddr *PipeAddr) (net.Conn, error) {
+	return d.DialPipeContext(context.Background(), raddr)
 }
 
-func DialPipeContext(ctx context.Context, laddr *PipeAddr, raddr *PipeAddr) (_ net.Conn, err error) {
+func (d *Dialer) DialPipeContext(ctx context.Context, raddr *PipeAddr) (_ net.Conn, err error) {
 	if raddr == nil {
 		return nil, &net.AddrError{Err: "no remote address provided"}
 	}
 
-	if laddr == nil || laddr.Path == "" {
+	var laddr *PipeAddr
+	if d.LocalPath == "" {
 		laddr = &PipeAddr{Path: os.TempDir()}
 	} else {
 		var localPath string
-		localPath, err = filepath.Abs(laddr.Path)
+		localPath, err = filepath.Abs(d.LocalPath)
 		if err != nil {
 			return nil, err
 		}
@@ -529,7 +551,7 @@ func DialPipeContext(ctx context.Context, laddr *PipeAddr, raddr *PipeAddr) (_ n
 		return nil, err
 	}
 
-	return conn, nil
+	return &PipeConn{conn}, nil
 }
 
 func createPipe(path string, perm uint32) (r, w *os.File, err error) {

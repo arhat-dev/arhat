@@ -27,7 +27,6 @@ import (
 	"arhat.dev/pkg/log"
 
 	"arhat.dev/libext/codec"
-	"arhat.dev/libext/types"
 )
 
 func newBaseConnectionManager(
@@ -59,8 +58,12 @@ type baseConnectionManager struct {
 
 func (m *baseConnectionManager) validateConnection(
 	conn io.Reader,
-) (_ arhatgopb.ExtensionType, _ string, _ types.Codec, err error) {
-	c := codec.GetCodec(arhatgopb.CODEC_JSON)
+) (_ arhatgopb.ExtensionType, _ string, _ codec.Interface, err error) {
+	c, ok := codec.Get(arhatgopb.CODEC_JSON)
+	if !ok {
+		return 0, "", nil, fmt.Errorf("json codec not found")
+	}
+
 	dec := c.NewDecoder(conn)
 
 	initialMsg := new(arhatgopb.Msg)
@@ -79,5 +82,10 @@ func (m *baseConnectionManager) validateConnection(
 		return 0, "", nil, fmt.Errorf("failed to unmarshal register message: %w", err)
 	}
 
-	return regMsg.ExtensionType, regMsg.Name, codec.GetCodec(regMsg.Codec), nil
+	c, ok = codec.Get(regMsg.Codec)
+	if !ok {
+		return 0, "", nil, fmt.Errorf("codec %q not supported", regMsg.Codec.String())
+	}
+
+	return regMsg.ExtensionType, regMsg.Name, c, nil
 }

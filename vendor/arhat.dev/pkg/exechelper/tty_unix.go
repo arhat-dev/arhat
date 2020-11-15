@@ -54,7 +54,7 @@ func startCmdWithTty(
 		}()
 	}
 
-	return func(cols, rows int64) error {
+	return func(cols, rows uint32) error {
 		return pty.Setsize(f, &pty.Winsize{Cols: uint16(cols), Rows: uint16(rows)})
 	}, func() { _ = f.Close() }, nil
 }

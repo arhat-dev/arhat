@@ -24,14 +24,13 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"strings"
 	"sync"
 
 	"arhat.dev/pkg/iohelper"
 	"arhat.dev/pkg/log"
-	"github.com/pion/dtls/v2"
+	"arhat.dev/pkg/nethelper"
 
-	"arhat.dev/libext/util"
+	"arhat.dev/libext/codec"
 )
 
 func newPacketStream(p net.PacketConn, ra net.Addr, r io.ReadCloser) *packetStream {
@@ -71,7 +70,7 @@ func newPacketConnectionManager(
 ) connectionManager {
 	return &packetConnectionManager{
 		baseConnectionManager: newBaseConnectionManager(ctx, logger, addr, handleFunc),
-		tlsConfig:             util.ConvertTLSConfigToDTLSConfig(tlsConfig),
+		tlsConfig:             tlsConfig,
 		connections:           new(sync.Map),
 	}
 }
@@ -83,7 +82,7 @@ type packetConnectionManager struct {
 
 	l io.Closer
 
-	tlsConfig   *dtls.Config
+	tlsConfig   *tls.Config
 	connections *sync.Map
 }
 
@@ -103,22 +102,26 @@ func (m *packetConnectionManager) ListenAndServe() error {
 		m.mu.Lock()
 		defer m.mu.Unlock()
 
-		switch {
-		case strings.HasPrefix(m.addr.Network(), "udp") && m.tlsConfig != nil:
-			l, err := dtls.Listen(m.addr.Network(), m.addr.(*net.UDPAddr), m.tlsConfig)
-			if err != nil {
-				return nil, err
-			}
-			m.l = l
-		default:
-			p, err := net.ListenPacket(m.addr.Network(), m.addr.String())
-			if err != nil {
-				return nil, err
-			}
-			m.l = p
+		var (
+			lRaw interface{}
+			err  error
+		)
+		if m.tlsConfig == nil {
+			lRaw, err = nethelper.Listen(m.ctx, nil, m.addr.Network(), m.addr.String(), nil)
+		} else {
+			lRaw, err = nethelper.Listen(m.ctx, nil, m.addr.Network(), m.addr.String(), m.tlsConfig)
+		}
+		if err != nil {
+			return nil, err
 		}
 
-		return m.l, nil
+		switch t := lRaw.(type) {
+		case io.Closer:
+			m.l = t
+			return m.l, nil
+		default:
+			return nil, fmt.Errorf("invalid %q listener, no close interface", m.addr.Network())
+		}
 	}()
 	if err != nil {
 		return err
@@ -163,7 +166,7 @@ func (m *packetConnectionManager) ListenAndServe() error {
 				return fmt.Errorf("failed to read packet: %w", err2)
 			}
 
-			data := util.GetBytesBuf(n)
+			data := codec.GetBytesBuf(n)
 			_ = copy(data[:n], buf[:n])
 
 			addr := ra.String()
@@ -177,13 +180,13 @@ func (m *packetConnectionManager) ListenAndServe() error {
 					m.logger.I("failed to write data to packet connection")
 				}
 
-				util.PutBytesBuf(&data)
+				codec.PutBytesBuf(&data)
 				continue
 			}
 
 			// not existing connection for this address, create a new one
-			kind, name, codec, err2 := m.validateConnection(bytes.NewReader(data[:n]))
-			util.PutBytesBuf(&data)
+			kind, name, c, err2 := m.validateConnection(bytes.NewReader(data[:n]))
+			codec.PutBytesBuf(&data)
 			if err2 != nil {
 				m.logger.I("invalid new packet connection", log.Error(err2))
 				continue
@@ -199,7 +202,7 @@ func (m *packetConnectionManager) ListenAndServe() error {
 					m.connections.Delete(addr)
 				}()
 
-				err3 := m.handleNewConn(m.addr, kind, name, codec, conn)
+				err3 := m.handleNewConn(m.addr, kind, name, c, conn)
 				if err3 != nil {
 					m.logger.I("failed to handle new packet connection", log.Error(err3))
 					return

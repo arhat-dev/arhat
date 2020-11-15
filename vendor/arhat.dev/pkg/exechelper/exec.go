@@ -18,7 +18,6 @@ package exechelper
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os/exec"
@@ -43,7 +42,7 @@ const (
 	DefaultExitCodeOnError = 128
 )
 
-type resizeFunc func(cols, rows int64) error
+type resizeFunc func(cols, rows uint32) error
 
 type Cmd struct {
 	ExecCmd *exec.Cmd
@@ -53,7 +52,7 @@ type Cmd struct {
 }
 
 // Resize tty windows if was created with tty enabled
-func (c *Cmd) Resize(cols, rows int64) error {
+func (c *Cmd) Resize(cols, rows uint32) error {
 	if c.doResize != nil {
 		return c.doResize(cols, rows)
 	}
@@ -84,9 +83,7 @@ func (c *Cmd) Wait() (int, error) {
 		}
 
 		// could not get exit code
-		if !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrClosedPipe) {
-			return DefaultExitCodeOnError, err
-		}
+		return DefaultExitCodeOnError, err
 	}
 
 	return 0, nil
@@ -99,6 +96,7 @@ func DoHeadless(command []string, env map[string]string) (int, error) {
 		Tty:     false,
 	})
 	if err != nil {
+		// unable to start command
 		return DefaultExitCodeOnError, err
 	}
 

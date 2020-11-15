@@ -33,7 +33,7 @@ import (
 	"arhat.dev/pkg/pipenet"
 	"golang.org/x/sync/errgroup"
 
-	"arhat.dev/libext/types"
+	"arhat.dev/libext/codec"
 )
 
 type Config struct {
@@ -206,7 +206,7 @@ func (s *Server) handleNewConn(
 	listenAddr net.Addr,
 	kind arhatgopb.ExtensionType,
 	name string,
-	codec types.Codec,
+	codec codec.Interface,
 	conn io.ReadWriter,
 ) error {
 	s.mu.RLock()
