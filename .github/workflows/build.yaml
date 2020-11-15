@@ -68,9 +68,9 @@ jobs:
         CGO_ENABLED=0 make -j$(nproc --all) arhat.dragonfly.amd64 \
           TAGS='noboottime noexec nofilesystem nomeminfo nonetdev'
 
-    - name: Package
-      run: |
-        make package.arhat.linux.all
+    # - name: Package
+    #   run: |
+    #     make package.arhat.linux.all
 
     - name: Hash
       run: |
@@ -808,75 +808,75 @@ jobs:
     # packages
     #
 
-    - name: Upload arhat-amd64.deb
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: arhat.amd64.deb
-        asset_path: build/arhat.amd64.deb
-        asset_content_type: application/vnd.debian.binary-package
+    # - name: Upload arhat-amd64.deb
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat.amd64.deb
+    #     asset_path: build/arhat.amd64.deb
+    #     asset_content_type: application/vnd.debian.binary-package
 
-    - name: Upload arhat-x86_64.rpm
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: arhat.x86_64.rpm
-        asset_path: build/arhat.x86_64.rpm
-        asset_content_type: application/x-rpm
+    # - name: Upload arhat-x86_64.rpm
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat.x86_64.rpm
+    #     asset_path: build/arhat.x86_64.rpm
+    #     asset_content_type: application/x-rpm
 
-    - name: Upload arhat-armel.deb
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: arhat.armel.deb
-        asset_path: build/arhat.armel.deb
-        asset_content_type: application/vnd.debian.binary-package
+    # - name: Upload arhat-armel.deb
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat.armel.deb
+    #     asset_path: build/arhat.armel.deb
+    #     asset_content_type: application/vnd.debian.binary-package
 
-    - name: Upload arhat-armhf.deb
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: arhat.armhf.deb
-        asset_path: build/arhat.armhf.deb
-        asset_content_type: application/vnd.debian.binary-package
+    # - name: Upload arhat-armhf.deb
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat.armhf.deb
+    #     asset_path: build/arhat.armhf.deb
+    #     asset_content_type: application/vnd.debian.binary-package
 
-    - name: Upload arhat-armhfp.rpm
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: arhat.armhfp.rpm
-        asset_path: build/arhat.armhfp.rpm
-        asset_content_type: application/x-rpm
+    # - name: Upload arhat-armhfp.rpm
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat.armhfp.rpm
+    #     asset_path: build/arhat.armhfp.rpm
+    #     asset_content_type: application/x-rpm
 
-    - name: Upload arhat-arm64.deb
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: arhat.arm64.deb
-        asset_path: build/arhat.arm64.deb
-        asset_content_type: application/vnd.debian.binary-package
+    # - name: Upload arhat-arm64.deb
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat.arm64.deb
+    #     asset_path: build/arhat.arm64.deb
+    #     asset_content_type: application/vnd.debian.binary-package
 
-    - name: Upload arhat-aarch64.rpm
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_name: arhat.aarch64.rpm
-        asset_path: build/arhat.aarch64.rpm
-        asset_content_type: application/x-rpm
+    # - name: Upload arhat-aarch64.rpm
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_name: arhat.aarch64.rpm
+    #     asset_path: build/arhat.aarch64.rpm
+    #     asset_content_type: application/x-rpm
 
     # - name: Upload arhat-arm64.msi
     #   uses: actions/upload-release-asset@v1
