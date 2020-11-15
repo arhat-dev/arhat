@@ -33,5 +33,5 @@ func (b *Agent) handleSessionClose(sid uint64, data []byte) {
 	}
 
 	b.logger.D("closing session", log.Uint64("sid", sid))
-	b.streams.Close(sid)
+	b.streams.Del(sid)
 }

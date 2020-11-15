@@ -28,8 +28,9 @@ import (
 type ExtensionConfig struct {
 	Enabled bool `json:"enabled" yaml:"enabled"`
 
-	Endpoints   []ExtensionEndpoint       `json:"endpoints" yaml:"endpoints"`
-	Peripherals PeripheralExtensionConfig `json:"peripherals" yaml:"peripherals"`
+	Endpoints  []ExtensionEndpoint       `json:"endpoints" yaml:"endpoints"`
+	Peripheral PeripheralExtensionConfig `json:"peripheral" yaml:"peripheral"`
+	Runtime    RuntimeExtensionConfig    `json:"runtime" yaml:"runtime"`
 }
 
 type ExtensionEndpoint struct {
@@ -47,12 +48,15 @@ type PeripheralExtensionConfig struct {
 	MetricsCacheTimeout time.Duration `json:"metricsCacheTimeout" yaml:"metricsCacheTimeout"`
 }
 
+type RuntimeExtensionConfig struct {
+}
+
 func FlagsForExtensionConfig(prefix string, config *ExtensionConfig) *pflag.FlagSet {
 	fs := pflag.NewFlagSet("extension", pflag.ExitOnError)
 
 	fs.BoolVar(&config.Enabled, prefix+"enable", false, "enable extension server")
 
-	fs.DurationVar(&config.Peripherals.MetricsCacheTimeout, prefix+"metricsCacheTimeout",
+	fs.DurationVar(&config.Peripheral.MetricsCacheTimeout, prefix+"metricsCacheTimeout",
 		constant.DefaultPeripheralMetricsCacheTimeout, "peripheral metrics cache timeout")
 
 	return fs

@@ -49,8 +49,7 @@ jobs:
       run: |
         CGO_ENABLED=0 make -j$(nproc --all) arhat.linux.all
 
-        CGO_ENABLED=0 make -j$(nproc --all) arhat.js.wasm \
-          TAGS='nogrpc nocoap nometrics noexectry nostorage_sshfs nostorage_general'
+        CGO_ENABLED=0 make -j$(nproc --all) arhat.js.wasm
 
         CGO_ENABLED=0 make -j$(nproc --all) arhat.freebsd.all \
           TAGS='noboottime noexec nomeminfo nonetdev nozfs'

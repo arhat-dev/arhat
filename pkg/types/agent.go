@@ -21,7 +21,16 @@ import (
 	"github.com/gogo/protobuf/proto"
 )
 
-type AgentCmdHandleFunc func(cmd *aranyagopb.Cmd)
+type (
+	AgentCmdHandleFunc func(cmd *aranyagopb.Cmd)
+	AgentDataPostFunc  func(
+		sid uint64,
+		kind aranyagopb.MsgType,
+		seq uint64,
+		completed bool,
+		data []byte,
+	) (lastSeq uint64, _ error)
+)
 
 type Agent interface {
 	// HandleCmd received from aranya

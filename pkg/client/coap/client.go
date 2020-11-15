@@ -1,3 +1,5 @@
+// +build !noclient_coap
+
 package coap
 
 import (
@@ -15,6 +17,7 @@ import (
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
 	"arhat.dev/pkg/log"
+	"arhat.dev/pkg/tlshelper"
 	piondtls "github.com/pion/dtls/v2"
 	"github.com/pion/logging"
 	coapdtls "github.com/plgd-dev/go-coap/v2/dtls"
@@ -28,9 +31,30 @@ import (
 	coapudpclient "github.com/plgd-dev/go-coap/v2/udp/client"
 	coapudpmsgpool "github.com/plgd-dev/go-coap/v2/udp/message/pool"
 
+	"arhat.dev/arhat/pkg/client"
 	"arhat.dev/arhat/pkg/client/clientutil"
+	"arhat.dev/arhat/pkg/conf"
 	"arhat.dev/arhat/pkg/types"
 )
+
+func init() {
+	client.Register("coap",
+		func() interface{} {
+			return &ConnectivityCoAP{
+				CommonConfig: clientutil.CommonConfig{
+					Endpoint:       "",
+					MaxPayloadSize: aranyagoconst.MaxCoAPDataSize,
+					TLS:            tlshelper.TLSConfig{},
+				},
+				PathNamespaceFrom: conf.ValueFromSpec{},
+				Transport:         "tcp",
+				URIQueries:        make(map[string]string),
+				Keepalive:         60,
+			}
+		},
+		NewCoAPClient,
+	)
+}
 
 // nolint:gocyclo
 func NewCoAPClient(

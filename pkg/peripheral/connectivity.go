@@ -7,8 +7,8 @@ import (
 	"sync/atomic"
 
 	"arhat.dev/arhat-proto/arhatgopb"
+	"arhat.dev/libext/protoutil"
 	"arhat.dev/libext/server"
-	"arhat.dev/libext/util"
 	"github.com/gogo/protobuf/proto"
 )
 
@@ -26,7 +26,7 @@ func NewConnectivity(
 
 	c.sendCmd = func(ctx context.Context, kind arhatgopb.CmdType, p proto.Marshaler) (*arhatgopb.Msg, error) {
 		seq := c.nextSeq()
-		cmd, err := util.NewCmd(ec.Codec.Marshal, kind, id, seq, p)
+		cmd, err := protoutil.NewCmd(ec.Codec.Marshal, kind, id, seq, p)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create peripheral cmd: %w", err)
 		}

@@ -1,3 +1,21 @@
+// +build !noclient_mqtt
+
+/*
+Copyright 2020 The arhat.dev Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package mqtt
 
 import (
@@ -11,14 +29,39 @@ import (
 	"time"
 
 	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
+	"arhat.dev/pkg/tlshelper"
 	"github.com/dgrijalva/jwt-go"
 
+	"arhat.dev/arhat/pkg/client"
 	"arhat.dev/arhat/pkg/client/clientutil"
 	"arhat.dev/arhat/pkg/conf"
 )
 
+func init() {
+	client.RegisterConnectivityConfig("mqtt",
+		func() interface{} {
+			return &ConnectivityMQTT{
+				CommonConfig: clientutil.CommonConfig{
+					Endpoint:       "",
+					MaxPayloadSize: aranyagoconst.MaxMQTTDataSize,
+					TLS:            tlshelper.TLSConfig{},
+				},
+				Version:            "3.1.1",
+				Variant:            "standard",
+				Transport:          "tcp",
+				TopicNamespaceFrom: conf.ValueFromSpec{},
+				ClientID:           "",
+				Username:           "",
+				Password:           "",
+				Keepalive:          60,
+			}
+		},
+		NewMQTTClient,
+	)
+}
+
 type ConnectivityMQTT struct {
-	clientutil.ConnectivityCommonConfig `json:",inline" yaml:",inline"`
+	clientutil.CommonConfig `json:",inline" yaml:",inline"`
 
 	Version            string             `json:"version" yaml:"version"`
 	Variant            string             `json:"variant" yaml:"variant"`

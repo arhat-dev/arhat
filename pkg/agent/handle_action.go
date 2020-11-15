@@ -18,20 +18,23 @@ package agent
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"arhat.dev/aranya-proto/aranyagopb"
+	"arhat.dev/libext/types"
 	"arhat.dev/pkg/exechelper"
 	"arhat.dev/pkg/iohelper"
+	"arhat.dev/pkg/nethelper"
 	"arhat.dev/pkg/wellknownerrors"
 	"ext.arhat.dev/runtimeutil/actionutil"
 
@@ -40,29 +43,22 @@ import (
 	"arhat.dev/arhat/pkg/util/exec"
 )
 
-func (b *Agent) handlePodContainerExec(sid uint64, data []byte) {
-	cmd := new(aranyagopb.ExecOrAttachCmd)
+func (b *Agent) handleExec(sid uint64, data []byte) {
+	opts := new(aranyagopb.ExecOrAttachCmd)
 
-	err := cmd.Unmarshal(data)
+	err := opts.Unmarshal(data)
 	if err != nil {
 		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal ContainerExecOrAttachCmd: %w", err))
 		return
 	}
 
-	s := b.streams.NewStream(b.ctx, sid, cmd.Stdin, cmd.Tty)
-
-	b.processInNewGoroutine(sid, "ctr.exec", func() {
-		stdin := s.Reader()
-		if !cmd.Stdin {
-			stdin = nil
-		}
-
-		resizeCh := s.ResizeCh()
-
-		b.handleStreamOperation(sid, cmd.Stdin, cmd.Stdout, cmd.Stderr, cmd.Tty,
+	b.processInNewGoroutine(sid, "exec", func() {
+		b.handleStreamOperation(
+			b.ctx.Done(),
+			sid, opts.Stdin, opts.Stdout, opts.Stderr, opts.Tty,
 			// preRun check
 			func() error {
-				if len(cmd.Command) == 0 {
+				if len(opts.Command) == 0 {
 					return errCommandNotProvided
 				}
 				return nil
@@ -70,29 +66,58 @@ func (b *Agent) handlePodContainerExec(sid uint64, data []byte) {
 			// run
 			func(stdout, stderr io.WriteCloser) *aranyagopb.ErrorMsg {
 				if !b.hostConfig.AllowExec {
-					return errconv.ToConnectivityError(wellknownerrors.ErrNotSupported)
+					return &aranyagopb.ErrorMsg{
+						Kind:        aranyagopb.ERR_NOT_SUPPORTED,
+						Description: "host exec not allowed",
+					}
 				}
 
-				ctx, cancel := context.WithCancel(b.ctx)
-				defer cancel()
-
-				cmd, err := exec.DoIfTryFailed(
-					ctx,
-					stdin, stdout, stderr,
-					resizeCh,
-					cmd.Command, cmd.Tty, cmd.Envs,
+				var (
+					cmd *exechelper.Cmd
+					err error
 				)
-				if err != nil {
-					_ = cmd
-					// return aranyagopb.NewCommonErrorMsgWithCode(int64(exitCode), err.Error())
+
+				if opts.Stdin {
+					err = b.streams.Add(sid, func() (io.WriteCloser, types.ResizeHandleFunc, error) {
+						pr, pw := iohelper.Pipe()
+						cmd, err = exec.DoIfTryFailed(pr, stdout, stderr, opts.Command, opts.Tty, opts.Envs)
+						if err != nil {
+							_ = pw.Close()
+							_ = pr.Close()
+							return nil, nil, err
+						}
+
+						return pw, func(cols, rows uint32) {
+							_ = cmd.Resize(cols, rows)
+						}, nil
+					})
+				} else {
+					cmd, err = exec.DoIfTryFailed(nil, stdout, stderr, opts.Command, opts.Tty, opts.Envs)
 				}
+				if err != nil {
+					return &aranyagopb.ErrorMsg{
+						Kind:        aranyagopb.ERR_COMMON,
+						Description: err.Error(),
+						Code:        exechelper.DefaultExitCodeOnError,
+					}
+				}
+
+				exitCode, err := cmd.Wait()
+				if err != nil {
+					return &aranyagopb.ErrorMsg{
+						Kind:        aranyagopb.ERR_COMMON,
+						Description: err.Error(),
+						Code:        int64(exitCode),
+					}
+				}
+
 				return nil
 			},
 		)
 	})
 }
 
-func (b *Agent) handlePodContainerAttach(sid uint64, data []byte) {
+func (b *Agent) handleAttach(sid uint64, data []byte) {
 	cmd := new(aranyagopb.ExecOrAttachCmd)
 
 	err := cmd.Unmarshal(data)
@@ -101,28 +126,19 @@ func (b *Agent) handlePodContainerAttach(sid uint64, data []byte) {
 		return
 	}
 
-	s := b.streams.NewStream(b.ctx, sid, cmd.Stdin, cmd.Tty)
-
-	b.processInNewGoroutine(sid, "ctr.attach", func() {
-		stdin := s.Reader()
-		if !cmd.Stdin {
-			stdin = nil
-		}
-
-		// resizeCh := s.ResizeCh()
-
-		b.handleStreamOperation(sid, cmd.Stdin, cmd.Stdout, cmd.Stderr, cmd.Tty || cmd.PodUid == "",
+	b.processInNewGoroutine(sid, "attach", func() {
+		b.handleStreamOperation(
+			b.ctx.Done(),
+			sid, cmd.Stdin, cmd.Stdout, cmd.Stderr, true,
 			// preRun check
 			nil,
 			// run
 			func(stdout, stderr io.WriteCloser) *aranyagopb.ErrorMsg {
-				if !cmd.Stdin {
-					stdin = nil
-				}
-
-				// host attach
 				if !b.hostConfig.AllowAttach {
-					return errconv.ToConnectivityError(wellknownerrors.ErrNotSupported)
+					return &aranyagopb.ErrorMsg{
+						Kind:        aranyagopb.ERR_NOT_SUPPORTED,
+						Description: "host attach not allowed",
+					}
 				}
 
 				shell := os.Getenv("SHELL")
@@ -135,20 +151,43 @@ func (b *Agent) handlePodContainerAttach(sid uint64, data []byte) {
 					}
 				}
 
-				ctx, cancel := context.WithCancel(b.ctx)
-				defer cancel()
+				var cmd *exechelper.Cmd
+				err = b.streams.Add(sid, func() (io.WriteCloser, types.ResizeHandleFunc, error) {
+					pr, pw := iohelper.Pipe()
+					cmd, err = exechelper.Do(exechelper.Spec{
+						Context: nil,
+						Command: []string{shell},
+						Stdin:   pr,
+						Stdout:  stdout,
+						Stderr:  stderr,
+						Tty:     true,
+					})
+					if err != nil {
+						_ = pw.Close()
+						_ = pr.Close()
+						return nil, nil, err
+					}
 
-				cmd, err := exechelper.Do(exechelper.Spec{
-					Context: ctx,
-					Command: []string{shell},
-					Stdin:   stdin,
-					Stdout:  stdout,
-					Stderr:  stderr,
-					Tty:     true,
+					return pw, func(cols, rows uint32) {
+						_ = cmd.Resize(cols, rows)
+					}, nil
 				})
 				if err != nil {
-					_ = cmd
-					// return aranyagopb.NewCommonErrorMsgWithCode(int64(exitCode), err.Error())
+					return &aranyagopb.ErrorMsg{
+						Kind:        aranyagopb.ERR_COMMON,
+						Description: err.Error(),
+						Code:        exechelper.DefaultExitCodeOnError,
+					}
+				}
+
+				var exitCode int
+				exitCode, err = cmd.Wait()
+				if err != nil {
+					return &aranyagopb.ErrorMsg{
+						Kind:        aranyagopb.ERR_COMMON,
+						Description: err.Error(),
+						Code:        int64(exitCode),
+					}
 				}
 
 				return nil
@@ -157,7 +196,7 @@ func (b *Agent) handlePodContainerAttach(sid uint64, data []byte) {
 	})
 }
 
-func (b *Agent) handlePodContainerLogs(sid uint64, data []byte) {
+func (b *Agent) handleLogs(sid uint64, data []byte) {
 	cmd := new(aranyagopb.LogsCmd)
 
 	err := cmd.Unmarshal(data)
@@ -166,20 +205,21 @@ func (b *Agent) handlePodContainerLogs(sid uint64, data []byte) {
 		return
 	}
 
-	s := b.streams.NewStream(b.ctx, sid, false, false)
-
-	b.processInNewGoroutine(sid, "ctr.logs", func() {
-		b.handleStreamOperation(sid, false, true, true, false,
+	b.processInNewGoroutine(sid, "logs", func() {
+		b.handleStreamOperation(
+			b.ctx.Done(),
+			sid, false, true, true, false,
 			// preRun check
 			nil,
 			// run
 			func(stdout, stderr io.WriteCloser) *aranyagopb.ErrorMsg {
-				// handle host log
 				if !b.hostConfig.AllowLog {
-					return errconv.ToConnectivityError(wellknownerrors.ErrNotSupported)
+					return &aranyagopb.ErrorMsg{
+						Kind:        aranyagopb.ERR_NOT_SUPPORTED,
+						Description: "host logs not allowed",
+					}
 				}
 
-				// handle /logs
 				if cmd.Path != "" {
 					info, err := os.Stat(cmd.Path)
 					if err != nil {
@@ -234,7 +274,7 @@ func (b *Agent) handlePodContainerLogs(sid uint64, data []byte) {
 					file = constant.PrevLogFile(file)
 				}
 
-				err := actionutil.ReadLogs(s.Context(), file, cmd, stdout, stderr)
+				err := actionutil.ReadLogs(b.ctx, file, cmd, stdout, stderr)
 				if err != nil {
 					return errconv.ToConnectivityError(err)
 				}
@@ -245,95 +285,162 @@ func (b *Agent) handlePodContainerLogs(sid uint64, data []byte) {
 	})
 }
 
-func (b *Agent) handlePodPortForward(sid uint64, data []byte) {
-	cmd := new(aranyagopb.PortForwardCmd)
+type flexWriteCloser struct {
+	writeFunc func([]byte) (int, error)
+	closeFunc func() error
+}
 
-	err := cmd.Unmarshal(data)
+func (a *flexWriteCloser) Write(p []byte) (n int, err error) {
+	return a.writeFunc(p)
+}
+
+func (a *flexWriteCloser) Close() error {
+	return a.closeFunc()
+}
+
+func (b *Agent) handlePortForward(sid uint64, data []byte) {
+	opts := new(aranyagopb.PortForwardCmd)
+	err := opts.Unmarshal(data)
 	if err != nil {
 		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal PodPortForwardCmd: %w", err))
 		return
 	}
 
-	// s := b.streams.NewStream(b.ctx, sid, true, false)
-
-	b.processInNewGoroutine(sid, "pod.port-forward", func() {
+	b.processInNewGoroutine(sid, "port-forward", func() {
 		var (
-		// seq uint64
-		// err error
+			seq uint64
 
-		// upstream, downstream = net.Pipe()
-		// logger = b.logger.WithFields(log.Uint64("sid", sid))
+			pr, pw = iohelper.Pipe()
 		)
 
-		// defer func() {
-		// 	_ = upstream.Close()
+		defer func() {
+			_ = pw.Close()
 
-		// 	// close this session locally (no more input data should be delivered to this session)
-		// 	b.streams.Close(sid)
-		// }()
+			kind := aranyagopb.MSG_DATA
+			var payload []byte
+			// send fin msg to close input in aranya
+			if err != nil {
+				kind = aranyagopb.MSG_ERROR
+				payload, _ = (&aranyagopb.ErrorMsg{
+					Kind:        aranyagopb.ERR_COMMON,
+					Description: err.Error(),
+					Code:        0,
+				}).Marshal()
+			}
 
-		// go func() {
-		// 	// pipe received remote data into upstream
-		// 	n, err2 := io.Copy(upstream, s.Reader())
-		// 	if err2 != nil && n == 0 {
-		// 		logger.I("failed to send remote data", log.Error(err2))
-		// 		return
-		// 	}
+			// best effort
+			_, _ = b.PostData(sid, kind, nextSeq(&seq), true, payload)
 
-		// 	logger.V("sent remote data", log.Int64("bytes", n), log.Error(err))
-		// }()
+			// close this session locally (no more input data should be delivered to this session)
+			b.streams.Del(sid)
+		}()
 
-		// go func() {
-		// 	defer func() {
-		// 		// send fin msg to close input in aranya
-		// 		if err != nil {
-		// 			data, _ = errconv.ToConnectivityError(err).Marshal()
-		// 			_, _ = b.PostData(sid, aranyagopb.MSG_ERROR, nextSeq(&seq), true, data)
-		// 		} else {
-		// 			_, _ = b.PostData(sid, aranyagopb.MSG_DATA_DEFAULT, nextSeq(&seq), true, nil)
-		// 		}
-		// 	}()
+		var (
+			downstream io.ReadCloser
+			closeWrite func()
+			errCh      <-chan error
+		)
 
-		// 	// pipe upstream received data to kubectl
-		// 	b.uploadDataOutput(
-		// 		sid, upstream,
-		// 		aranyagopb.MSG_DATA_STDOUT,
-		// 		constant.DefaultPortForwardStreamReadTimeout,
-		// 		&seq, nil,
-		// 	)
-		// }()
+		err = b.streams.Add(sid, func() (io.WriteCloser, types.ResizeHandleFunc, error) {
+			downstream, closeWrite, errCh, err = nethelper.Forward(
+				b.ctx, nil, opts.Protocol,
+				net.JoinHostPort("localhost", strconv.FormatInt(int64(opts.Port), 10)),
+				pr,
+				nil,
+			)
+			if err != nil {
+				return nil, nil, err
+			}
 
-		_ = cmd
-		// protocol := cmd.Protocol
-		// if protocol == "" {
-		// 	protocol = "tcp"
-		// }
+			if downstream == nil || closeWrite == nil || errCh == nil {
+				return nil, nil, fmt.Errorf("bad port-forward implementation, missing required return values")
+			}
 
-		// if !b.hostConfig.AllowPortForward {
-		// 	err = wellknownerrors.ErrNotSupported
-		// 	return
-		// }
+			return &flexWriteCloser{
+				writeFunc: pw.Write,
+				closeFunc: func() error {
+					f, ok := pr.(*os.File)
+					if !ok {
+						go func() {
+							time.Sleep(5 * time.Second)
+							_ = pw.Close()
+							closeWrite()
+							_ = downstream.Close()
+						}()
+						return nil
+					}
 
-		// err = runtimeutil.PortForward(b.ctx, "localhost", protocol, cmd.Port, downstream)
+					n, _ := iohelper.CheckBytesToRead(f.Fd())
+
+					// assume 100 KB/s
+					wait := time.Duration(n) / 1024 / 100 * time.Second
+					if wait > 0 {
+						go func() {
+							time.Sleep(wait)
+							_ = pw.Close()
+							closeWrite()
+							_ = downstream.Close()
+						}()
+					}
+
+					return nil
+				},
+			}, nil, nil
+		})
+		if err != nil {
+			return
+		}
+
+		// pipe received data to extension hub
+		b.uploadDataOutput(
+			b.ctx.Done(),
+			sid,
+			downstream,
+			aranyagopb.MSG_DATA,
+			20*time.Millisecond,
+			&seq,
+			nil,
+		)
+
+		// downstream read exited
+
+		for {
+			// drain errCh
+			select {
+			case <-b.ctx.Done():
+				return
+			case e, more := <-errCh:
+				if e != nil {
+					if err == nil {
+						err = e
+					} else {
+						err = fmt.Errorf("%v; %w", err, e)
+					}
+				}
+
+				if !more {
+					return
+				}
+			}
+		}
 	})
 }
 
-func (b *Agent) handlePodContainerTerminalResize(sid uint64, data []byte) {
-	cmd := new(aranyagopb.TerminalResizeCmd)
-	err := cmd.Unmarshal(data)
+func (b *Agent) handleTerminalResize(sid uint64, data []byte) {
+	opts := new(aranyagopb.TerminalResizeCmd)
+	err := opts.Unmarshal(data)
 	if err != nil {
 		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal ContainerTerminalResizeCmd: %w", err))
 		return
 	}
 
-	if !b.streams.Resize(sid, cmd) {
-		b.handleRuntimeError(sid, errStreamSessionClosed)
-		return
-	}
+	b.streams.Resize(sid, opts.Cols, opts.Rows)
 }
 
 func (b *Agent) handleStreamOperation(
-	sid uint64, useStdin, useStdout, useStderr, useTty bool,
+	stopSig <-chan struct{},
+	sid uint64,
+	useStdin, useStdout, useStderr, useTty bool,
 	preRun func() error,
 	run func(stdout, stderr io.WriteCloser) *aranyagopb.ErrorMsg,
 ) {
@@ -354,7 +461,7 @@ func (b *Agent) handleStreamOperation(
 			_, _ = b.PostData(sid, aranyagopb.MSG_DATA_DEFAULT, nextSeq(&seq), true, nil)
 		}
 
-		b.streams.Close(sid)
+		b.streams.Del(sid)
 	}()
 
 	if preRun != nil {
@@ -364,13 +471,16 @@ func (b *Agent) handleStreamOperation(
 		}
 	}
 
-	stdout, stderr, closeStream := b.createTerminalStream(sid, useStdout, useStderr, useStdin && useTty, &seq, wg)
+	stdout, stderr, closeStream := b.createTerminalStream(
+		stopSig, sid, useStdout, useStderr, useStdin && useTty, &seq, wg,
+	)
 	defer closeStream()
 
 	err = run(stdout, stderr)
 }
 
 func (b *Agent) createTerminalStream(
+	stopSig <-chan struct{},
 	sid uint64,
 	useStdout, useStderr, interactive bool,
 	pSeq *uint64,
@@ -400,7 +510,9 @@ func (b *Agent) createTerminalStream(
 				wg.Done()
 			}()
 
-			b.uploadDataOutput(sid, readStdout, aranyagopb.MSG_DATA_STDOUT, readTimeout, pSeq, seqMu)
+			b.uploadDataOutput(
+				stopSig, sid, readStdout, aranyagopb.MSG_DATA_STDOUT, readTimeout, pSeq, seqMu,
+			)
 		}()
 	}
 
@@ -413,7 +525,9 @@ func (b *Agent) createTerminalStream(
 				wg.Done()
 			}()
 
-			b.uploadDataOutput(sid, readStderr, aranyagopb.MSG_DATA_STDERR, readTimeout, pSeq, seqMu)
+			b.uploadDataOutput(
+				stopSig, sid, readStderr, aranyagopb.MSG_DATA_STDERR, readTimeout, pSeq, seqMu,
+			)
 		}()
 	}
 
@@ -429,6 +543,7 @@ func (b *Agent) createTerminalStream(
 }
 
 func (b *Agent) uploadDataOutput(
+	stopSig <-chan struct{},
 	sid uint64,
 	rd io.Reader,
 	kind aranyagopb.MsgType,
@@ -437,33 +552,19 @@ func (b *Agent) uploadDataOutput(
 	seqMu *sync.Mutex,
 ) {
 	r := iohelper.NewTimeoutReader(rd)
-	go r.FallbackReading()
 
-	stopSig := b.ctx.Done()
-	timer := time.NewTimer(0)
-	if !timer.Stop() {
-		<-timer.C
-	}
-
-	defer func() {
-		if !timer.Stop() {
-			select {
-			case <-timer.C:
-			default:
-			}
-		}
-	}()
-
+	go r.FallbackReading(stopSig)
 	buf := make([]byte, b.GetClient().MaxPayloadSize())
 	for r.WaitForData(stopSig) {
-		timer.Reset(readTimeout)
-		n, err := r.Read(readTimeout, buf)
+		data, shouldCopy, err := r.Read(readTimeout, buf)
 		if err != nil && err != iohelper.ErrDeadlineExceeded {
 			return
 		}
 
-		data := make([]byte, n)
-		_ = copy(data, buf[:n])
+		if shouldCopy {
+			data = make([]byte, len(data))
+			_ = copy(data, buf[:len(data)])
+		}
 
 		if seqMu != nil {
 			seqMu.Lock()

@@ -1,3 +1,5 @@
+// +build noextension noextension_runtime
+
 /*
 Copyright 2020 The arhat.dev Authors.
 
@@ -14,15 +16,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package codecpb implements protobuf codec for libext
-package codecpb
+package agent
 
-import (
-	"arhat.dev/arhat-proto/arhatgopb"
+type extensionComponentRuntime struct{}
 
-	"arhat.dev/libext/codec"
-)
+func (c *extensionComponentRuntime) init(_, _, _ interface{}) {}
 
-func init() {
-	codec.RegisterCodec(arhatgopb.CODEC_PROTOBUF, new(Codec))
-}
+func (c *extensionComponentRuntime) sendRuntimeCmd(_, _, _, _ interface{}) error { return nil }

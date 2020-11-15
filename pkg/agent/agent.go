@@ -18,7 +18,6 @@ package agent
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -27,7 +26,8 @@ import (
 	"sync/atomic"
 
 	"arhat.dev/aranya-proto/aranyagopb"
-	"arhat.dev/libext/server"
+	"arhat.dev/arhat-proto/arhatgopb"
+	"arhat.dev/libext/extutil"
 	"arhat.dev/pkg/exechelper"
 	"arhat.dev/pkg/log"
 	"arhat.dev/pkg/wellknownerrors"
@@ -45,7 +45,6 @@ import (
 var (
 	errClientNotSet            = errors.New("client not set")
 	errRequiredOptionsNotFound = errors.New("required options not found")
-	errStreamSessionClosed     = errors.New("stream session closed")
 	errCommandNotProvided      = errors.New("command not provided for exec")
 )
 
@@ -96,22 +95,19 @@ func NewAgent(appCtx context.Context, logger log.Interface, config *conf.Config)
 	)
 
 	agent := &Agent{
+		ctx:    appCtx,
+		logger: logger,
+
 		hostConfig:    &config.Arhat.Host,
 		machineIDFrom: &config.Arhat.Node.MachineIDFrom,
 		kubeLogFile:   config.Arhat.Log.KubeLogFile(),
 		extInfo:       extInfo,
 
-		ctx: appCtx,
-
-		logger: logger,
-
-		metricsMU: new(sync.RWMutex),
-
 		cmdMgr:        manager.NewCmdManager(),
 		storageClient: sc,
 		networkClient: nc,
 
-		streams: manager.NewStreamManager(),
+		streams: extutil.NewStreamManager(),
 
 		zstdPool: &sync.Pool{
 			New: func() interface{} {
@@ -124,19 +120,25 @@ func NewAgent(appCtx context.Context, logger log.Interface, config *conf.Config)
 		},
 	}
 
+	agent.agentComponentExtension.init(agent, agent.logger, &config.Extension)
+	agent.agentComponentMetrics.init()
+
 	agent.funcMap = map[aranyagopb.CmdType]rawCmdHandleFunc{
 		aranyagopb.CMD_SESSION_CLOSE: agent.handleSessionClose,
 		aranyagopb.CMD_REJECT:        agent.handleRejectCmd,
 
-		aranyagopb.CMD_NET:     agent.handleNetwork,
-		aranyagopb.CMD_RUNTIME: agent.handleRuntime,
+		aranyagopb.CMD_NET: agent.handleNetwork,
+
+		// runtime cmd is handled differently, the payload will be sent to the
+		// extension directly
+		// aranyagopb.CMD_RUNTIME: nil,
 
 		aranyagopb.CMD_NODE_INFO_GET: agent.handleNodeInfoGet,
-		aranyagopb.CMD_EXEC:          agent.handlePodContainerExec,
-		aranyagopb.CMD_ATTACH:        agent.handlePodContainerAttach,
-		aranyagopb.CMD_LOGS:          agent.handlePodContainerLogs,
-		aranyagopb.CMD_TTY_RESIZE:    agent.handlePodContainerTerminalResize,
-		aranyagopb.CMD_PORT_FORWARD:  agent.handlePodPortForward,
+		aranyagopb.CMD_EXEC:          agent.handleExec,
+		aranyagopb.CMD_ATTACH:        agent.handleAttach,
+		aranyagopb.CMD_LOGS:          agent.handleLogs,
+		aranyagopb.CMD_TTY_RESIZE:    agent.handleTerminalResize,
+		aranyagopb.CMD_PORT_FORWARD:  agent.handlePortForward,
 
 		aranyagopb.CMD_METRICS_CONFIG:  agent.handleMetricsConfig,
 		aranyagopb.CMD_METRICS_COLLECT: agent.handleMetricsCollect,
@@ -146,73 +148,31 @@ func NewAgent(appCtx context.Context, logger log.Interface, config *conf.Config)
 		aranyagopb.CMD_PERIPHERAL_LIST:            agent.handlePeripheralList,
 		aranyagopb.CMD_PERIPHERAL_ENSURE:          agent.handlePeripheralEnsure,
 		aranyagopb.CMD_PERIPHERAL_DELETE:          agent.handlePeripheralDelete,
-		aranyagopb.CMD_PERIPHERAL_OPERATE:         agent.handlePeripheralOperation,
+		aranyagopb.CMD_PERIPHERAL_OPERATE:         agent.handlePeripheralOperate,
 		aranyagopb.CMD_PERIPHERAL_COLLECT_METRICS: agent.handlePeripheralMetricsCollect,
 	}
-
-	if config.Extension.Enabled {
-		var endpoints []server.EndpointConfig
-		for _, ep := range config.Extension.Endpoints {
-			tlsConfig, err := ep.TLS.TLSConfig.GetTLSConfig(true)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create tls config for extension endpoint %q: %w", ep.Listen, err)
-			}
-
-			if tlsConfig != nil && ep.TLS.VerifyClientCert {
-				tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
-			}
-
-			endpoints = append(endpoints, server.EndpointConfig{
-				Listen:            ep.Listen,
-				TLS:               tlsConfig,
-				KeepaliveInterval: ep.KeepaliveInterval,
-				MessageTimeout:    ep.MessageTimeout,
-			})
-		}
-		srv, err := server.NewServer(agent.ctx, agent.logger, &server.Config{
-			Endpoints: endpoints,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create extension server")
-		}
-
-		agent.createAndRegisterPeripheralExtensionManager(agent.ctx, srv, &config.Extension.Peripherals)
-
-		go func() {
-			err2 := srv.ListenAndServe()
-			if err2 != nil {
-				panic(err2)
-			}
-		}()
-	}
-
-	agent.streams.Start(appCtx.Done())
 
 	return agent, nil
 }
 
 type Agent struct {
-	ctx context.Context
+	ctx    context.Context
+	logger log.Interface
 
 	hostConfig    *conf.HostConfig
 	machineIDFrom *conf.ValueFromSpec
 	kubeLogFile   string
 	extInfo       []*aranyagopb.NodeExtInfo
 
-	logger log.Interface
-
-	metricsMU               *sync.RWMutex
-	collectNodeMetrics      types.MetricsCollectFunc
-	collectContainerMetrics types.MetricsCollectFunc
-
 	cmdMgr *manager.CmdManager
 
 	storageClient *storageutil.Client
 	networkClient *networkutil.Client
 
-	streams *manager.StreamManager
+	streams *extutil.StreamManager
 
-	agentComponentPeripheral
+	agentComponentMetrics
+	agentComponentExtension
 
 	zstdPool *sync.Pool
 
@@ -239,13 +199,12 @@ func (b *Agent) GetClient() types.ConnectivityClient {
 		runtime.Gosched()
 	}
 
-	defer func() {
-		for !atomic.CompareAndSwapUint32(&b.settingClient, 1, 0) {
-			runtime.Gosched()
-		}
-	}()
+	c := b.client
 
-	return b.client
+	for !atomic.CompareAndSwapUint32(&b.settingClient, 1, 0) {
+		runtime.Gosched()
+	}
+	return c
 }
 
 func (b *Agent) GetZstdWriter(w io.Writer) *zstd.Encoder {
@@ -298,31 +257,41 @@ func (b *Agent) HandleCmd(cmd *aranyagopb.Cmd) {
 
 	// handle stream data first
 	if cmd.Kind == aranyagopb.CMD_DATA_UPSTREAM {
-		if cmd.Completed {
-			b.streams.CloseRead(sid, cmd.Seq)
-			return
-		}
+		//
+		b.streams.Write(sid, cmd.Seq, cmd.Payload)
 
-		if !b.streams.Write(sid, cmd.Seq, cmd.Payload) {
-			b.handleRuntimeError(sid, errStreamSessionClosed)
-			return
+		if cmd.Completed {
+			// write nil to mark max seq
+			b.streams.Write(sid, cmd.Seq, nil)
 		}
 
 		return
 	}
 
+	// reassamble cmd payload
 	cmdBytes, complete := b.cmdMgr.Process(cmd)
 	if !complete {
 		return
 	}
 
-	handleCmd, ok := b.funcMap[cmd.Kind]
-	if handleCmd == nil || !ok {
-		b.handleUnknownCmd(sid, "unknown or unsupported cmd", cmd)
-		return
-	}
+	switch cmd.Kind {
+	case aranyagopb.CMD_RUNTIME:
+		// deliver runtime cmd
+		err := b.agentComponentExtension.extensionComponentRuntime.sendRuntimeCmd(
+			arhatgopb.CMD_RUNTIME_ARANYA_PROTO, cmd.Sid, 0, cmdBytes,
+		)
+		if err != nil {
+			b.handleRuntimeError(sid, err)
+		}
+	default:
+		handleCmd, ok := b.funcMap[cmd.Kind]
+		if handleCmd == nil || !ok {
+			b.handleUnknownCmd(sid, "unknown or unsupported cmd", cmd)
+			return
+		}
 
-	handleCmd(sid, cmdBytes)
+		handleCmd(sid, cmdBytes)
+	}
 }
 
 func (b *Agent) processInNewGoroutine(sid uint64, cmdName string, process func()) {

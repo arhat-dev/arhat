@@ -24,7 +24,6 @@ import (
 	"io"
 	"os"
 
-	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/wellknownerrors"
 	"github.com/spf13/pflag"
 )
@@ -40,7 +39,6 @@ func init() {
 func tryTestCmd(
 	_ io.Reader,
 	_, _ io.Writer,
-	_ <-chan *aranyagopb.TerminalResizeCmd,
 	command []string,
 	_ bool,
 ) error {

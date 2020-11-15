@@ -1,3 +1,5 @@
+// +build !noclient_mqtt
+
 /*
 Copyright 2020 The arhat.dev Authors.
 

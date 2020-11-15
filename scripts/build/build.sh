@@ -31,7 +31,10 @@ _build() {
 }
 
 arhat() {
-  _build "${GOBUILD} -tags='arhat netgo noflaghelper ${PREDEFINED_BUILD_TAGS} ${TAGS}' ./cmd/arhat"
+  _build "${GOBUILD} -tags='\
+    arhat netgo noflaghelper noenvhelper_kube \
+    noperfhelper_metrics noperfhelper_tracing \
+    nonethelper_pipenet noqueue_jobqueue ${PREDEFINED_BUILD_TAGS} ${TAGS}' ./cmd/arhat"
 }
 
 COMP=$(printf "%s" "$@" | cut -d. -f1)
@@ -52,28 +55,31 @@ GOEXE=""
 PREDEFINED_BUILD_TAGS=""
 case "${GOOS}" in
   js)
-    PREDEFINED_BUILD_TAGS="nometrics noexectry nocoap nogrpc"
+    PREDEFINED_BUILD_TAGS="nogrpc nocoap nometrics noexectry \
+    nonethelper_pipenet nonethelper_stdnet nonethelper_piondtls \
+    noextension noextension_peripheral noperipheral noextension_runtime \
+    nostorage_sshfs nostorage_general"
   ;;
   darwin)
-    PREDEFINED_BUILD_TAGS=""
+    PREDEFINED_BUILD_TAGS="noexectry nonethelper_pipenet"
   ;;
   openbsd)
-    PREDEFINED_BUILD_TAGS=""
+    PREDEFINED_BUILD_TAGS="nonethelper_pipenet"
   ;;
   netbsd)
-    PREDEFINED_BUILD_TAGS=""
+    PREDEFINED_BUILD_TAGS="nonethelper_pipenet"
   ;;
   freebsd)
-    PREDEFINED_BUILD_TAGS=""
+    PREDEFINED_BUILD_TAGS="nonethelper_pipenet"
   ;;
   plan9)
-    PREDEFINED_BUILD_TAGS=""
+    PREDEFINED_BUILD_TAGS="nonethelper_pipenet"
   ;;
   aix)
-    PREDEFINED_BUILD_TAGS=""
+    PREDEFINED_BUILD_TAGS="nonethelper_pipenet"
   ;;
   solaris)
-    PREDEFINED_BUILD_TAGS=""
+    PREDEFINED_BUILD_TAGS="nonethelper_pipenet"
   ;;
   linux)
     case "${ARCH}" in

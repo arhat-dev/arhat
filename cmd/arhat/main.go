@@ -24,7 +24,19 @@ import (
 
 	"arhat.dev/arhat/pkg/conf"
 
-	_ "arhat.dev/arhat/pkg/client/clientadd" // add clients
+	// connectivity methods
+	_ "arhat.dev/arhat/pkg/client/coap" // add coap client support
+	_ "arhat.dev/arhat/pkg/client/grpc" // add grpc client support
+	_ "arhat.dev/arhat/pkg/client/mqtt" // add mqtt client support
+
+	// extension and port-forward network support
+	_ "arhat.dev/pkg/nethelper/piondtls" // add udp dtls network support
+	_ "arhat.dev/pkg/nethelper/pipenet"  // add pipe network support
+	_ "arhat.dev/pkg/nethelper/stdnet"   // add standard library network support
+
+	// storage drivers
+	_ "ext.arhat.dev/runtimeutil/storageutil/general" // add general purpose storage driver
+	_ "ext.arhat.dev/runtimeutil/storageutil/sshfs"   // add sshfs storage driver
 )
 
 func printErr(msg string, err error) {

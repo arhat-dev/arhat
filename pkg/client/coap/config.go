@@ -1,3 +1,5 @@
+// +build !noclient_coap
+
 package coap
 
 import (
@@ -6,7 +8,7 @@ import (
 )
 
 type ConnectivityCoAP struct {
-	clientutil.ConnectivityCommonConfig `json:",inline" yaml:",inline"`
+	clientutil.CommonConfig `json:",inline" yaml:",inline"`
 
 	PathNamespaceFrom conf.ValueFromSpec `json:"pathNamespaceFrom" yaml:"pathNamespaceFrom"`
 	Transport         string             `json:"transport" yaml:"transport"`

@@ -21,6 +21,7 @@ package agent
 import (
 	"bytes"
 	"fmt"
+	"sync"
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/wellknownerrors"
@@ -30,6 +31,15 @@ import (
 	"arhat.dev/arhat/pkg/metrics/metricsutils"
 	"arhat.dev/arhat/pkg/types"
 )
+
+type agentComponentMetrics struct {
+	metricsMU          *sync.RWMutex
+	collectNodeMetrics types.MetricsCollectFunc
+}
+
+func (b *agentComponentMetrics) init() {
+	b.metricsMU = new(sync.RWMutex)
+}
 
 func (b *Agent) handleMetricsConfig(sid uint64, data []byte) {
 	cmd := new(aranyagopb.MetricsConfigCmd)
@@ -94,4 +104,81 @@ func (b *Agent) encodeMetrics(metrics []*dto.MetricFamily) ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
+}
+
+func (b *Agent) handleMetricsCollect(sid uint64, data []byte) {
+	cmd := new(aranyagopb.MetricsCollectCmd)
+	err := cmd.Unmarshal(data)
+	if err != nil {
+		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal MetricsCollectCmd: %w", err))
+		return
+	}
+
+	type opTarget struct {
+		name    string
+		collect types.MetricsCollectFunc
+	}
+
+	b.metricsMU.RLock()
+
+	op, ok := map[aranyagopb.MetricsTarget]*opTarget{
+		aranyagopb.METRICS_TARGET_NODE: {name: "node", collect: b.collectNodeMetrics},
+	}[cmd.Target]
+
+	b.metricsMU.RUnlock()
+
+	if !ok {
+		b.handleUnknownCmd(sid, "metrics.collect", cmd)
+		return
+	}
+
+	if op == nil {
+		b.handleRuntimeError(sid, wellknownerrors.ErrNotSupported)
+		return
+	}
+
+	b.processInNewGoroutine(sid, "metrics.collect."+op.name, func() {
+		mtc, err := op.collect()
+		if err != nil {
+			b.handleRuntimeError(sid, err)
+			return
+		}
+
+		pMtcRaw := b.extensionComponentPeripheral.RetrieveCachedMetrics()
+		pMtc, ok := pMtcRaw.([]*dto.MetricFamily)
+		if ok {
+			mtc = append(mtc, pMtc...)
+		}
+
+		data, err := b.encodeMetrics(mtc)
+		if err != nil {
+			b.handleConnectivityError(sid, fmt.Errorf("failed to encode metrics: %w", err))
+			return
+		}
+
+		_, err = b.PostData(sid, aranyagopb.MSG_DATA_METRICS, 0, true, data)
+		if err != nil {
+			b.handleConnectivityError(sid, err)
+			return
+		}
+	})
+}
+
+func (b *Agent) handlePeripheralMetricsCollect(sid uint64, data []byte) {
+	cmd := new(aranyagopb.PeripheralMetricsCollectCmd)
+	err := cmd.Unmarshal(data)
+	if err != nil {
+		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal PeripheralMetricsCollectCmd: %w", err))
+		return
+	}
+
+	b.processInNewGoroutine(sid, "peripheral.metrics", func() {
+		metricsForNode, paramsForAgent, metricsForAgent := b.extensionComponentPeripheral.CollectMetrics(
+			cmd.PeripheralNames...,
+		)
+		// TODO: add agent metrics report support
+		_, _ = paramsForAgent, metricsForAgent
+
+		b.extensionComponentPeripheral.CacheMetrics(metricsForNode)
+	})
 }

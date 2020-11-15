@@ -1,3 +1,5 @@
+// +build !noclient_grpc
+
 /*
 Copyright 2020 The arhat.dev Authors.
 
@@ -26,14 +28,31 @@ import (
 	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
 	"arhat.dev/aranya-proto/aranyagopb/rpcpb"
 	"arhat.dev/pkg/log"
+	"arhat.dev/pkg/tlshelper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 
+	"arhat.dev/arhat/pkg/client"
 	"arhat.dev/arhat/pkg/client/clientutil"
 	"arhat.dev/arhat/pkg/types"
 )
+
+func init() {
+	client.Register("grpc",
+		func() interface{} {
+			return &ConnectivityGRPC{
+				CommonConfig: clientutil.CommonConfig{
+					Endpoint:       "",
+					MaxPayloadSize: aranyagoconst.MaxGRPCDataSize,
+					TLS:            tlshelper.TLSConfig{},
+				},
+			}
+		},
+		NewGRPCClient,
+	)
+}
 
 type Client struct {
 	*clientutil.BaseClient

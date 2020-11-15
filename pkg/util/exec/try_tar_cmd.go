@@ -26,7 +26,6 @@ import (
 	"os"
 	"os/exec"
 
-	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/wellknownerrors"
 	"github.com/mholt/archiver/v3"
 	"github.com/spf13/pflag"
@@ -84,7 +83,6 @@ func (o *untarOpts) buildArgs(src string) []string {
 func tryTarCmd(
 	stdin io.Reader,
 	stdout, stderr io.Writer,
-	_ <-chan *aranyagopb.TerminalResizeCmd,
 	command []string, _ bool,
 ) error {
 	var (

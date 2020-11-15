@@ -19,10 +19,8 @@ limitations under the License.
 package exec
 
 import (
-	"context"
 	"io"
 
-	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/exechelper"
 )
 
@@ -33,10 +31,8 @@ var (
 // DoIfTryFailed will first try to handle command internally, if the command is not handled or failed to handle,
 // execute it directly on host
 func DoIfTryFailed(
-	ctx context.Context,
 	stdin io.Reader,
 	stdout, stderr io.Writer,
-	resizeCh <-chan *aranyagopb.TerminalResizeCmd,
 	command []string,
 	tty bool,
 	env map[string]string,
@@ -44,7 +40,7 @@ func DoIfTryFailed(
 	var err error
 	tryExec, ok := tryCommands[command[0]]
 	if ok {
-		err = tryExec(stdin, stdout, stderr, resizeCh, command, tty)
+		err = tryExec(stdin, stdout, stderr, command, tty)
 	}
 
 	if ok && err == nil {
@@ -54,7 +50,7 @@ func DoIfTryFailed(
 
 	// not handled, do it locally
 	return exechelper.Do(exechelper.Spec{
-		Context: ctx,
+		Context: nil,
 		Env:     env,
 		Command: command,
 		Stdin:   stdin,

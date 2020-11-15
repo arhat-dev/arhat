@@ -7,8 +7,8 @@ import (
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/arhat-proto/arhatgopb"
+	"arhat.dev/libext/protoutil"
 	"arhat.dev/libext/server"
-	"arhat.dev/libext/util"
 	"arhat.dev/pkg/log"
 	"arhat.dev/pkg/wellknownerrors"
 
@@ -125,7 +125,7 @@ func (m *Manager) connectTarget(
 		}
 	}
 
-	cmd, err := util.NewCmd(
+	cmd, err := protoutil.NewCmd(
 		ec.Codec.Marshal, arhatgopb.CMD_PERIPHERAL_CONNECT, id, 1, connCmd,
 	)
 	if err != nil {

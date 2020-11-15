@@ -18,6 +18,10 @@ limitations under the License.
 
 package agent
 
+type agentComponentMetrics struct{}
+
+func (b *agentComponentMetrics) init() {}
+
 func (b *Agent) handleMetricsConfig(sid uint64, data []byte) {
 	b.handleUnknownCmd(sid, "metrics", nil)
 }

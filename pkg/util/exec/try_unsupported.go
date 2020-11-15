@@ -19,23 +19,18 @@ limitations under the License.
 package exec
 
 import (
-	"context"
 	"io"
 
-	"arhat.dev/aranya-proto/aranyagopb"
+	"arhat.dev/pkg/exechelper"
 	"arhat.dev/pkg/wellknownerrors"
-
-	"arhat.dev/arhat/pkg/constant"
 )
 
 func DoIfTryFailed(
-	ctx context.Context,
 	stdin io.Reader,
 	stdout, stderr io.Writer,
-	resizeCh <-chan *aranyagopb.TerminalResizeCmd,
 	command []string,
 	tty bool,
 	env map[string]string,
-) (int, error) {
-	return constant.DefaultExitCodeOnError, wellknownerrors.ErrNotSupported
+) (*exechelper.Cmd, error) {
+	return nil, wellknownerrors.ErrNotSupported
 }

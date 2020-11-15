@@ -76,7 +76,7 @@ func (m *Manager) CacheMetrics(metrics []*dto.MetricFamily) {
 	m.metricsCache.CacheMetrics(metrics)
 }
 
-func (m *Manager) RetrieveCachedMetrics() []*dto.MetricFamily {
+func (m *Manager) RetrieveCachedMetrics() interface{} {
 	return m.metricsCache.RetrieveCachedMetrics()
 }
 

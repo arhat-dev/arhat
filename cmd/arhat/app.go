@@ -11,14 +11,10 @@ import (
 	"arhat.dev/pkg/log"
 	"github.com/spf13/pflag"
 
-	"arhat.dev/arhat/pkg/constant"
-
 	"arhat.dev/arhat/pkg/agent"
 	"arhat.dev/arhat/pkg/client"
 	"arhat.dev/arhat/pkg/conf"
-
-	_ "ext.arhat.dev/runtimeutil/storageutil/general" // add general purpose storage driver
-	_ "ext.arhat.dev/runtimeutil/storageutil/sshfs"   // add sshfs storage driver
+	"arhat.dev/arhat/pkg/constant"
 )
 
 var (
