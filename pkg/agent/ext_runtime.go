@@ -25,10 +25,11 @@ import (
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/arhat-proto/arhatgopb"
-	"arhat.dev/arhat/pkg/conf"
-	"arhat.dev/arhat/pkg/types"
 	"arhat.dev/libext/server"
 	"arhat.dev/pkg/wellknownerrors"
+
+	"arhat.dev/arhat/pkg/conf"
+	"arhat.dev/arhat/pkg/types"
 )
 
 type extensionComponentRuntime struct {
@@ -73,7 +74,7 @@ func (c *extensionComponentRuntime) handleRuntimeConn(ctx *server.ExtensionConte
 		return
 	}
 
-	// wait until conneciton lost
+	// wait until connection lost
 	<-ctx.Context.Done()
 
 	for !atomic.CompareAndSwapUintptr(&c.workingOnConn, 0, 1) {

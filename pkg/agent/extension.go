@@ -6,9 +6,10 @@ import (
 	"crypto/tls"
 	"fmt"
 
-	"arhat.dev/arhat/pkg/conf"
 	"arhat.dev/libext/server"
 	"arhat.dev/pkg/log"
+
+	"arhat.dev/arhat/pkg/conf"
 )
 
 type agentComponentExtension struct {

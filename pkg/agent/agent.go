@@ -77,7 +77,7 @@ func NewAgent(appCtx context.Context, logger log.Interface, config *conf.Config)
 			}
 
 			// execute host command for abbot request
-			cmd, err := exechelper.Do(exechelper.Spec{
+			cmd, err2 := exechelper.Do(exechelper.Spec{
 				Context: ctx,
 				Command: config.Network.AbbotRequestExec,
 				Env:     env,
@@ -85,12 +85,12 @@ func NewAgent(appCtx context.Context, logger log.Interface, config *conf.Config)
 				Stdout:  stdout,
 				Stderr:  stderr,
 			})
-			if err != nil {
-				return err
+			if err2 != nil {
+				return err2
 			}
 
-			_, err = cmd.Wait()
-			return err
+			_, err2 = cmd.Wait()
+			return err2
 		},
 	)
 
@@ -120,7 +120,11 @@ func NewAgent(appCtx context.Context, logger log.Interface, config *conf.Config)
 		},
 	}
 
-	agent.agentComponentExtension.init(agent, agent.logger, &config.Extension)
+	err = agent.agentComponentExtension.init(agent, agent.logger, &config.Extension)
+	if err != nil {
+		return nil, err
+	}
+
 	agent.agentComponentMetrics.init()
 
 	agent.funcMap = map[aranyagopb.CmdType]rawCmdHandleFunc{

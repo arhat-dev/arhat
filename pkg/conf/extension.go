@@ -25,6 +25,7 @@ import (
 	"arhat.dev/arhat/pkg/constant"
 )
 
+// nolint:maligned
 type ExtensionConfig struct {
 	Enabled bool `json:"enabled" yaml:"enabled"`
 

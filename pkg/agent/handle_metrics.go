@@ -57,7 +57,9 @@ func (b *Agent) handleMetricsConfig(sid uint64, data []byte) {
 
 	op, ok := map[aranyagopb.MetricsTarget]*opTarget{
 		aranyagopb.METRICS_TARGET_NODE: {
-			name: "node", ptr: &b.collectNodeMetrics, create: metrics.CreateNodeMetricsCollector,
+			name:   "node",
+			ptr:    &b.agentComponentMetrics.collectNodeMetrics,
+			create: metrics.CreateNodeMetricsCollector,
 		},
 	}[cmd.Target]
 
