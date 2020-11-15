@@ -119,10 +119,10 @@ extension:
       # - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
 
   # peripheral extension hub config
-  peripherals:
+  peripheral:
     # cache unhandled metrics for at most this time
     metricsCacheTimeout: 1h
 
-  # runtime extension hub config
+  # runtime extension config
   runtime: {}
 ```
