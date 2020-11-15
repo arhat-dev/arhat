@@ -13,7 +13,7 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gogo/protobuf v1.3.1
 	github.com/goiiot/libmqtt v0.9.6
-	github.com/klauspost/compress v1.11.2
+	github.com/klauspost/compress v1.11.3
 	github.com/mholt/archiver/v3 v3.5.0
 	github.com/mssola/user_agent v0.5.2
 	github.com/pbnjay/memory v0.0.0-20190104145345-974d429e7ae4
@@ -36,7 +36,7 @@ replace (
 	github.com/creack/pty => github.com/creack/pty v1.1.11
 	github.com/dsnet/golib => github.com/dsnet/golib v0.0.0-20200723050859-c110804dfa93
 	github.com/fsnotify/fsnotify => github.com/fsnotify/fsnotify v1.4.9
-	github.com/klauspost/compress => github.com/klauspost/compress v1.11.2
+	github.com/klauspost/compress => github.com/klauspost/compress v1.11.3
 	github.com/pion/dtls/v2 => github.com/pion/dtls/v2 v2.0.3
 	github.com/spf13/cobra => github.com/spf13/cobra v1.1.1
 	go.uber.org/atomic => go.uber.org/atomic v1.6.0
