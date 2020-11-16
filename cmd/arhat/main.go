@@ -34,6 +34,10 @@ import (
 	_ "arhat.dev/pkg/nethelper/pipenet"  // add pipe network support
 	_ "arhat.dev/pkg/nethelper/stdnet"   // add standard library network support
 
+	// extension codec support
+	_ "arhat.dev/libext/codec/gogoprotobuf" // Add protobuf codec support.
+	_ "arhat.dev/libext/codec/stdjson"      // Add json codec support.
+
 	// storage drivers
 	_ "ext.arhat.dev/runtimeutil/storageutil/general" // add general purpose storage driver
 	_ "ext.arhat.dev/runtimeutil/storageutil/sshfs"   // add sshfs storage driver

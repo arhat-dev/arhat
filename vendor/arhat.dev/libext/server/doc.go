@@ -17,9 +17,3 @@ limitations under the License.
 // Package server implements extension hub, which manages all incoming
 // connections from extension controllers
 package server
-
-import (
-	// import default codec
-	_ "arhat.dev/libext/codec/gogoprotobuf"
-	_ "arhat.dev/libext/codec/stdjson"
-)

@@ -511,7 +511,9 @@ func (b *Agent) createTerminalStream(
 			}()
 
 			b.uploadDataOutput(
-				stopSig, sid, readStdout, aranyagopb.MSG_DATA_STDOUT, readTimeout, pSeq, seqMu,
+				stopSig, sid, readStdout,
+				aranyagopb.MSG_DATA_STDOUT,
+				readTimeout, pSeq, seqMu,
 			)
 		}()
 	}
@@ -526,7 +528,9 @@ func (b *Agent) createTerminalStream(
 			}()
 
 			b.uploadDataOutput(
-				stopSig, sid, readStderr, aranyagopb.MSG_DATA_STDERR, readTimeout, pSeq, seqMu,
+				stopSig, sid, readStderr,
+				aranyagopb.MSG_DATA_STDERR,
+				readTimeout, pSeq, seqMu,
 			)
 		}()
 	}

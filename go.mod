@@ -5,7 +5,7 @@ go 1.15
 require (
 	arhat.dev/aranya-proto v0.2.3
 	arhat.dev/arhat-proto v0.4.2
-	arhat.dev/libext v0.4.6
+	arhat.dev/libext v0.4.7
 	arhat.dev/pkg v0.4.2
 	ext.arhat.dev/runtimeutil v0.2.2
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect

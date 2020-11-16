@@ -122,13 +122,13 @@ func tryTarCmd(
 func runTarCmd(stdin io.Reader, w io.Writer, opts *untarOpts) error {
 	// write data to the temp file
 	srcFile, err := func() (string, error) {
-		tempFile, err := ioutil.TempFile(os.TempDir(), "*.tar")
+		tempFile, err := ioutil.TempFile(opts.targetDir, "*.tar")
 		if err != nil {
 			return "", err
 		}
 		defer func() { _ = tempFile.Close() }()
 
-		n, err := io.Copy(tempFile, stdin)
+		n, err := tempFile.ReadFrom(stdin)
 		if n == 0 && err != nil {
 			return "", err
 		}
