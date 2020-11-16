@@ -115,51 +115,6 @@ create_arhat_common_config() {
   cat scripts/package/arhat.config.common.yaml > "${1}"
 }
 
-package_arhat_docker() {
-  config_file="${PACKAGE_DIR}/${COMP}-${ARCH}.config.yaml"
-  create_arhat_common_config "${config_file}"
-  cat >> "${config_file}" <<EOF
-runtime:
-  dataDir: /var/lib/arhat
-  pauseImage: k8s.gcr.io/pause:3.1
-  pauseCommand: /pause
-  endpoints:
-    image:
-      address: unix:///var/run/docker.sock
-      dialTimeout: 10s
-      actionTimeout: 5m
-    runtime:
-      address: unix:///var/run/docker.sock
-      dialTimeout: 10s
-      actionTimeout: 5m
-EOF
-
-  nfpm_config_file="${PACKAGE_DIR}/${COMP}-${ARCH}.nfpm.yaml"
-  _write_nfpm_metadata "${nfpm_config_file}"
-
-  # configure nfpm
-  # https://nfpm.goreleaser.com/configuration/
-  cat >> "${nfpm_config_file}" <<EOF
-description: <some description>
-conflicts:
-- arhat
-- arhat-libpod
-
-provides: []
-
-config_files: {}
-  # <local path>: <installation path>
-
-scripts: {}
-  # postinstall: ${OUTPUT_DIR}/../../scripts/package/nfpm-${COMP}-post-install.sh
-  # preinstall: ${OUTPUT_DIR}/../../scripts/package/nfpm-${COMP}-pre-install.sh
-  # preremove: ${OUTPUT_DIR}/../../scripts/package/nfpm-${COMP}-post-install.sh
-  # postremove: ${OUTPUT_DIR}/../../scripts/package/nfpm-${COMP}-post-install.sh
-
-EOF
-  _do_package
-}
-
 package_arhat_libpod() {
   arhat_config_file="${PACKAGE_DIR}/${COMP}-${ARCH}.config.yaml"
 
@@ -235,9 +190,7 @@ package_arhat() {
   # https://nfpm.goreleaser.com/configuration/
   cat >> "${nfpm_config_file}" <<EOF
 description: <some description>
-conflicts:
-- arhat-docker
-- arhat-libpod
+conflicts: []
 
 provides: []
 

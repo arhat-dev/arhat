@@ -7,7 +7,7 @@ arhat.dev/aranya-proto/aranyagopb/runtimepb
 # arhat.dev/arhat-proto v0.4.2
 ## explicit
 arhat.dev/arhat-proto/arhatgopb
-# arhat.dev/libext v0.4.5
+# arhat.dev/libext v0.4.6
 ## explicit
 arhat.dev/libext/codec
 arhat.dev/libext/codec/gogoprotobuf
@@ -16,7 +16,7 @@ arhat.dev/libext/extutil
 arhat.dev/libext/protoutil
 arhat.dev/libext/server
 arhat.dev/libext/types
-# arhat.dev/pkg v0.4.1
+# arhat.dev/pkg v0.4.2
 ## explicit
 arhat.dev/pkg/backoff
 arhat.dev/pkg/envhelper
@@ -32,7 +32,7 @@ arhat.dev/pkg/pipenet
 arhat.dev/pkg/queue
 arhat.dev/pkg/tlshelper
 arhat.dev/pkg/wellknownerrors
-# ext.arhat.dev/runtimeutil v0.2.1
+# ext.arhat.dev/runtimeutil v0.2.2
 ## explicit
 ext.arhat.dev/runtimeutil/actionutil
 ext.arhat.dev/runtimeutil/networkutil

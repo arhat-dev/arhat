@@ -552,8 +552,8 @@ func (b *Agent) uploadDataOutput(
 	seqMu *sync.Mutex,
 ) {
 	r := iohelper.NewTimeoutReader(rd)
-
 	go r.FallbackReading(stopSig)
+
 	buf := make([]byte, b.GetClient().MaxPayloadSize())
 	for r.WaitForData(stopSig) {
 		data, shouldCopy, err := r.Read(readTimeout, buf)
