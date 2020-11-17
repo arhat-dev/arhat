@@ -18,10 +18,6 @@ limitations under the License.
 
 package agent
 
-import (
-	"arhat.dev/pkg/wellknownerrors"
-)
-
 type extensionComponentPeripheral struct{}
 
 func (b *extensionComponentPeripheral) init(_, _, _ interface{})           {}
@@ -32,17 +28,17 @@ func (b *extensionComponentPeripheral) CollectMetrics(_ ...string) (_, _, _ inte
 }
 
 func (b *Agent) handlePeripheralList(sid uint64, data []byte) {
-	b.handleRuntimeError(sid, wellknownerrors.ErrNotSupported)
+	b.handleUnknownCmd(sid, "peripheral.list", nil)
 }
 
 func (b *Agent) handlePeripheralEnsure(sid uint64, data []byte) {
-	b.handleRuntimeError(sid, wellknownerrors.ErrNotSupported)
+	b.handleUnknownCmd(sid, "peripheral.ensure", nil)
 }
 
 func (b *Agent) handlePeripheralDelete(sid uint64, data []byte) {
-	b.handleRuntimeError(sid, wellknownerrors.ErrNotSupported)
+	b.handleUnknownCmd(sid, "peripheral.unknown", nil)
 }
 
 func (b *Agent) handlePeripheralOperate(sid uint64, data []byte) {
-	b.handleRuntimeError(sid, wellknownerrors.ErrNotSupported)
+	b.handleUnknownCmd(sid, "peripheral.operate", nil)
 }

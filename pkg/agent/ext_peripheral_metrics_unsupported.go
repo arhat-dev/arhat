@@ -1,4 +1,4 @@
-// +build noconfhelper_pprof
+// +build nometrics
 
 /*
 Copyright 2020 The arhat.dev Authors.
@@ -18,6 +18,6 @@ limitations under the License.
 
 package agent
 
-type agentComponentPProf struct{}
-
-func (c *agentComponentPProf) init(_, _ interface{}) error { return nil }
+func (b *Agent) handlePeripheralMetricsCollect(sid uint64, data []byte) {
+	b.handleUnknownCmd(sid, "peripheral.metrics.collect", nil)
+}

@@ -82,6 +82,7 @@ func NewMQTTClient(
 		keepalive = 60
 	}
 
+	options = append(options, libmqtt.WithRouter(connInfo.TopicRouter))
 	options = append(options, libmqtt.WithConnPacket(libmqtt.ConnPacket{
 		Username:     connInfo.Username,
 		Password:     connInfo.Password,
@@ -147,7 +148,6 @@ type Client struct {
 
 func (c *Client) Connect(dialCtx context.Context) error {
 	dialOpts := []libmqtt.Option{
-		libmqtt.WithRouter(libmqtt.NewRegexRouter()),
 		libmqtt.WithAutoReconnect(false),
 		libmqtt.WithConnHandleFunc(c.handleConn(c.Context().Done())),
 		libmqtt.WithSubHandleFunc(c.handleSub(c.Context().Done())),

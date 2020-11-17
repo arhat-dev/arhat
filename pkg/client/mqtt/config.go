@@ -31,6 +31,7 @@ import (
 	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
 	"arhat.dev/pkg/tlshelper"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/goiiot/libmqtt"
 
 	"arhat.dev/arhat/pkg/client"
 	"arhat.dev/arhat/pkg/client/clientutil"
@@ -86,6 +87,8 @@ type ConnectivityMQTTConnectInfo struct {
 
 	MaxPayloadSize int
 	TLSConfig      *tls.Config
+
+	TopicRouter libmqtt.TopicRouter
 }
 
 func (c *ConnectivityMQTT) GetConnectInfo() (*ConnectivityMQTTConnectInfo, error) {
@@ -123,6 +126,8 @@ func (c *ConnectivityMQTT) GetConnectInfo() (*ConnectivityMQTTConnectInfo, error
 		result.Username = fmt.Sprintf("%s/%s/?api-version=2018-06-30", c.Endpoint, deviceID)
 		// Password is set to SAS token if not using mTLS
 		result.Password = c.Password
+
+		result.TopicRouter = libmqtt.NewRegexRouter()
 	case aranyagoconst.VariantGCPIoTCore:
 		if !c.TLS.Enabled || c.TLS.Key == "" {
 			return nil, fmt.Errorf("no private key found")
@@ -192,6 +197,8 @@ func (c *ConnectivityMQTT) GetConnectInfo() (*ConnectivityMQTTConnectInfo, error
 		result.CmdSubTopicHandle = fmt.Sprintf("/devices/%s/commands.*", deviceID)
 		result.WillPubTopic = fmt.Sprintf("/devices/%s/state", deviceID)
 		result.Password = jwtToken
+
+		result.TopicRouter = libmqtt.NewRegexRouter()
 	case aranyagoconst.VariantAWSIoTCore:
 		if !c.TLS.Enabled || c.TLS.Cert == "" || c.TLS.Key == "" {
 			return nil, fmt.Errorf("tls cert key pair must be provided for aws-iot-core")
@@ -204,6 +211,8 @@ func (c *ConnectivityMQTT) GetConnectInfo() (*ConnectivityMQTTConnectInfo, error
 		result.ClientID = c.ClientID
 		result.CmdSubTopic, result.MsgPubTopic, result.WillPubTopic = aranyagoconst.MQTTTopics(topicNamespace)
 		result.CmdSubTopicHandle = result.CmdSubTopic
+
+		result.TopicRouter = libmqtt.NewTextRouter()
 	case "", "standard":
 		if result.MaxPayloadSize <= 0 {
 			result.MaxPayloadSize = aranyagoconst.MaxMQTTDataSize
@@ -216,6 +225,8 @@ func (c *ConnectivityMQTT) GetConnectInfo() (*ConnectivityMQTTConnectInfo, error
 
 		result.CmdSubTopic, result.MsgPubTopic, result.WillPubTopic = aranyagoconst.MQTTTopics(topicNamespace)
 		result.CmdSubTopicHandle = result.CmdSubTopic
+
+		result.TopicRouter = libmqtt.NewTextRouter()
 	default:
 		return nil, fmt.Errorf("unsupported variant type")
 	}

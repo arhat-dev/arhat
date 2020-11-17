@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"runtime"
-	"sync"
 	"sync/atomic"
 
 	"arhat.dev/aranya-proto/aranyagopb"
@@ -34,7 +33,6 @@ import (
 	"ext.arhat.dev/runtimeutil/networkutil"
 	"ext.arhat.dev/runtimeutil/storageutil"
 	"github.com/gogo/protobuf/proto"
-	"github.com/klauspost/compress/zstd"
 
 	"arhat.dev/arhat/pkg/conf"
 	"arhat.dev/arhat/pkg/types"
@@ -108,25 +106,22 @@ func NewAgent(appCtx context.Context, logger log.Interface, config *conf.Config)
 		networkClient: nc,
 
 		streams: extutil.NewStreamManager(),
-
-		zstdPool: &sync.Pool{
-			New: func() interface{} {
-				enc, _ := zstd.NewWriter(
-					nil,
-					zstd.WithEncoderLevel(zstd.SpeedBestCompression),
-				)
-				return enc
-			},
-		},
 	}
 
 	err = agent.agentComponentExtension.init(agent, agent.logger, &config.Extension)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to init extension: %w", err)
 	}
 
-	agent.agentComponentPProf.init(agent.ctx, &config.Arhat.PProf)
-	agent.agentComponentMetrics.init()
+	err = agent.agentComponentPProf.init(agent.ctx, &config.Arhat.PProf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init pprof: %w", err)
+	}
+
+	err = agent.agentComponentMetrics.init()
+	if err != nil {
+		return nil, fmt.Errorf("failed to init metrics: %w", err)
+	}
 
 	agent.funcMap = map[aranyagopb.CmdType]rawCmdHandleFunc{
 		aranyagopb.CMD_SESSION_CLOSE: agent.handleSessionClose,
@@ -180,8 +175,6 @@ type Agent struct {
 	agentComponentMetrics
 	agentComponentExtension
 
-	zstdPool *sync.Pool
-
 	settingClient uint32
 	client        types.ConnectivityClient
 
@@ -211,12 +204,6 @@ func (b *Agent) GetClient() types.ConnectivityClient {
 		runtime.Gosched()
 	}
 	return c
-}
-
-func (b *Agent) GetZstdWriter(w io.Writer) *zstd.Encoder {
-	gw := b.zstdPool.Get().(*zstd.Encoder)
-	gw.Reset(w)
-	return gw
 }
 
 func (b *Agent) PostData(sid uint64, kind aranyagopb.MsgType, seq uint64, completed bool, data []byte) (uint64, error) {

@@ -23,23 +23,36 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"strings"
 
 	"arhat.dev/pkg/perfhelper"
 )
 
 type agentComponentPProf struct{}
 
-func (c *agentComponentPProf) init(ctx context.Context, config *perfhelper.PProfConfig) {
-	h := config.CreateHTTPHandlerIfEnabled(false)
+func (c *agentComponentPProf) init(ctx context.Context, config *perfhelper.PProfConfig) error {
+	handlers := config.CreateHTTPHandlersIfEnabled(true)
+	if handlers == nil {
+		// no enabled
+		return nil
+	}
+
+	tlsConfig, err := config.TLS.GetTLSConfig(true)
+	if err != nil {
+		return err
+	}
 
 	mux := http.NewServeMux()
-	basePath := config.HTTPPath
 
-	mux.Handle(basePath, http.StripPrefix(basePath, h))
+	basePath := strings.TrimRight(config.HTTPPath, "/")
+	for suffix, h := range handlers {
+		mux.Handle(basePath+"/"+suffix, h)
+	}
 
 	srv := &http.Server{
-		Handler: mux,
-		Addr:    config.Listen,
+		Handler:   mux,
+		Addr:      config.Listen,
+		TLSConfig: tlsConfig,
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
 		},
@@ -51,4 +64,6 @@ func (c *agentComponentPProf) init(ctx context.Context, config *perfhelper.PProf
 			panic(err)
 		}
 	}()
+
+	return nil
 }

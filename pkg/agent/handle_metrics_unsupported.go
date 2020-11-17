@@ -20,16 +20,12 @@ package agent
 
 type agentComponentMetrics struct{}
 
-func (b *agentComponentMetrics) init() {}
+func (b *agentComponentMetrics) init() error { return nil }
 
 func (b *Agent) handleMetricsConfig(sid uint64, data []byte) {
-	b.handleUnknownCmd(sid, "metrics", nil)
+	b.handleUnknownCmd(sid, "metrics.config", nil)
 }
 
 func (b *Agent) handleMetricsCollect(sid uint64, data []byte) {
-	b.handleUnknownCmd(sid, "metrics", nil)
-}
-
-func (b *Agent) handlePeripheralMetricsCollect(sid uint64, data []byte) {
-	b.handleUnknownCmd(sid, "peripheral.metrics.collect", nil)
+	b.handleUnknownCmd(sid, "metrics.collect", nil)
 }

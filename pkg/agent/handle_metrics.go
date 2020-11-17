@@ -21,10 +21,12 @@ package agent
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"sync"
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/wellknownerrors"
+	"github.com/klauspost/compress/zstd"
 	dto "github.com/prometheus/client_model/go"
 
 	"arhat.dev/arhat/pkg/metrics"
@@ -33,12 +35,26 @@ import (
 )
 
 type agentComponentMetrics struct {
+	zstdPool *sync.Pool
+
 	metricsMU          *sync.RWMutex
 	collectNodeMetrics types.MetricsCollectFunc
 }
 
-func (b *agentComponentMetrics) init() {
+func (b *agentComponentMetrics) init() error {
+	b.zstdPool = &sync.Pool{
+		New: func() interface{} {
+			enc, _ := zstd.NewWriter(
+				nil,
+				zstd.WithEncoderLevel(zstd.SpeedBestCompression),
+			)
+			return enc
+		},
+	}
+
 	b.metricsMU = new(sync.RWMutex)
+
+	return nil
 }
 
 func (b *Agent) handleMetricsConfig(sid uint64, data []byte) {
@@ -91,16 +107,22 @@ func (b *Agent) handleMetricsConfig(sid uint64, data []byte) {
 	})
 }
 
+func (b *Agent) getZstdWriter(w io.Writer) *zstd.Encoder {
+	enc := b.zstdPool.Get().(*zstd.Encoder)
+	enc.Reset(w)
+	return enc
+}
+
 func (b *Agent) encodeMetrics(metrics []*dto.MetricFamily) ([]byte, error) {
 	buf := new(bytes.Buffer)
-	gw := b.GetZstdWriter(buf)
+	enc := b.getZstdWriter(buf)
 
 	defer func() {
-		_ = gw.Close()
-		b.zstdPool.Put(gw)
+		_ = enc.Close()
+		b.zstdPool.Put(enc)
 	}()
 
-	err := metricsutils.EncodeMetrics(gw, metrics)
+	err := metricsutils.EncodeMetrics(enc, metrics)
 	if err != nil {
 		return nil, err
 	}
@@ -163,24 +185,5 @@ func (b *Agent) handleMetricsCollect(sid uint64, data []byte) {
 			b.handleConnectivityError(sid, err)
 			return
 		}
-	})
-}
-
-func (b *Agent) handlePeripheralMetricsCollect(sid uint64, data []byte) {
-	cmd := new(aranyagopb.PeripheralMetricsCollectCmd)
-	err := cmd.Unmarshal(data)
-	if err != nil {
-		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal PeripheralMetricsCollectCmd: %w", err))
-		return
-	}
-
-	b.processInNewGoroutine(sid, "peripheral.metrics", func() {
-		metricsForNode, paramsForAgent, metricsForAgent := b.extensionComponentPeripheral.CollectMetrics(
-			cmd.PeripheralNames...,
-		)
-		// TODO: add agent metrics report support
-		_, _ = paramsForAgent, metricsForAgent
-
-		b.extensionComponentPeripheral.CacheMetrics(metricsForNode)
 	})
 }
