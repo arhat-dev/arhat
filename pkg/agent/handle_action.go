@@ -87,9 +87,38 @@ func (b *Agent) handleExec(sid uint64, data []byte) {
 							return nil, nil, err
 						}
 
-						return pw, func(cols, rows uint32) {
-							_ = cmd.Resize(cols, rows)
-						}, nil
+						file, isFile := pr.(*os.File)
+
+						var fd uintptr
+						if isFile {
+							fd = file.Fd()
+						}
+
+						return &flexWriteCloser{
+								writeFunc: pw.Write,
+								closeFunc: func() error {
+									wait := 5 * time.Second
+									if isFile {
+										n, err2 := iohelper.CheckBytesToRead(fd)
+										if err2 == nil {
+											// assume 100KB/s
+											tmpWait := time.Duration(n/(100*1024)) * time.Second
+											if tmpWait > wait {
+												wait = tmpWait
+											}
+										}
+									}
+
+									go func() {
+										time.Sleep(wait)
+										_ = pw.Close()
+									}()
+
+									return nil
+								},
+							}, func(cols, rows uint32) {
+								_ = cmd.Resize(cols, rows)
+							}, nil
 					})
 				} else {
 					cmd, err = exec.DoIfTryFailed(nil, stdout, stderr, opts.Command, opts.Tty, opts.Envs)

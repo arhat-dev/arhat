@@ -125,6 +125,7 @@ func NewAgent(appCtx context.Context, logger log.Interface, config *conf.Config)
 		return nil, err
 	}
 
+	agent.agentComponentPProf.init(agent.ctx, &config.Arhat.PProf)
 	agent.agentComponentMetrics.init()
 
 	agent.funcMap = map[aranyagopb.CmdType]rawCmdHandleFunc{
@@ -175,6 +176,7 @@ type Agent struct {
 
 	streams *extutil.StreamManager
 
+	agentComponentPProf
 	agentComponentMetrics
 	agentComponentExtension
 
@@ -261,12 +263,20 @@ func (b *Agent) HandleCmd(cmd *aranyagopb.Cmd) {
 
 	// handle stream data first
 	if cmd.Kind == aranyagopb.CMD_DATA_UPSTREAM {
-		//
-		b.streams.Write(sid, cmd.Seq, cmd.Payload)
+		if b.streams.Has(sid) {
+			// is data for agent
+			b.streams.Write(sid, cmd.Seq, cmd.Payload)
 
-		if cmd.Completed {
-			// write nil to mark max seq
-			b.streams.Write(sid, cmd.Seq, nil)
+			if cmd.Completed {
+				// write nil to mark max seq
+				b.streams.Write(sid, cmd.Seq, nil)
+			}
+		} else {
+			// is data for runtime
+			err := b.sendRuntimeCmd(arhatgopb.CMD_DATA_INPUT, sid, cmd.Seq, cmd.Payload)
+			if err != nil {
+				b.handleRuntimeError(sid, err)
+			}
 		}
 
 		return

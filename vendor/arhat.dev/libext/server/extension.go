@@ -24,10 +24,11 @@ import (
 	"time"
 
 	"arhat.dev/arhat-proto/arhatgopb"
-	"arhat.dev/libext/codec"
 	"arhat.dev/pkg/log"
 	"arhat.dev/pkg/queue"
 	"golang.org/x/sync/errgroup"
+
+	"arhat.dev/libext/codec"
 )
 
 func NewExtensionContext(

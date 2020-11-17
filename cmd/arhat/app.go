@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"sort"
 	"time"
 
@@ -62,8 +61,6 @@ func init() {
 }
 
 func runApp(appCtx context.Context, config *conf.Config) error {
-	runtime.GOMAXPROCS(config.Arhat.Optimization.MaxProcessors)
-
 	logger := log.Log.WithName("cmd")
 
 	// // handle pprof

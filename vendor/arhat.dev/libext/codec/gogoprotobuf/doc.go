@@ -14,5 +14,5 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package codecpb implements protobuf codec for libext
+// Package gogoprotobuf implements protobuf codec using gogoproto
 package gogoprotobuf

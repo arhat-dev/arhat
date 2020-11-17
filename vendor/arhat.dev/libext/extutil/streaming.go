@@ -27,6 +27,14 @@ type StreamManager struct {
 	mu *sync.RWMutex
 }
 
+func (m *StreamManager) Has(sid uint64) bool {
+	m.mu.Lock()
+	_, ok := m.sessions[sid]
+	m.mu.Unlock()
+
+	return ok
+}
+
 func (m *StreamManager) Add(sid uint64, create func() (io.WriteCloser, types.ResizeHandleFunc, error)) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -101,14 +109,17 @@ func (s *stream) write(seq uint64, data []byte) {
 		runtime.Gosched()
 	}
 
-	if data == nil {
-		s._seqQ.SetMaxSeq(seq)
-		return
+	if len(data) == 0 {
+		_ = s._seqQ.SetMaxSeq(seq)
 	}
 
-	out, _ := s._seqQ.Offer(seq, data)
+	out, complete := s._seqQ.Offer(seq, data)
 	for _, d := range out {
 		_, _ = s._w.Write(d.([]byte))
+	}
+
+	if complete {
+		_ = s._w.Close()
 	}
 
 	atomic.StoreUint32(&s.working, 0)

@@ -24,9 +24,10 @@ import (
 	"net"
 
 	"arhat.dev/arhat-proto/arhatgopb"
-	"arhat.dev/libext/codec"
 	"arhat.dev/pkg/log"
 	"arhat.dev/pkg/nethelper"
+
+	"arhat.dev/libext/codec"
 )
 
 type netConnectionHandleFunc func(

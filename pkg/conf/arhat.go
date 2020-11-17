@@ -22,6 +22,7 @@ import (
 
 	"arhat.dev/pkg/exechelper"
 	"arhat.dev/pkg/log"
+	"arhat.dev/pkg/perfhelper"
 	"ext.arhat.dev/runtimeutil/storageutil"
 	"github.com/spf13/pflag"
 )
@@ -44,9 +45,7 @@ type AppConfig struct {
 	Host HostConfig `json:"host" yaml:"host"`
 	Node NodeConfig `json:"node" yaml:"node"`
 
-	Optimization struct {
-		MaxProcessors int `json:"maxProcessors" yaml:"maxProcessors"`
-	} `json:"optimization" yaml:"optimization"`
+	PProf perfhelper.PProfConfig `json:"pprof" yaml:"pprof"`
 }
 
 type HostConfig struct {
