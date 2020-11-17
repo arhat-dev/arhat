@@ -47,26 +47,32 @@ jobs:
 
     - name: Build
       run: |
-        CGO_ENABLED=0 make -j$(nproc --all) arhat.linux.all
+        CGO_ENABLED=0 make -j$(nproc --all) arhat.linux.all \
+          TAGS='noconfhelper_pprof'
 
-        CGO_ENABLED=0 make -j$(nproc --all) arhat.js.wasm
+        CGO_ENABLED=0 make -j$(nproc --all) arhat.js.wasm \
+          TAGS='noconfhelper_pprof'
 
         CGO_ENABLED=0 make -j$(nproc --all) arhat.freebsd.all \
-          TAGS='noboottime noexec nomeminfo nonetdev nozfs'
+          TAGS='noconfhelper_pprof noboottime noexec nomeminfo nonetdev nozfs'
 
-        CGO_ENABLED=0 make -j$(nproc --all) arhat.netbsd.all TAGS='noboottime'
+        CGO_ENABLED=0 make -j$(nproc --all) arhat.netbsd.all \
+          TAGS='noconfhelper_pprof noboottime'
 
         CGO_ENABLED=0 make -j$(nproc --all) arhat.openbsd.all \
-          TAGS='noboottime nofilesystem nointerrupts nonetdev nomeminfo'
+          TAGS='noconfhelper_pprof noboottime nofilesystem nointerrupts nonetdev nomeminfo'
 
-        CGO_ENABLED=0 make -j$(nproc --all) arhat.plan9.all TAGS='norunit'
+        CGO_ENABLED=0 make -j$(nproc --all) arhat.plan9.all \
+          TAGS='noconfhelper_pprof norunit'
 
-        CGO_ENABLED=0 make -j$(nproc --all) arhat.solaris.amd64 TAGS='nozfs noboottime noloadavg'
+        CGO_ENABLED=0 make -j$(nproc --all) arhat.solaris.amd64 \
+          TAGS='noconfhelper_pprof nozfs noboottime noloadavg'
 
-        CGO_ENABLED=0 make -j$(nproc --all) arhat.aix.ppc64
+        CGO_ENABLED=0 make -j$(nproc --all) arhat.aix.ppc64 \
+          TAGS='noconfhelper_pprof'
 
         CGO_ENABLED=0 make -j$(nproc --all) arhat.dragonfly.amd64 \
-          TAGS='noboottime noexec nofilesystem nomeminfo nonetdev'
+          TAGS='noconfhelper_pprof noboottime noexec nofilesystem nomeminfo nonetdev'
 
     # - name: Package
     #   run: |
@@ -101,7 +107,8 @@ jobs:
 
     - name: Build
       run: |
-        CGO_ENABLED=1 make arhat.darwin.all
+        CGO_ENABLED=1 make arhat.darwin.all \
+          TAGS='noconfhelper_pprof'
 
     # # TODO: Support macos packaging
     # - name: Package
@@ -138,7 +145,8 @@ jobs:
 
     - name: Build
       run: |
-        CGO_ENABLED=0 make -j$(nproc --all) arhat.windows.all
+        CGO_ENABLED=0 make -j$(nproc --all) arhat.windows.all \
+          TAGS='noconfhelper_pprof'
 
     # # TODO: Support windows packaging
     # - name: Package
