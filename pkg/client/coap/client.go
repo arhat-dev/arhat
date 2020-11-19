@@ -399,8 +399,17 @@ func (c *Client) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to observe cmd topic: %w", err)
 	}
 
-	payload, _ := aranyagopb.NewOnlineStateMsg(c.clientID).Marshal()
-	msg := aranyagopb.NewMsg(aranyagopb.MSG_STATE, 0, 0, true, payload)
+	payload, _ := (&aranyagopb.StateMsg{
+		Kind:     aranyagopb.STATE_ONLINE,
+		DeviceId: c.clientID,
+	}).Marshal()
+	msg := &aranyagopb.Msg{
+		Kind:      aranyagopb.MSG_STATE,
+		Sid:       0,
+		Seq:       0,
+		Completed: true,
+		Payload:   payload,
+	}
 	err = c.doPostMsg(c.Context(), msg, c.willMsgOpts)
 	if err != nil {
 		return fmt.Errorf("failed to publish online msg ")
@@ -464,8 +473,17 @@ func (c *Client) Close() error {
 		if c.client != nil {
 			// TODO: currently we only send offline message with best effort
 			//		 need to ensure the offline message is acknowledged by aranya
-			payload, _ := aranyagopb.NewOfflineStateMsg(c.clientID).Marshal()
-			msg := aranyagopb.NewMsg(aranyagopb.MSG_STATE, 0, 0, true, payload)
+			payload, _ := (&aranyagopb.StateMsg{
+				Kind:     aranyagopb.STATE_ONLINE,
+				DeviceId: c.clientID,
+			}).Marshal()
+			msg := &aranyagopb.Msg{
+				Kind:      aranyagopb.MSG_STATE,
+				Sid:       0,
+				Seq:       0,
+				Completed: true,
+				Payload:   payload,
+			}
 			_ = c.doPostMsg(context.Background(), msg, c.willMsgOpts)
 
 			return c.client.Close()

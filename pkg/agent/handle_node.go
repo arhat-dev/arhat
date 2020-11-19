@@ -58,7 +58,12 @@ func (b *Agent) handleNodeInfoGet(sid uint64, cmdBytes []byte) {
 				SystemUuid:    sysinfo.GetSystemUUID(),
 			}
 
-			nodeMsg := aranyagopb.NewNodeStatusMsg(systemInfo, capacity, b.getNodeConditions(), b.extInfo)
+			nodeMsg := &aranyagopb.NodeStatusMsg{
+				SystemInfo: systemInfo,
+				Capacity:   capacity,
+				Conditions: b.getNodeConditions(),
+				ExtInfo:    b.extInfo,
+			}
 			if err := b.PostMsg(sid, aranyagopb.MSG_NODE_STATUS, nodeMsg); err != nil {
 				b.handleConnectivityError(sid, err)
 				return
@@ -66,7 +71,9 @@ func (b *Agent) handleNodeInfoGet(sid uint64, cmdBytes []byte) {
 		})
 	case aranyagopb.NODE_INFO_DYN:
 		b.processInNewGoroutine(sid, "node.info.dyn", func() {
-			nodeMsg := aranyagopb.NewNodeStatusMsg(nil, nil, b.getNodeConditions(), nil)
+			nodeMsg := &aranyagopb.NodeStatusMsg{
+				Conditions: b.getNodeConditions(),
+			}
 			if err := b.PostMsg(sid, aranyagopb.MSG_NODE_STATUS, nodeMsg); err != nil {
 				b.handleConnectivityError(sid, err)
 				return

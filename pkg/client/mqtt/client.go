@@ -66,11 +66,29 @@ func NewMQTTClient(
 		return nil, fmt.Errorf("invalid config options for mqtt connect: %w", err)
 	}
 
-	onlineMsgBytes, _ := aranyagopb.NewOnlineStateMsg(connInfo.ClientID).Marshal()
-	onlineMsgBytes, _ = aranyagopb.NewMsg(aranyagopb.MSG_STATE, 0, 0, true, onlineMsgBytes).Marshal()
+	onlineMsgBytes, _ := (&aranyagopb.StateMsg{
+		Kind:     aranyagopb.STATE_ONLINE,
+		DeviceId: connInfo.ClientID,
+	}).Marshal()
+	onlineMsgBytes, _ = (&aranyagopb.Msg{
+		Kind:      aranyagopb.MSG_STATE,
+		Sid:       0,
+		Seq:       0,
+		Completed: true,
+		Payload:   onlineMsgBytes,
+	}).Marshal()
 
-	willMsgBytes, _ := aranyagopb.NewOfflineStateMsg(connInfo.ClientID).Marshal()
-	willMsgBytes, _ = aranyagopb.NewMsg(aranyagopb.MSG_STATE, 0, 0, true, willMsgBytes).Marshal()
+	willMsgBytes, _ := (&aranyagopb.StateMsg{
+		Kind:     aranyagopb.STATE_OFFLINE,
+		DeviceId: connInfo.ClientID,
+	}).Marshal()
+	willMsgBytes, _ = (&aranyagopb.Msg{
+		Kind:      aranyagopb.MSG_STATE,
+		Sid:       0,
+		Seq:       0,
+		Completed: true,
+		Payload:   willMsgBytes,
+	}).Marshal()
 
 	if connInfo.TLSConfig != nil {
 		options = append(options, libmqtt.WithCustomTLS(connInfo.TLSConfig))

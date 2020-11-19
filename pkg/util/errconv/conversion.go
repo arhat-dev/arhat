@@ -26,5 +26,8 @@ func ToConnectivityError(err error) *aranyagopb.ErrorMsg {
 		kind = aranyagopb.ERR_NOT_SUPPORTED
 	}
 
-	return aranyagopb.NewErrorMsg(kind, msg)
+	return &aranyagopb.ErrorMsg{
+		Kind:        kind,
+		Description: msg,
+	}
 }
