@@ -26,6 +26,11 @@ import (
 )
 
 func (b *Agent) handlePeripheralMetricsCollect(sid uint64, data []byte) {
+	if b.Manager == nil {
+		b.handleUnknownCmd(sid, "peripheral.metrics", nil)
+		return
+	}
+
 	cmd := new(aranyagopb.PeripheralMetricsCollectCmd)
 	err := cmd.Unmarshal(data)
 	if err != nil {

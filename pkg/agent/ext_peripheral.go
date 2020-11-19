@@ -44,6 +44,11 @@ func (c *extensionComponentPeripheral) init(
 }
 
 func (b *Agent) handlePeripheralList(sid uint64, data []byte) {
+	if b.Manager == nil {
+		b.handleUnknownCmd(sid, "peripheral.list", nil)
+		return
+	}
+
 	cmd := new(aranyagopb.PeripheralListCmd)
 	err := cmd.Unmarshal(data)
 	if err != nil {
@@ -52,10 +57,13 @@ func (b *Agent) handlePeripheralList(sid uint64, data []byte) {
 	}
 
 	b.processInNewGoroutine(sid, "peripheral.list", func() {
-		statusList := &aranyagopb.PeripheralStatusListMsg{
-			Peripherals: b.Manager.GetAllStatuses(),
-		}
-		err = b.PostMsg(sid, aranyagopb.MSG_PERIPHERAL_STATUS_LIST, statusList)
+		err = b.PostMsg(
+			sid,
+			aranyagopb.MSG_PERIPHERAL_STATUS_LIST,
+			&aranyagopb.PeripheralStatusListMsg{
+				Peripherals: b.Manager.GetAllStatuses(),
+			},
+		)
 		if err != nil {
 			b.handleConnectivityError(sid, err)
 			return
@@ -64,6 +72,11 @@ func (b *Agent) handlePeripheralList(sid uint64, data []byte) {
 }
 
 func (b *Agent) handlePeripheralEnsure(sid uint64, data []byte) {
+	if b.Manager == nil {
+		b.handleUnknownCmd(sid, "peripheral.ensure", nil)
+		return
+	}
+
 	cmd := new(aranyagopb.PeripheralEnsureCmd)
 	err := cmd.Unmarshal(data)
 	if err != nil {
@@ -88,6 +101,11 @@ func (b *Agent) handlePeripheralEnsure(sid uint64, data []byte) {
 }
 
 func (b *Agent) handlePeripheralDelete(sid uint64, data []byte) {
+	if b.Manager == nil {
+		b.handleUnknownCmd(sid, "peripheral.delete", nil)
+		return
+	}
+
 	cmd := new(aranyagopb.PeripheralDeleteCmd)
 	err := cmd.Unmarshal(data)
 	if err != nil {
@@ -122,6 +140,11 @@ func (b *Agent) handlePeripheralDelete(sid uint64, data []byte) {
 }
 
 func (b *Agent) handlePeripheralOperate(sid uint64, data []byte) {
+	if b.Manager == nil {
+		b.handleUnknownCmd(sid, "peripheral.operate", nil)
+		return
+	}
+
 	cmd := new(aranyagopb.PeripheralOperateCmd)
 	err := cmd.Unmarshal(data)
 	if err != nil {
