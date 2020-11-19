@@ -20,9 +20,13 @@ limitations under the License.
 package sysinfo
 
 import (
+	"fmt"
+	"os/exec"
+	"strings"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
+	"golang.org/x/sys/windows/registry"
 )
 
 var (
@@ -30,13 +34,56 @@ var (
 	getDiskFreeSpaceExW *windows.Proc
 )
 
+var (
+	osImage       string
+	kernelVersion string
+)
+
 func init() {
 	kernel32DLL = windows.MustLoadDLL("kernel32.dll")
 	getDiskFreeSpaceExW = kernel32DLL.MustFindProc("GetDiskFreeSpaceExW")
+
+	k, err := registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\Microsoft\Windows NT\CurrentVersion`, registry.QUERY_VALUE)
+	if err != nil {
+		return
+	}
+	defer func() {
+		_ = k.Close()
+	}()
+
+	{
+		// get product name as os image
+		osImage, _, _ = k.GetStringValue("ProductName")
+	}
+
+	{
+		// build kernel version
+		buildNumber, _, err := k.GetStringValue("CurrentBuildNumber")
+		if err != nil {
+			return
+		}
+
+		majorVersionNumber, _, err := k.GetIntegerValue("CurrentMajorVersionNumber")
+		if err != nil {
+			return
+		}
+
+		minorVersionNumber, _, err := k.GetIntegerValue("CurrentMinorVersionNumber")
+		if err != nil {
+			return
+		}
+
+		revision, _, err := k.GetIntegerValue("UBR")
+		if err != nil {
+			return
+		}
+
+		kernelVersion = fmt.Sprintf("%d.%d.%s.%d", majorVersionNumber, minorVersionNumber, buildNumber, revision)
+	}
 }
 
 func GetKernelVersion() string {
-	return ""
+	return kernelVersion
 }
 
 func GetTotalDiskSpace() uint64 {
@@ -66,6 +113,19 @@ func getFreeDiskSpace() uint64 {
 	return freeBytes
 }
 
-func GetOSImage() string    { return "" }
-func GetSystemUUID() string { return "" }
-func GetBootID() string     { return "" }
+func GetOSImage() string { return osImage }
+func GetBootID() string  { return "" }
+
+func GetSystemUUID() string {
+	result, err := exec.Command("wmic", "csproduct", "get", "UUID").Output()
+	if err != nil {
+		return ""
+	}
+
+	fields := strings.Fields(string(result))
+	if len(fields) != 2 {
+		return ""
+	}
+
+	return fields[1]
+}
