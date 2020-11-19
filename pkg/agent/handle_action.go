@@ -109,9 +109,11 @@ func (b *Agent) handleExec(sid uint64, data []byte) {
 										}
 									}
 
+									// delay close operation
 									go func() {
 										time.Sleep(wait)
 										_ = pw.Close()
+										_ = pr.Close()
 									}()
 
 									return nil
@@ -197,9 +199,16 @@ func (b *Agent) handleAttach(sid uint64, data []byte) {
 						return nil, nil, err
 					}
 
-					return pw, func(cols, rows uint32) {
-						_ = cmd.Resize(cols, rows)
-					}, nil
+					return &flexWriteCloser{
+							writeFunc: pw.Write,
+							closeFunc: func() error {
+								_ = pw.Close()
+								_ = pr.Close()
+								return nil
+							},
+						}, func(cols, rows uint32) {
+							_ = cmd.Resize(cols, rows)
+						}, nil
 				})
 				if err != nil {
 					return &aranyagopb.ErrorMsg{
@@ -344,6 +353,7 @@ func (b *Agent) handlePortForward(sid uint64, data []byte) {
 
 		defer func() {
 			_ = pw.Close()
+			_ = pr.Close()
 
 			kind := aranyagopb.MSG_DATA
 			var payload []byte
@@ -535,6 +545,7 @@ func (b *Agent) createTerminalStream(
 		wg.Add(1)
 		go func() {
 			defer func() {
+				_ = stdout.Close()
 				_ = readStdout.Close()
 				wg.Done()
 			}()
@@ -552,6 +563,7 @@ func (b *Agent) createTerminalStream(
 		wg.Add(1)
 		go func() {
 			defer func() {
+				_ = stderr.Close()
 				_ = readStderr.Close()
 				wg.Done()
 			}()
