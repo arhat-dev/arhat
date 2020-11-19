@@ -25,19 +25,46 @@ import (
 	"time"
 
 	"arhat.dev/aranya-proto/aranyagopb"
+	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
 	"arhat.dev/pkg/log"
+	"arhat.dev/pkg/tlshelper"
 	"github.com/goiiot/libmqtt"
 
+	"arhat.dev/arhat/pkg/client"
 	"arhat.dev/arhat/pkg/client/clientutil"
+	"arhat.dev/arhat/pkg/conf"
 	"arhat.dev/arhat/pkg/types"
 )
+
+func init() {
+	client.Register("mqtt",
+		func() interface{} {
+			return &Config{
+				CommonConfig: clientutil.CommonConfig{
+					Endpoint:       "",
+					MaxPayloadSize: aranyagoconst.MaxMQTTDataSize,
+					TLS:            tlshelper.TLSConfig{},
+				},
+				Version:            "3.1.1",
+				Variant:            "standard",
+				Transport:          "tcp",
+				TopicNamespaceFrom: conf.ValueFromSpec{},
+				ClientID:           "",
+				Username:           "",
+				Password:           "",
+				Keepalive:          60,
+			}
+		},
+		NewMQTTClient,
+	)
+}
 
 func NewMQTTClient(
 	ctx context.Context,
 	handleCmd types.AgentCmdHandleFunc,
 	cfg interface{},
-) (_ types.ConnectivityClient, err error) {
-	config, ok := cfg.(*ConnectivityMQTT)
+) (_ client.Interface, err error) {
+	config, ok := cfg.(*Config)
 	if !ok {
 		return nil, fmt.Errorf("unexpected non mqtt config")
 	}

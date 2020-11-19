@@ -22,6 +22,6 @@ import (
 	"arhat.dev/arhat/pkg/client/clientutil"
 )
 
-type ConnectivityGRPC struct {
+type Config struct {
 	clientutil.CommonConfig `json:",inline" yaml:",inline"`
 }

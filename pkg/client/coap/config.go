@@ -23,7 +23,7 @@ import (
 	"arhat.dev/arhat/pkg/conf"
 )
 
-type ConnectivityCoAP struct {
+type Config struct {
 	clientutil.CommonConfig `json:",inline" yaml:",inline"`
 
 	PathNamespaceFrom conf.ValueFromSpec `json:"pathNamespaceFrom" yaml:"pathNamespaceFrom"`

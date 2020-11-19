@@ -29,39 +29,14 @@ import (
 	"time"
 
 	"arhat.dev/aranya-proto/aranyagopb/aranyagoconst"
-	"arhat.dev/pkg/tlshelper"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/goiiot/libmqtt"
 
-	"arhat.dev/arhat/pkg/client"
 	"arhat.dev/arhat/pkg/client/clientutil"
 	"arhat.dev/arhat/pkg/conf"
 )
 
-func init() {
-	client.Register("mqtt",
-		func() interface{} {
-			return &ConnectivityMQTT{
-				CommonConfig: clientutil.CommonConfig{
-					Endpoint:       "",
-					MaxPayloadSize: aranyagoconst.MaxMQTTDataSize,
-					TLS:            tlshelper.TLSConfig{},
-				},
-				Version:            "3.1.1",
-				Variant:            "standard",
-				Transport:          "tcp",
-				TopicNamespaceFrom: conf.ValueFromSpec{},
-				ClientID:           "",
-				Username:           "",
-				Password:           "",
-				Keepalive:          60,
-			}
-		},
-		NewMQTTClient,
-	)
-}
-
-type ConnectivityMQTT struct {
+type Config struct {
 	clientutil.CommonConfig `json:",inline" yaml:",inline"`
 
 	Version            string             `json:"version" yaml:"version"`
@@ -74,7 +49,7 @@ type ConnectivityMQTT struct {
 	Keepalive          int32              `json:"keepalive" yaml:"keepalive"`
 }
 
-type ConnectivityMQTTConnectInfo struct {
+type ConfigConnectInfo struct {
 	Username string
 	Password string
 	ClientID string
@@ -91,8 +66,8 @@ type ConnectivityMQTTConnectInfo struct {
 	TopicRouter libmqtt.TopicRouter
 }
 
-func (c *ConnectivityMQTT) GetConnectInfo() (*ConnectivityMQTTConnectInfo, error) {
-	result := new(ConnectivityMQTTConnectInfo)
+func (c *Config) GetConnectInfo() (*ConfigConnectInfo, error) {
+	result := new(ConfigConnectInfo)
 
 	result.MaxPayloadSize = c.MaxPayloadSize
 

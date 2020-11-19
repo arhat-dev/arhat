@@ -42,7 +42,7 @@ import (
 func init() {
 	client.Register("grpc",
 		func() interface{} {
-			return &ConnectivityGRPC{
+			return &Config{
 				CommonConfig: clientutil.CommonConfig{
 					Endpoint:       "",
 					MaxPayloadSize: aranyagoconst.MaxGRPCDataSize,
@@ -71,8 +71,8 @@ func NewGRPCClient(
 	ctx context.Context,
 	handleCmd types.AgentCmdHandleFunc,
 	cfg interface{},
-) (types.ConnectivityClient, error) {
-	config, ok := cfg.(*ConnectivityGRPC)
+) (client.Interface, error) {
+	config, ok := cfg.(*Config)
 	if !ok {
 		return nil, fmt.Errorf("unexpected non grpc config")
 	}

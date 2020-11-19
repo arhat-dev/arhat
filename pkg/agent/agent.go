@@ -34,8 +34,8 @@ import (
 	"ext.arhat.dev/runtimeutil/storageutil"
 	"github.com/gogo/protobuf/proto"
 
+	"arhat.dev/arhat/pkg/client"
 	"arhat.dev/arhat/pkg/conf"
-	"arhat.dev/arhat/pkg/types"
 	"arhat.dev/arhat/pkg/util/errconv"
 	"arhat.dev/arhat/pkg/util/manager"
 )
@@ -45,8 +45,6 @@ var (
 	errRequiredOptionsNotFound = errors.New("required options not found")
 	errCommandNotProvided      = errors.New("command not provided for exec")
 )
-
-var _ types.Agent = (*Agent)(nil)
 
 type (
 	rawCmdHandleFunc func(sid uint64, data []byte)
@@ -176,12 +174,12 @@ type Agent struct {
 	agentComponentExtension
 
 	settingClient uint32
-	client        types.ConnectivityClient
+	client        client.Interface
 
 	funcMap map[aranyagopb.CmdType]rawCmdHandleFunc
 }
 
-func (b *Agent) SetClient(client types.ConnectivityClient) {
+func (b *Agent) SetClient(client client.Interface) {
 	for !atomic.CompareAndSwapUint32(&b.settingClient, 0, 1) {
 		runtime.Gosched()
 	}
@@ -193,7 +191,7 @@ func (b *Agent) SetClient(client types.ConnectivityClient) {
 	}
 }
 
-func (b *Agent) GetClient() types.ConnectivityClient {
+func (b *Agent) GetClient() client.Interface {
 	for !atomic.CompareAndSwapUint32(&b.settingClient, 0, 1) {
 		runtime.Gosched()
 	}

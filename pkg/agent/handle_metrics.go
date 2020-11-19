@@ -25,20 +25,18 @@ import (
 	"sync"
 
 	"arhat.dev/aranya-proto/aranyagopb"
-	"arhat.dev/pkg/wellknownerrors"
 	"github.com/klauspost/compress/zstd"
 	dto "github.com/prometheus/client_model/go"
 
 	"arhat.dev/arhat/pkg/metrics"
 	"arhat.dev/arhat/pkg/metrics/metricsutils"
-	"arhat.dev/arhat/pkg/types"
 )
 
 type agentComponentMetrics struct {
 	zstdPool *sync.Pool
 
 	metricsMU          *sync.RWMutex
-	collectNodeMetrics types.MetricsCollectFunc
+	collectNodeMetrics metrics.CollectFunc
 }
 
 func (b *agentComponentMetrics) init() error {
@@ -65,46 +63,21 @@ func (b *Agent) handleMetricsConfig(sid uint64, data []byte) {
 		return
 	}
 
-	type opTarget struct {
-		name   string
-		ptr    *types.MetricsCollectFunc
-		create func(*aranyagopb.MetricsConfigCmd) (types.MetricsCollectFunc, error)
-	}
+	b.metricsMU.Lock()
+	defer b.metricsMU.Unlock()
 
-	op, ok := map[aranyagopb.MetricsTarget]*opTarget{
-		aranyagopb.METRICS_TARGET_NODE: {
-			name:   "node",
-			ptr:    &b.agentComponentMetrics.collectNodeMetrics,
-			create: metrics.CreateNodeMetricsCollector,
-		},
-	}[cmd.Target]
-
-	if !ok {
-		b.handleUnknownCmd(sid, "metrics.config", cmd)
+	c, err := metrics.CreateCollector(cmd)
+	if err != nil {
+		b.handleRuntimeError(sid, err)
 		return
 	}
 
-	if op == nil {
-		b.handleRuntimeError(sid, wellknownerrors.ErrNotSupported)
-		return
+	err = b.PostMsg(sid, aranyagopb.MSG_DONE, &aranyagopb.Empty{})
+	if err != nil {
+		b.handleConnectivityError(sid, err)
+	} else {
+		b.agentComponentMetrics.collectNodeMetrics = c
 	}
-
-	b.processInNewGoroutine(sid, "metrics.config."+op.name, func() {
-		c, err := op.create(cmd)
-		if err != nil {
-			b.handleRuntimeError(sid, err)
-			return
-		}
-
-		err = b.PostMsg(sid, aranyagopb.MSG_DONE, &aranyagopb.Empty{})
-		if err != nil {
-			b.handleConnectivityError(sid, err)
-		} else {
-			b.metricsMU.Lock()
-			*op.ptr = c
-			b.metricsMU.Unlock()
-		}
-	})
 }
 
 func (b *Agent) getZstdWriter(w io.Writer) *zstd.Encoder {
@@ -138,31 +111,17 @@ func (b *Agent) handleMetricsCollect(sid uint64, data []byte) {
 		return
 	}
 
-	type opTarget struct {
-		name    string
-		collect types.MetricsCollectFunc
-	}
-
 	b.metricsMU.RLock()
-
-	op, ok := map[aranyagopb.MetricsTarget]*opTarget{
-		aranyagopb.METRICS_TARGET_NODE: {name: "node", collect: b.collectNodeMetrics},
-	}[cmd.Target]
-
+	collect := b.collectNodeMetrics
 	b.metricsMU.RUnlock()
 
-	if !ok {
-		b.handleUnknownCmd(sid, "metrics.collect", cmd)
+	if collect == nil {
+		b.handleRuntimeError(sid, fmt.Errorf("node metrics collector not configured"))
 		return
 	}
 
-	if op == nil {
-		b.handleRuntimeError(sid, wellknownerrors.ErrNotSupported)
-		return
-	}
-
-	b.processInNewGoroutine(sid, "metrics.collect."+op.name, func() {
-		mtc, err := op.collect()
+	b.processInNewGoroutine(sid, "metrics.collect", func() {
+		mtc, err := collect()
 		if err != nil {
 			b.handleRuntimeError(sid, err)
 			return

@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 
+	"arhat.dev/aranya-proto/aranyagopb"
+
 	"arhat.dev/arhat/pkg/types"
 )
 
@@ -29,7 +31,7 @@ type (
 		ctx context.Context,
 		handleCmd types.AgentCmdHandleFunc,
 		cfg interface{},
-	) (types.ConnectivityClient, error)
+	) (Interface, error)
 )
 
 type factory struct {
@@ -55,12 +57,33 @@ func NewConfig(name string) (interface{}, error) {
 	return newConfig.newConfig(), nil
 }
 
+type Interface interface {
+	// Context of this client
+	Context() context.Context
+
+	// Connect to server/broker
+	Connect(dialCtx context.Context) error
+
+	// Start internal logic to get prepared for communicating with aranya
+	// usually send online state message
+	Start(appCtx context.Context) error
+
+	// PostMsg to aranya
+	PostMsg(msg *aranyagopb.Msg) error
+
+	// Close this client
+	Close() error
+
+	// MaxPayloadSize of a single message for this client
+	MaxPayloadSize() int
+}
+
 func NewClient(
 	ctx context.Context,
 	name string,
 	handleCmd types.AgentCmdHandleFunc,
 	config interface{},
-) (types.ConnectivityClient, error) {
+) (Interface, error) {
 	newClient, ok := supportedMethods[name]
 	if !ok {
 		return nil, fmt.Errorf("unsupported connectivity method: %s", name)

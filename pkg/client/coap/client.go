@@ -56,7 +56,7 @@ import (
 func init() {
 	client.Register("coap",
 		func() interface{} {
-			return &ConnectivityCoAP{
+			return &Config{
 				CommonConfig: clientutil.CommonConfig{
 					Endpoint:       "",
 					MaxPayloadSize: aranyagoconst.MaxCoAPDataSize,
@@ -77,8 +77,8 @@ func NewCoAPClient(
 	ctx context.Context,
 	handleCmd types.AgentCmdHandleFunc,
 	cfg interface{},
-) (_ types.ConnectivityClient, err error) {
-	config, ok := cfg.(*ConnectivityCoAP)
+) (_ client.Interface, err error) {
+	config, ok := cfg.(*Config)
 	if !ok {
 		return nil, fmt.Errorf("unepxected non coap config")
 	}
