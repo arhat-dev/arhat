@@ -1,4 +1,5 @@
-// +build nometrics
+// +build !nosysinfo
+// +build plan9 aix
 
 /*
 Copyright 2020 The arhat.dev Authors.
@@ -16,16 +17,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package metrics
+package sysinfo
 
-import (
-	"arhat.dev/aranya-proto/aranyagopb"
-	"arhat.dev/pkg/wellknownerrors"
-
-	"arhat.dev/arhat/pkg/types"
-)
-
-// CreateNodeMetricsCollector creates a new node metrics and a new container metrics collector
-func CreateNodeMetricsCollector(config *aranyagopb.MetricsConfigCmd) (types.MetricsCollectFunc, error) {
-	return nil, wellknownerrors.ErrNotSupported
+func GetTotalDiskSpace() uint64 {
+	return 0
 }

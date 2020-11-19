@@ -1,3 +1,19 @@
+/*
+Copyright 2020 The arhat.dev Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package main
 
 import (
@@ -63,22 +79,6 @@ func init() {
 func runApp(appCtx context.Context, config *conf.Config) error {
 	logger := log.Log.WithName("cmd")
 
-	// // handle pprof
-	// if cfg := config.Arhat.Optimization.PProf; cfg.Enabled {
-	// 	mgr, err := manager.NewPProfManager(cfg.Listen, cfg.HTTPPath, cfg.MutexProfileFraction, cfg.BlockProfileRate)
-	// 	if err != nil {
-	// 		return fmt.Errorf("failed to listen tcp for pprof server: %w", err)
-	// 	}
-
-	// 	logger.D("serving pprof stats")
-	// 	go func() {
-	// 		if err := mgr.Start(); err != nil && err != http.ErrServerClosed {
-	// 			logger.E("failed to start pprof server", log.Error(err))
-	// 			os.Exit(1)
-	// 		}
-	// 	}()
-	// }
-
 	ag, err := agent.NewAgent(appCtx, logger.WithName("agent"), config)
 	if err != nil {
 		return fmt.Errorf("failed to create agent: %w", err)
@@ -126,7 +126,7 @@ func runApp(appCtx context.Context, config *conf.Config) error {
 			id := fmt.Sprintf("%s@%d", name, i)
 
 			logger.I("creating client", log.String("id", id))
-			cl, err := client.NewConnectivityClient(
+			cl, err := client.NewClient(
 				appCtx, name, ag.HandleCmd, config.Connectivity.Methods[i].Config,
 			)
 			if err != nil {
