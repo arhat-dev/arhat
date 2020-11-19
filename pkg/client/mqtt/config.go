@@ -39,7 +39,7 @@ import (
 )
 
 func init() {
-	client.RegisterConnectivityConfig("mqtt",
+	client.Register("mqtt",
 		func() interface{} {
 			return &ConnectivityMQTT{
 				CommonConfig: clientutil.CommonConfig{

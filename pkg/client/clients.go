@@ -37,24 +37,17 @@ type factory struct {
 	newClient FactoryFunc
 }
 
-var supportedConnectivityClients = make(map[string]*factory)
-
-func RegisterConnectivityConfig(name string, newConfig ConfigFactoryFunc, newClient FactoryFunc) {
-	supportedConnectivityClients[name] = &factory{
-		newConfig: newConfig,
-		newClient: newClient,
-	}
-}
+var supportedMethods = make(map[string]*factory)
 
 func Register(name string, newConfig ConfigFactoryFunc, newClient FactoryFunc) {
-	supportedConnectivityClients[name] = &factory{
+	supportedMethods[name] = &factory{
 		newConfig: newConfig,
 		newClient: newClient,
 	}
 }
 
 func NewConfig(name string) (interface{}, error) {
-	newConfig, ok := supportedConnectivityClients[name]
+	newConfig, ok := supportedMethods[name]
 	if !ok {
 		return nil, fmt.Errorf("unsupported connectivity method: %s", name)
 	}
@@ -62,13 +55,13 @@ func NewConfig(name string) (interface{}, error) {
 	return newConfig.newConfig(), nil
 }
 
-func NewConnectivityClient(
+func NewClient(
 	ctx context.Context,
 	name string,
 	handleCmd types.AgentCmdHandleFunc,
 	config interface{},
 ) (types.ConnectivityClient, error) {
-	newClient, ok := supportedConnectivityClients[name]
+	newClient, ok := supportedMethods[name]
 	if !ok {
 		return nil, fmt.Errorf("unsupported connectivity method: %s", name)
 	}
