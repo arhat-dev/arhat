@@ -4,11 +4,12 @@ Connectivity is the crucial part when you deploy edge devices
 
 ## Design
 
-- Communication via `message queue`, so we can control edge devices from anywhere
-  - while http is popular for many applications, if you initiate http connection as a client, there can be only one source of control
+- Message queue based communication - gain control of edge devices from anywhere
+  - while http is popular for many applications, but if you initiate http connection as a client, there can be only one source of control if no control api exposed by the same server
   - with message queues, you can create multiple producers to control your edge device and they don't even have to know each other
-  - with this design, you can control your edge device with your own application along with `aranya`
-- Built-in message straming and stream only necessary messages
+  - with this design, you can control your edge device with your own application along with (even without) `aranya` in addition to `kubectl` (which represents Kubernetes API)
+- Built-in message streaming and stream only necessary messages
+  - No additional requirements for message broker, most brokers are capable of handling connectivity
 - Chunked data transmission
 - Connectivity fallback
   - if your mqtt broker is unable to handle incoming connection (e.g. tls certificate revoked), you can fallback to another broker for maintenance

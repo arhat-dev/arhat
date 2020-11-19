@@ -58,12 +58,14 @@ extension:
   # enable extension service or not
   enabled: true
 
+  # endpoints for extension plugins to access
   endpoints:
     # listen address of the endpoint
-    # supported protocols: unix, tcp/tcp4/tcp6, udp/udp4/udp6
+    # supported protocols:
+    #   unix/tcp/tcp4/tcp6 (with or without tls)
+    #   udp/udp4/udp6 (with or without dtls)
     #
-    # if you want to serve multiple protocols/addresses,
-    # just add multiple endpoints with different listen address
+    # You can have multiple endpoints with different listen address if you want to serve multiple protocols/addresses
   - listen: unix:///var/run/arhat.sock
     # tls configuration for the endpoint (server tls)
     tls:

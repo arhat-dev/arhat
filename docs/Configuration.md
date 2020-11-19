@@ -35,6 +35,13 @@ This section defines `arhat` application behavior
 
 ```yaml
 arhat:
+  # chroot into other dir after agent is running, useful for host
+  # management when deployed as container
+  #
+  # NOTE: this will make `kubectl logs` to this node not working
+  #       unless there is a symlink to kubeLog file in the new root
+  chroot: ""
+
   # log options, you can designate mutiple destination as you wish
   log:
     # log level
@@ -87,6 +94,7 @@ arhat:
   # kubernetes node operation
   node:
     # set custom machine id, if not set, will report standard machine id as kubelet will do
+    # if not set, or value is empty, will pick up standard platform specific machine id automatically
     machineIDFrom:
       # Execute a command and use output as machine id
       #exec: []
@@ -96,17 +104,16 @@ arhat:
       text: "foo"
 
     # extInfo a list of key value pairs to set extra node related values
-    # the default value is
-    # - value: ""
-    #   operator: =
-    #   valueType: string
-    #   applyTo: ""
     extInfo:
-    - # value must be a string, no matter what type it is
-      valueFrom:
-        # exec: []
-        # file: ""
+      # resolved value must be a string, no matter what type it is
+    - valueFrom:
+        # Execute a command and use output as value
+        #exec: []
+        # Read file content as value
+        #file: ""
+        # Set value explicitly
         text: "1"
+
       # operator available: [=, +=, -=]
       operator: +=
       # valueType available: [string, int, float]
@@ -115,21 +122,20 @@ arhat:
       # value available: [metadata.annotations[''], metadata.labels['']]
       applyTo: metadata.annotations['example.com/key']
 
-  # application optimization
-  optimization:
-    # set GOMAXPROCS
-    maxProcessors: 1
-    pprof:
-      # enable pprof
-      enabled: false
-      # pprof listen address
-      listen: localhost:8080
-      # http base path to replace `/debug/pprof`
-      httpPath: /foo
-      # parameter for `runtime.SetMutexProfileFraction(int)`
-      mutexProfileFraction: 100
-      # parameter for `runtime.SetBlockProfileRate(int)`
-      blockProfileRate: 1
+  # pprof module, disabled when built with `noconfhelper_pprof`
+  pprof:
+    # enable pprof
+    enabled: false
+    # pprof listen address
+    listen: localhost:8080
+    # http base path
+    httpPath: /debug/pprof
+    # parameter for `runtime.SetCPUProfileRate(int)`
+    cpuProfileFrequencyHz: 100
+    # parameter for `runtime.SetMutexProfileFraction(int)`
+    mutexProfileFraction: 100
+    # parameter for `runtime.SetBlockProfileRate(int)`
+    blockProfileFraction: 1
 ```
 
 ### Section `connectivity`
