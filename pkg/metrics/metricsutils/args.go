@@ -21,15 +21,20 @@ import (
 	"strings"
 )
 
-func GetEnabledCollectors(list []string) map[string]struct{} {
-	enabledCollectors := make(map[string]struct{})
+func GetEnabledCollectors(list []string) (enableGoCollector bool, collectors map[string]struct{}) {
+	collectors = make(map[string]struct{})
 	for _, c := range list {
 		for _, coll := range strings.Split(c, ",") {
-			enabledCollectors[coll] = struct{}{}
+			if coll == "go" {
+				enableGoCollector = true
+				continue
+			}
+
+			collectors[coll] = struct{}{}
 		}
 	}
 
-	return enabledCollectors
+	return
 }
 
 func GetCollectorExtraArgs(enabledCollectors map[string]struct{}, args []string) ([]string, error) {

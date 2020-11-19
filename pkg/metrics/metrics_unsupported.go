@@ -21,11 +21,11 @@ package metrics
 import (
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/wellknownerrors"
-
-	"arhat.dev/arhat/pkg/types"
 )
 
-// CreateNodeMetricsCollector creates a new node metrics and a new container metrics collector
-func CreateNodeMetricsCollector(config *aranyagopb.MetricsConfigCmd) (types.MetricsCollectFunc, error) {
+type CollectFunc func() (interface{}, error)
+
+// CreateCollector creates a new node metrics and a new container metrics collector
+func CreateCollector(config *aranyagopb.MetricsConfigCmd) (CollectFunc, error) {
 	return nil, wellknownerrors.ErrNotSupported
 }

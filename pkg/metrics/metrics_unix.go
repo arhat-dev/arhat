@@ -26,16 +26,15 @@ import (
 	"arhat.dev/pkg/wellknownerrors"
 
 	"arhat.dev/arhat/pkg/metrics/unixexporter"
-	"arhat.dev/arhat/pkg/types"
 )
 
-// CreateNodeMetricsCollector creates a new node metrics and a new container metrics collector
-func CreateNodeMetricsCollector(config *aranyagopb.MetricsConfigCmd) (types.MetricsCollectFunc, error) {
+// CreateCollector creates a new node metrics and a new container metrics collector
+func CreateCollector(config *aranyagopb.MetricsConfigCmd) (CollectFunc, error) {
 	if len(config.Collect) == 0 {
 		return nil, wellknownerrors.ErrInvalidOperation
 	}
 
-	g, err := unixexporter.CreateNodeMetricsGatherer(config)
+	g, err := unixexporter.CreateGatherer(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create node metrics gatherer: %w", err)
 	}

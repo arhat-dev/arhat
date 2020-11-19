@@ -1,4 +1,4 @@
-// +build nometrics
+// +build !nometrics
 
 /*
 Copyright 2020 The arhat.dev Authors.
@@ -16,6 +16,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package types
+package metrics
 
-type MetricsCollectFunc func() (interface{}, error)
+import (
+	dto "github.com/prometheus/client_model/go"
+)
+
+type CollectFunc func() ([]*dto.MetricFamily, error)

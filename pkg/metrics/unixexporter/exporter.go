@@ -23,11 +23,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"runtime"
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"github.com/prometheus/client_golang/prometheus"
 	promlog "github.com/prometheus/common/log"
-	"github.com/prometheus/common/version"
 	"github.com/prometheus/node_exporter/collector"
 	"gopkg.in/alecthomas/kingpin.v2"
 
@@ -35,7 +35,7 @@ import (
 )
 
 func init() {
-	// workaround for node-exporter
+	// workaround for node_exporter
 	kingpin.CommandLine.ErrorWriter(ioutil.Discard)
 	kingpin.CommandLine.UsageWriter(ioutil.Discard)
 	kingpin.CommandLine.Terminate(nil)
@@ -50,11 +50,11 @@ func (l *logWrapper) Log(kv ...interface{}) error {
 	return nil
 }
 
-func CreateNodeMetricsGatherer(config *aranyagopb.MetricsConfigCmd) (prometheus.Gatherer, error) {
+func CreateGatherer(config *aranyagopb.MetricsConfigCmd) (prometheus.Gatherer, error) {
 	args := []string{os.Args[0]}
 
 	var collectors []string
-	enabledCollectors := metricsutils.GetEnabledCollectors(config.Collect)
+	enableGoCollector, enabledCollectors := metricsutils.GetEnabledCollectors(config.Collect)
 	for c := range enabledCollectors {
 		collectors = append(collectors, c)
 		args = append(args, fmt.Sprintf("--collector.%s", c))
@@ -79,14 +79,46 @@ func CreateNodeMetricsGatherer(config *aranyagopb.MetricsConfigCmd) (prometheus.
 	}
 
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(
-		version.NewCollector("node_exporter"),
-		prometheus.NewGoCollector(),
+	err = registry.Register(
+		prometheus.NewGaugeFunc(
+			prometheus.GaugeOpts{
+				Namespace: "node_exporter",
+				Name:      "build_info",
+				Help: fmt.Sprintf(
+					// nolint:lll
+					"A metric with a constant '1' value labeled by version, revision, branch, and goversion from which %s was built.",
+					"node_exporter",
+				),
+				ConstLabels: prometheus.Labels{
+					"version":   "v1.0.1",
+					"revision":  "3715be6ae899f2a9b9dbfd9c39f3e09a7bd4559f",
+					"branch":    "HEAD",
+					"goversion": runtime.Version(),
+				},
+			},
+			func() float64 { return 1 },
+		),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to register version collector: %w", err)
+	}
+
+	err = registry.Register(
 		prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}),
 	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to register process collector: %w", err)
+	}
+
+	if enableGoCollector {
+		err = registry.Register(prometheus.NewGoCollector())
+		if err != nil {
+			return nil, fmt.Errorf("failed to register go collector: %w", err)
+		}
+	}
 
 	if err := registry.Register(nc); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to register node exporter collector: %w", err)
 	}
 
 	return registry, nil

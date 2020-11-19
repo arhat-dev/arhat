@@ -1,4 +1,5 @@
 // +build !nometrics
+// +build windows
 
 /*
 The MIT License (MIT)
@@ -36,15 +37,13 @@ import (
 	//"github.com/prometheus/common/log"
 )
 
-// WmiCollector implements the prometheus.Collector interface.
-type (
-	collectorOutcome int
+// windowsCollector implements the prometheus.Collector interface.
+type windowsCollector struct {
+	maxScrapeDuration time.Duration
+	collectors        map[string]collector.Collector
+}
 
-	WmiCollector struct {
-		maxScrapeDuration time.Duration
-		collectors        map[string]collector.Collector
-	}
-)
+type collectorOutcome int
 
 const (
 	pending collectorOutcome = iota
@@ -55,19 +54,19 @@ const (
 var (
 	scrapeDurationDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(collector.Namespace, "exporter", "collector_duration_seconds"),
-		"wmi_exporter: Duration of a collection.",
+		"windows_exporter: Duration of a collection.",
 		[]string{"collector"},
 		nil,
 	)
 	scrapeSuccessDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(collector.Namespace, "exporter", "collector_success"),
-		"wmi_exporter: Whether the collector was successful.",
+		"windows_exporter: Whether the collector was successful.",
 		[]string{"collector"},
 		nil,
 	)
 	scrapeTimeoutDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(collector.Namespace, "exporter", "collector_timeout"),
-		"wmi_exporter: Whether the collector timed out.",
+		"windows_exporter: Whether the collector timed out.",
 		[]string{"collector"},
 		nil,
 	)
@@ -91,14 +90,14 @@ var (
 
 // Describe sends all the descriptors of the collectors included to
 // the provided channel.
-func (coll WmiCollector) Describe(ch chan<- *prometheus.Desc) {
+func (coll windowsCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- scrapeDurationDesc
 	ch <- scrapeSuccessDesc
 }
 
 // Collect sends the collected metrics from each of the collectors to
 // prometheus.
-func (coll WmiCollector) Collect(ch chan<- prometheus.Metric) {
+func (coll windowsCollector) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(
 		startTimeDesc,
 		prometheus.CounterValue,
