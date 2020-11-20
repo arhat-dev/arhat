@@ -39,7 +39,7 @@ spec:
       {{- end }}
       {{- if and .Values.config.extension.enabled .Values.runtime.enabled }}
         - name: runtime-config
-          secret: 
+          secret:
             secretName: {{ include "arhat.fullname" . }}-runtime
       {{- end }}
       {{- with .Values.extraVolumes }}
