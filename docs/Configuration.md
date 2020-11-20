@@ -3,7 +3,6 @@
 - [Overview](#overview)
   - [Section `arhat`](#section-arhat)
   - [Section `connectivity`](#section-connectivity)
-  - [Section `runtime`](#section-runtime)
   - [Section `storage`](#section-storage)
   - [Section `extension`](#section-extension)
 
@@ -35,13 +34,6 @@ This section defines `arhat` application behavior
 
 ```yaml
 arhat:
-  # chroot into other dir after agent is running, useful for host
-  # management when deployed as container
-  #
-  # NOTE: this will make `kubectl logs` to this node not working
-  #       unless there is a symlink to kubeLog file in the new root
-  chroot: ""
-
   # log options, you can designate mutiple destination as you wish
   log:
     # log level
@@ -82,6 +74,17 @@ arhat:
   # host operations
   # for security reason, all of them are set to `false` by defualt
   host:
+    # rootfs into other dir after agent is running, useful for host
+    # management when deployed as container
+    #
+    # NOTE: this will make `kubectl logs` to the virtual pod not working
+    #       unless there is a symlink to kubeLog file in the new root
+    rootfs: ""
+
+    # set user id and group id
+    uid: 1000
+    gid: 1000
+
     # allow `kubectl exec/cp` to device host
     allowExec: true
     # allow `kubectl attach` to device host
