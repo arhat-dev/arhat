@@ -27,7 +27,7 @@ spec:
         - name: arhat-config
           secret:
             secretName: {{ include "arhat.fullname" . }}
-      {{- if .Values.config.arhat.chroot }}
+      {{- if .Values.config.arhat.host.rootfs }}
         - name: host-rootfs
           hostPath:
             path: /
@@ -79,7 +79,7 @@ spec:
             - name: arhat-config
               mountPath: /etc/arhat/config.yaml
               subPath: config.yaml
-            {{- if .Values.config.arhat.chroot }}
+            {{- if .Values.config.arhat.host.rootfs }}
             - name: host-rootfs
               mountPath: /host
               mountPropagation: Bidirectional

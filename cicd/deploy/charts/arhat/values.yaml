@@ -37,7 +37,7 @@ extraEnv: []
 #   value: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
 
 securityContext:
-  # required when chroot is set
+  # required when rootfs is set
   privileged: true
   #procMount: Unmasked
 
@@ -48,15 +48,18 @@ hostNetwork: true
 
 config:
   arhat:
-    # chroot to host rootfs, disable it by setting it to empty
-    chroot: /host
-
     log:
     - level: verbose
       format: console
       file: stderr
 
     host:
+      # chroot to host rootfs, disable it by setting it to empty
+      rootfs: /host
+
+      #setuid: 0
+      #setgid: 0
+
       allowExec: true
       allowAttach: true
       allowPortForward: true
