@@ -1,4 +1,4 @@
-// +build windows zos plan9 js
+// +build aix windows js plan9
 
 /*
 Copyright 2020 The arhat.dev Authors.
@@ -18,8 +18,6 @@ limitations under the License.
 
 package main
 
-import "fmt"
-
-func chroot(_ string) error {
-	return fmt.Errorf("chroot is not supported")
+func setuid(_ *int) error {
+	return nil
 }

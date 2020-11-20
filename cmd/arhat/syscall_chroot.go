@@ -1,4 +1,4 @@
-// +build !windows,!zos,!plan9,!js
+// +build !windows,!plan9,!js
 
 /*
 Copyright 2020 The arhat.dev Authors.
@@ -22,6 +22,6 @@ import (
 	"syscall"
 )
 
-func chroot(dir string) error {
-	return syscall.Chroot(dir)
+func chroot(rootfs string) error {
+	return syscall.Chroot(rootfs)
 }

@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"sort"
 	"time"
 
@@ -79,9 +80,43 @@ func init() {
 func runApp(appCtx context.Context, config *conf.Config) error {
 	logger := log.Log.WithName("cmd")
 
+	methods := config.Connectivity.Methods
+	if len(methods) == 0 {
+		return fmt.Errorf("no connectivity method configured")
+	}
+
+	sort.SliceStable(methods, func(i, j int) bool {
+		return methods[i].Priority < methods[j].Priority
+	})
+
 	ag, err := agent.NewAgent(appCtx, logger.WithName("agent"), config)
 	if err != nil {
 		return fmt.Errorf("failed to create agent: %w", err)
+	}
+
+	// chroot into new rootfs after extension hub listening on the original host (if enabled)
+	if rootfs := config.Arhat.Host.RootFS; rootfs != "" && rootfs != "/" {
+		err = chroot(rootfs)
+		if err != nil {
+			return fmt.Errorf("failed to chroot to %q: %w", rootfs, err)
+		}
+
+		err = os.Chdir("/")
+		if err != nil {
+			return fmt.Errorf("failed to change working dir to new root: %w", err)
+		}
+	}
+
+	// set uid if configured
+	err = setuid(config.Arhat.Host.UID)
+	if err != nil {
+		return fmt.Errorf("failed to change user id: %w", err)
+	}
+
+	// set gid if configured
+	err = setgid(config.Arhat.Host.GID)
+	if err != nil {
+		return fmt.Errorf("failed to change group id: %w", err)
 	}
 
 	bs := backoff.NewStrategy(
@@ -91,25 +126,11 @@ func runApp(appCtx context.Context, config *conf.Config) error {
 		1,
 	)
 
-	// create a stopped timer
 	backoffTimer := time.NewTimer(0)
 	if !backoffTimer.Stop() {
 		<-backoffTimer.C
 	}
 	defer backoffTimer.Stop()
-
-	methods := config.Connectivity.Methods
-	sort.SliceStable(methods, func(i, j int) bool {
-		return methods[i].Priority < methods[j].Priority
-	})
-
-	// chroot into new rootfs after extension hub listened on the original host
-	if config.Arhat.Chroot != "" {
-		err = chroot(config.Arhat.Chroot)
-		if err != nil {
-			return fmt.Errorf("failed to chroot to %q: %w", config.Arhat.Chroot, err)
-		}
-	}
 
 	for {
 		// select connectivity according to its priority

@@ -40,8 +40,6 @@ type Config struct {
 type AppConfig struct {
 	Log log.ConfigSet `json:"log" yaml:"log"`
 
-	Chroot string `json:"chroot" yaml:"chroot"`
-
 	Host HostConfig `json:"host" yaml:"host"`
 	Node NodeConfig `json:"node" yaml:"node"`
 
@@ -49,6 +47,10 @@ type AppConfig struct {
 }
 
 type HostConfig struct {
+	RootFS string `json:"rootfs" yaml:"rootfs"`
+	UID    *int   `json:"uid" yaml:"uid"`
+	GID    *int   `json:"gid" yaml:"gid"`
+
 	AllowAttach      bool `json:"allowAttach" yaml:"allowAttach"`
 	AllowExec        bool `json:"allowExec" yaml:"allowExec"`
 	AllowLog         bool `json:"allowLog" yaml:"allowLog"`
