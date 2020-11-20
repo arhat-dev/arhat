@@ -66,8 +66,8 @@ type BaseClient struct {
 	handleCmd types.AgentCmdHandleFunc
 }
 
-func (b *BaseClient) HandleCmd(cmd *aranyagopb.Cmd) {
-	b.handleCmd(cmd)
+func (b *BaseClient) HandleCmd(cmdBytes []byte) {
+	b.handleCmd(cmdBytes)
 }
 
 func (b *BaseClient) OnClose(doExit func() error) error {

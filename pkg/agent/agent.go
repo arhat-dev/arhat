@@ -250,9 +250,17 @@ func (b *Agent) PostMsg(sid uint64, kind aranyagopb.MsgType, msg proto.Marshaler
 	return err
 }
 
-func (b *Agent) HandleCmd(cmd *aranyagopb.Cmd) {
+func (b *Agent) HandleCmd(cmdBytes []byte) {
 	if b.GetClient() == nil {
 		b.handleConnectivityError(0, fmt.Errorf("client empty"))
+		return
+	}
+
+	cmd := new(aranyagopb.Cmd)
+	err := cmd.Unmarshal(cmdBytes)
+	if err != nil {
+		// discard invalid data
+		b.logger.I("discard invalid cmd bytes", log.Binary("data", cmdBytes))
 		return
 	}
 
@@ -280,16 +288,17 @@ func (b *Agent) HandleCmd(cmd *aranyagopb.Cmd) {
 	}
 
 	// reassamble cmd payload
-	cmdBytes, complete := b.cmdMgr.Process(cmd)
+	cmdPayload, complete := b.cmdMgr.Process(cmd)
 	if !complete {
+		b.logger.V("partial cmd not compelete")
 		return
 	}
 
 	switch cmd.Kind {
 	case aranyagopb.CMD_RUNTIME:
 		// deliver runtime cmd
-		err := b.agentComponentExtension.extensionComponentRuntime.sendRuntimeCmd(
-			arhatgopb.CMD_RUNTIME_ARANYA_PROTO, cmd.Sid, 0, cmdBytes,
+		err := b.sendRuntimeCmd(
+			arhatgopb.CMD_RUNTIME_ARANYA_PROTO, cmd.Sid, 0, cmdPayload,
 		)
 		if err != nil {
 			b.handleRuntimeError(sid, err)
@@ -301,7 +310,7 @@ func (b *Agent) HandleCmd(cmd *aranyagopb.Cmd) {
 			return
 		}
 
-		handleCmd(sid, cmdBytes)
+		handleCmd(sid, cmdPayload)
 	}
 }
 

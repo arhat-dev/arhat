@@ -304,14 +304,7 @@ func (c *Client) Connect(dialCtx context.Context) error {
 
 func (c *Client) Start(appCtx context.Context) error {
 	sub, err := c.client.Subscribe(c.cmdSubTopic, func(msg *stan.Msg) {
-		cmd := new(aranyagopb.Cmd)
-		err2 := cmd.Unmarshal(msg.Data)
-		if err2 != nil {
-			// discard invalid cmd
-			return
-		}
-
-		c.BaseClient.HandleCmd(cmd)
+		c.HandleCmd(msg.Data)
 	}, stan.StartAt(pb.StartPosition_NewOnly), stan.AckWait(c.ackWait))
 	if err != nil {
 		return fmt.Errorf("failed to subscribe cmd topic: %w", err)

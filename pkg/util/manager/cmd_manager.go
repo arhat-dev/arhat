@@ -38,7 +38,12 @@ type CmdManager struct {
 	mu *sync.RWMutex
 }
 
-func (m *CmdManager) Process(cmd *aranyagopb.Cmd) (cmdBytes []byte, complete bool) {
+func (m *CmdManager) Process(cmd *aranyagopb.Cmd) (cmdPayload []byte, complete bool) {
+	// all in one cmd packet
+	if cmd.Seq == 0 && cmd.Completed {
+		return cmd.Payload, true
+	}
+
 	sid := cmd.Sid
 
 	m.mu.Lock()
@@ -67,7 +72,7 @@ func (m *CmdManager) Process(cmd *aranyagopb.Cmd) (cmdBytes []byte, complete boo
 		return
 	}
 
-	cmdBytes = m.partialCmds[sid]
+	cmdPayload = m.partialCmds[sid]
 
 	delete(m.sessionSQ, sid)
 	delete(m.partialCmds, sid)

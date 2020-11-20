@@ -21,7 +21,7 @@ import (
 )
 
 type (
-	AgentCmdHandleFunc func(cmd *aranyagopb.Cmd)
+	AgentCmdHandleFunc func(cmdBytes []byte)
 	AgentDataPostFunc  func(
 		sid uint64,
 		kind aranyagopb.MsgType,

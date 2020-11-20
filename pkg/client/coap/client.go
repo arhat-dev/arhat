@@ -525,13 +525,7 @@ func (c *Client) handleCmdRecv(notification *coapmsg.Message) {
 		return
 	}
 
-	cmd := new(aranyagopb.Cmd)
-	err = cmd.Unmarshal(cmdData)
-	if err != nil {
-		c.Log.I("failed to unmarshal cmd data", log.Error(err))
-	} else {
-		c.HandleCmd(cmd)
-	}
+	c.HandleCmd(cmdData)
 }
 
 type loggerFactory struct {

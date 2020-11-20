@@ -21,6 +21,7 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"io"
 	"sync"
 	"sync/atomic"
 
@@ -152,12 +153,19 @@ func (c *Client) Start(ctx context.Context) error {
 		c.mu.Unlock()
 	}()
 
-	cmdCh := make(chan *aranyagopb.Cmd, 1)
+	cmdCh := make(chan []byte, 1)
 	go func() {
+		cmd := new(aranyagopb.Cmd)
 		for {
-			cmd, err := syncClient.Recv()
+			cmd.Reset()
+
+			err := syncClient.RecvMsg(cmd)
 			if err != nil {
 				close(cmdCh)
+
+				if err == io.EOF {
+					return
+				}
 
 				s, _ := status.FromError(err)
 				switch s.Code() {
@@ -169,6 +177,12 @@ func (c *Client) Start(ctx context.Context) error {
 				return
 			}
 
+			data, err := cmd.Marshal()
+			if err != nil {
+				c.Log.I("invalid cmd", log.Error(err))
+				return
+			}
+
 			select {
 			case <-syncClient.Context().Done():
 				// disconnected from cloud controller
@@ -176,7 +190,7 @@ func (c *Client) Start(ctx context.Context) error {
 			case <-ctx.Done():
 				// leaving
 				return
-			case cmdCh <- cmd:
+			case cmdCh <- data:
 			}
 		}
 	}()

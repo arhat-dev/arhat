@@ -345,12 +345,5 @@ func (c *Client) handlePub(client libmqtt.Client, topic string, err error) {
 }
 
 func (c *Client) handleTopicMsg(client libmqtt.Client, topic string, qos libmqtt.QosLevel, cmdBytes []byte) {
-	cmd := new(aranyagopb.Cmd)
-	err := cmd.Unmarshal(cmdBytes)
-	if err != nil {
-		c.Log.I("failed to unmarshal cmd", log.Binary("cmdBytes", cmdBytes), log.Error(err))
-		return
-	}
-
-	c.HandleCmd(cmd)
+	c.HandleCmd(cmdBytes)
 }
