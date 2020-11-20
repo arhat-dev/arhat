@@ -28,6 +28,7 @@ import (
 	_ "arhat.dev/arhat/pkg/client/coap" // add coap client support
 	_ "arhat.dev/arhat/pkg/client/grpc" // add grpc client support
 	_ "arhat.dev/arhat/pkg/client/mqtt" // add mqtt client support
+	_ "arhat.dev/arhat/pkg/client/nats" // add nats streaming client support
 
 	// extension and port-forward network support
 	_ "arhat.dev/pkg/nethelper/piondtls" // add udp dtls network support

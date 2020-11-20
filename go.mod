@@ -3,7 +3,7 @@ module arhat.dev/arhat
 go 1.15
 
 require (
-	arhat.dev/aranya-proto v0.2.5
+	arhat.dev/aranya-proto v0.2.6-0.20201120144800-fe89fc38a23a
 	arhat.dev/arhat-proto v0.4.3
 	arhat.dev/libext v0.4.9
 	arhat.dev/pkg v0.4.4
@@ -16,6 +16,11 @@ require (
 	github.com/klauspost/compress v1.11.3
 	github.com/mholt/archiver/v3 v3.5.0
 	github.com/mssola/user_agent v0.5.2
+	github.com/nats-io/jwt v1.2.0
+	github.com/nats-io/nats-streaming-server v0.19.0 // indirect
+	github.com/nats-io/nats.go v1.10.0
+	github.com/nats-io/nkeys v0.2.0
+	github.com/nats-io/stan.go v0.7.0
 	github.com/pbnjay/memory v0.0.0-20190104145345-974d429e7ae4
 	github.com/pion/dtls/v2 v2.0.3
 	github.com/pion/logging v0.2.2
@@ -26,6 +31,7 @@ require (
 	github.com/prometheus/common v0.15.0
 	github.com/prometheus/node_exporter v1.0.1
 	github.com/spf13/pflag v1.0.5
+	golang.org/x/crypto v0.0.0-20201117144127-c1f2f97bffc9 // indirect
 	golang.org/x/sys v0.0.0-20201113233024-12cec1faf1ba
 	google.golang.org/grpc v1.33.2
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
