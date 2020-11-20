@@ -1,0 +1,24 @@
+apiVersion: v2
+name: arhat
+description: deploy arhat to Kubernetes cluster for host management with RBAC
+type: application
+maintainers:
+- name: arhat-dev
+  email: dev@arhat.dev
+keywords:
+- arhat
+- agent
+- pod
+- host
+- kubectl
+- exec
+- attach
+- port-forward
+- node
+# icon:
+home: https://github.com/arhat-dev/arhat
+sources:
+- https://github.com/arhat-dev/arhat
+- https://github.com/arhat-dev/helm-charts
+version: 0.0.1
+appVersion: latest

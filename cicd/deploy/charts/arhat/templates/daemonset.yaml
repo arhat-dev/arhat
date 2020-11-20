@@ -1,0 +1,126 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "arhat.fullname" . }}
+  labels:
+    {{- include "arhat.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "arhat.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+    {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      labels:
+        {{- include "arhat.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      volumes:
+        - name: arhat-config
+          secret:
+            secretName: {{ include "arhat.fullname" . }}
+      {{- if .Values.config.arhat.chroot }}
+        - name: host-rootfs
+          hostPath:
+            path: /
+            type: Directory
+      {{- end }}
+      {{- if .Values.config.extension.enabled }}
+        - name: extension-dir
+          emptyDir: {}
+      {{- end }}
+      {{- if and .Values.config.extension.enabled .Values.runtime.enabled }}
+        - name: runtime-config
+          secret: 
+            secretName: {{ include "arhat.fullname" . }}-runtime
+      {{- end }}
+      {{- with .Values.extraVolumes }}
+        {{- . | toYaml | nindent 8 }}
+      {{- end }}
+      hostPID: {{ .Values.hostPID }}
+      hostIPC: {{ .Values.hostIPC }}
+      hostNetwork: {{ .Values.hostNetwork }}
+      {{- if .Values.hostNetwork }}
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- end }}
+      containers:
+        - name: arhat
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          command:
+            - /arhat
+            - -c
+            - /etc/arhat/config.yaml
+          env:
+            - name: POD_UID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          {{- with .Values.extraEnv }}
+            {{ . | toYaml | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: arhat-config
+              mountPath: /etc/arhat/config.yaml
+              subPath: config.yaml
+            {{- if .Values.config.arhat.chroot }}
+            - name: host-rootfs
+              mountPath: /host
+              mountPropagation: Bidirectional
+            {{- end }}
+            {{- if .Values.config.extension.enabled }}
+            - name: extension-dir
+              mountPath: /var/run/arhat
+            {{- end }}
+      {{- if and .Values.config.extension.enabled .Values.runtime.enabled }}
+        - name: runtime
+          securityContext:
+            {{- toYaml .Values.runtime.securityContext | nindent 12 }}
+          image: "{{ .Values.runtime.image }}"
+          imagePullPolicy: {{ .Values.runtime.imagePullPolicy }}
+          resources:
+            {{- toYaml .Values.runtime.resources | nindent 12 }}
+          {{- with .Values.runtime.command }}
+          command:
+            {{- . | toYaml | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: arhat-config
+              mountPath: /etc/arhat/runtime-config.yaml
+              subPath: runtime-config.yaml
+            {{- if .Values.config.extension.enabled }}
+            - name: extension-dir
+              mountPath: /var/run/arhat
+            {{- end }}
+      {{- end }}
+      {{- with .Values.sidecars }}
+        {{- . | toYaml | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

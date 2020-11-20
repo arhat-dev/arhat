@@ -1,0 +1,80 @@
+---
+# Source: arhat/templates/secrets.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: arhat
+  labels:
+    helm.sh/chart: arhat-0.0.1
+    app.kubernetes.io/name: arhat
+    app.kubernetes.io/instance: arhat
+    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/managed-by: Helm
+type: Opaque
+data:
+  config.yaml: YXJoYXQ6CiAgY2hyb290OiAvaG9zdAogIGhvc3Q6CiAgICBhbGxvd0F0dGFjaDogdHJ1ZQogICAgYWxsb3dFeGVjOiB0cnVlCiAgICBhbGxvd0xvZzogZmFsc2UKICAgIGFsbG93UG9ydEZvcndhcmQ6IHRydWUKICBsb2c6CiAgLSBmaWxlOiBzdGRlcnIKICAgIGZvcm1hdDogY29uc29sZQogICAgbGV2ZWw6IHZlcmJvc2UKICBub2RlOgogICAgbWFjaGluZUlERnJvbToKICAgICAgdGV4dDogJHtQT0RfVUlEfQogIHBwcm9mOgogICAgYmxvY2tQcm9maWxlRnJhY3Rpb246IDEKICAgIGNwdVByb2ZpbGVGcmVxdWVuY3lIejogMTAwCiAgICBlbmFibGVkOiB0cnVlCiAgICBodHRwUGF0aDogL2RlYnVnL3Bwcm9mCiAgICBsaXN0ZW46IGxvY2FsaG9zdDo4MDgwCiAgICBtdXRleFByb2ZpbGVGcmFjdGlvbjogMTAwCmNvbm5lY3Rpdml0eToKICBiYWNrb2ZmRmFjdG9yOiAxLjUKICBkaWFsVGltZW91dDogNXMKICBpbml0aWFsQmFja29mZjogMXMKICBtYXhCYWNrb2ZmOiAxMHMKICBtZXRob2RzOiBbXQpleHRlbnNpb246CiAgZW5hYmxlZDogZmFsc2UKICBlbmRwb2ludHM6CiAgLSBrZWVwYWxpdmVJbnRlcnZhbDogMTBzCiAgICBsaXN0ZW46IHVuaXg6Ly8vdmFyL3J1bi9hcmhhdC9leHRlbnNpb24uc29jawogICAgbWVzc2FnZVRpbWVvdXQ6IDFtCiAgICB0bHM6CiAgICAgIGNhQ2VydDogL3BhdGgvdG8vY2EuY3J0CiAgICAgIGNlcnQ6IC9wYXRoL3RvL2NsaWVudC5jcnQKICAgICAgY2lwaGVyU3VpdGVzOiBbXQogICAgICBlbmFibGVkOiBmYWxzZQogICAgICBrZXk6IC9wYXRoL3RvL2NsaWVudC5rZXkKICAgICAgc2VydmVyTmFtZTogZm9vLmV4YW1wbGUuY29tCiAgICAgIHZlcmlmeUNsaWVudENlcnQ6IGZhbHNlCiAgcGVyaXBoZXJhbDoKICAgIG1ldHJpY3NDYWNoZVRpbWVvdXQ6IDFoCiAgcnVudGltZToge30=
+---
+# Source: arhat/templates/daemonset.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: arhat
+  labels:
+    helm.sh/chart: arhat-0.0.1
+    app.kubernetes.io/name: arhat
+    app.kubernetes.io/instance: arhat
+    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: arhat
+      app.kubernetes.io/instance: arhat
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: arhat
+        app.kubernetes.io/instance: arhat
+    spec:
+      securityContext:
+        {}
+      volumes:
+        - name: arhat-config
+          secret:
+            secretName: arhat
+        - name: host-rootfs
+          hostPath:
+            path: /
+            type: Directory
+      hostPID: true
+      hostIPC: true
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: arhat
+          securityContext:
+            privileged: true
+          image: "ghcr.io/arhat-dev/arhat:latest"
+          imagePullPolicy: IfNotPresent
+          resources:
+            {}
+          command:
+            - /arhat
+            - -c
+            - /etc/arhat/config.yaml
+          env:
+            - name: POD_UID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: arhat-config
+              mountPath: /etc/arhat/config.yaml
+              subPath: config.yaml
+            - name: host-rootfs
+              mountPath: /host
+              mountPropagation: Bidirectional

@@ -87,4 +87,3 @@ e2e/
 
 /cicd/scripts/wasm/arhat.js.wasm
 /cicd/scripts/wasm/wasm_exec.js
-/cicd/deploy

@@ -1,0 +1,192 @@
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+imagePullSecrets: []
+image:
+  repository: ghcr.io/arhat-dev/arhat
+  pullPolicy: IfNotPresent
+  tag: latest
+
+nameOverride: ""
+fullnameOverride: ""
+
+podAnnotations: {}
+
+resources: {}
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+extraEnv: []
+# - name: DBUS_SYSTEM_BUS_ADDRESS
+#   value: unix:path=/run/dbus/system_bus_socket
+# - name: XDG_RUNTIME_DIR
+#   value: /run/user/0
+# - name: LANG
+#   value: en_US.UTF-8
+# - name: XDG_DATA_DIRS
+#   value: /usr/local/share:/usr/share:/var/lib/snapd/desktop
+# - name: PATH
+#   value: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
+
+securityContext:
+  # required when chroot is set
+  privileged: true
+  #procMount: Unmasked
+
+hostIPC: true
+hostPID: true
+# enable host network to allow port-forward to host
+hostNetwork: true
+
+config:
+  arhat:
+    # chroot to host rootfs, disable it by setting it to empty
+    chroot: /host
+
+    log:
+    - level: verbose
+      format: console
+      file: stderr
+
+    host:
+      allowExec: true
+      allowAttach: true
+      allowPortForward: true
+      allowLog: false
+
+    node:
+      # set custom machine id, if not set, will report standard machine id as kubelet will do
+      machineIDFrom:
+        #exec: []
+        #file: ""
+        text: ${POD_UID}
+
+      # extInfo:
+      # - valueFrom:
+      #     #exec: []
+      #     #file: ""
+      #     #text: ""
+      #   # operator available: [=, +=, -=]
+      #   operator: +=
+      #   # valueType available: [string, int, float]
+      #   valueType: int
+      #   # value available: [metadata.annotations[''], metadata.labels['']]
+      #   applyTo: metadata.annotations['example.com/key']
+
+    pprof:
+      enabled: true
+      listen: localhost:8080
+      httpPath: /debug/pprof
+      cpuProfileFrequencyHz: 100
+      mutexProfileFraction: 100
+      blockProfileFraction: 1
+  connectivity:
+    dialTimeout: 5s
+    initialBackoff: 1s
+    maxBackoff: 10s
+    backoffFactor: 1.5
+    methods: []
+    # - name: mqtt
+    #   priority: 1
+    #   config:
+    #     variant: standard
+    #     endpoint: mqtt:1883
+    #     transport: tcp
+    #     topicNamespaceFrom:
+    #       #file: /path/to/topicNamespace/file
+    #       #exec: []
+    #       text: arhat.dev/aranya/${NODE_NAME}
+    #     clientID: ${NODE_NAME}
+    #     username: ${NODE_NAME}
+    #     password: ${NODE_NAME}-password
+    #     tls:
+    #       enabled: false
+    #       caCert: /path/to/ca.crt
+    #       #caCertData: "<base64-encoded-ca-cert>"
+    #       cert: /path/to/client.crt
+    #       #certData: "<base64-encoded-tls-cert>"
+    #       key:  /path/to/client.key
+    #       #keyData: "<base64-encoded-tls-key>"
+    #       serverName: foo.example.com
+    #       insecureSkipVerify: false
+    #       cipherSuites:
+    #       - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+  extension:
+    enabled: false
+    endpoints:
+      # DO NOT change this endpoint
+    - listen: unix:///var/run/arhat/extension.sock
+      keepaliveInterval: 10s
+      messageTimeout: 1m
+      tls:
+        enabled: false
+        verifyClientCert: false
+        caCert: /path/to/ca.crt
+        #caCertData: "<base64-encoded-ca-cert>"
+        cert: /path/to/client.crt
+        #certData: "<base64-encoded-tls-cert>"
+        key: /path/to/client.key
+        #keyData: "<base64-encoded-tls-key>"
+        serverName: foo.example.com
+        cipherSuites: []
+        # - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+    peripheral:
+      metricsCacheTimeout: 1h
+    runtime: {}
+
+# runtime extension
+runtime:
+  # runtime will only be enabled when extension is also enabled
+  enabled: false
+  image: ghcr.io/arhat-ext/runtime-docker:latest
+  imagePullPolicy: IfNotPresent
+  command:
+  - /runtime-docker
+  - -c
+  # DO NOT change the config file path
+  - /etc/arhat/runtime-config.yaml
+  resources: {}
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+  config: {}
+
+# extra volumes
+extraVolumes: []
+
+sidecars: []
+# - name: dind
+#   image: docker.io/library/docker:dind
+#   imagePullPolicy: IfNotPresent
+#   resources: {}
+#     # limits:
+#     #   cpu: 100m
+#     #   memory: 128Mi
+#     # requests:
+#     #   cpu: 100m
+#     #   memory: 128Mi
+#   securityContext: {}
+#     # capabilities:
+#     #   drop:
+#     #   - ALL
+#     # readOnlyRootFilesystem: true
+#     # runAsNonRoot: true
+#     # runAsUser: 1000
