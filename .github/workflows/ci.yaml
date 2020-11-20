@@ -56,27 +56,23 @@ jobs:
 
   unit-tests:
     if: contains(github.head_ref, 'deps/') == false
-    container:
-      image: ghcr.io/arhat-dev/builder-go:debian
     needs:
     - stylecheck
-    runs-on: ubuntu-latest
-    # # TODO: enable multi-os unit tests
-    # strategy:
-    #   matrix:
-    #     os-image:
-    #     - linux
-    #     - macos
-    #     - windows
+    strategy:
+      matrix:
+        go:
+        # - 1.14.x
+        - 1.15.x
+        os:
+        - ubuntu-latest
+        # - windows-latest
+        # - darwin-latest
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
-    - name: Install Extra Packages
-      run: |
-        apt update
-        apt install -y \
-          python3-distutils=3.7.3-1 python3-lib2to3=3.7.3-1 python3=3.7.3-1 \
-          libbtrfs-dev libc6-dev libglib2.0-dev libgpgme-dev \
-          libseccomp-dev libdevmapper-dev libglib2.0-dev-bin
+    - uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go }}
 
     - name: Test Packages
       run: |
