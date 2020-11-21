@@ -30,11 +30,7 @@ const (
 )
 
 const (
-	DefaultInteractiveStreamReadTimeout    = 20 * time.Millisecond
-	DefaultNonInteractiveStreamReadTimeout = 200 * time.Millisecond
-	DefaultPortForwardStreamReadTimeout    = 50 * time.Millisecond
-)
-
-const (
-	DefaultExitCodeOnError = 128
+	InteractiveStreamReadTimeout    = 20 * time.Millisecond
+	NonInteractiveStreamReadTimeout = 200 * time.Millisecond
+	PortForwardStreamReadTimeout    = 100 * time.Millisecond
 )

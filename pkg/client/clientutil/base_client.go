@@ -40,7 +40,8 @@ func NewBaseClient(
 ) (*BaseClient, error) {
 	ctx, cancel := context.WithCancel(ctx)
 
-	if maxPayloadSize-aranyagopb.EmptyMsgSize <= 0 {
+	maxPayloadSize -= aranyagopb.EmptyMsgSize
+	if maxPayloadSize <= 0 {
 		cancel()
 		return nil, fmt.Errorf("maxPayloadSize must be greater than %d", aranyagopb.EmptyMsgSize)
 	}

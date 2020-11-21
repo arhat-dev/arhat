@@ -430,15 +430,13 @@ func (b *Agent) handlePortForward(sid uint64, data []byte) {
 			return
 		}
 
-		// pipe received data to extension hub
 		b.uploadDataOutput(
 			b.ctx.Done(),
 			sid,
 			downstream,
 			aranyagopb.MSG_DATA,
-			20*time.Millisecond,
+			constant.PortForwardStreamReadTimeout,
 			&seq,
-			nil,
 		)
 
 		// downstream read exited
@@ -528,16 +526,11 @@ func (b *Agent) createTerminalStream(
 	var (
 		readStdout  io.ReadCloser
 		readStderr  io.ReadCloser
-		readTimeout = constant.DefaultNonInteractiveStreamReadTimeout
-		seqMu       *sync.Mutex
+		readTimeout = constant.NonInteractiveStreamReadTimeout
 	)
 
 	if interactive {
-		readTimeout = constant.DefaultInteractiveStreamReadTimeout
-	}
-
-	if useStdout && useStderr {
-		seqMu = new(sync.Mutex)
+		readTimeout = constant.InteractiveStreamReadTimeout
 	}
 
 	if useStdout {
@@ -553,7 +546,7 @@ func (b *Agent) createTerminalStream(
 			b.uploadDataOutput(
 				stopSig, sid, readStdout,
 				aranyagopb.MSG_DATA_STDOUT,
-				readTimeout, pSeq, seqMu,
+				readTimeout, pSeq,
 			)
 		}()
 	}
@@ -571,7 +564,7 @@ func (b *Agent) createTerminalStream(
 			b.uploadDataOutput(
 				stopSig, sid, readStderr,
 				aranyagopb.MSG_DATA_STDERR,
-				readTimeout, pSeq, seqMu,
+				readTimeout, pSeq,
 			)
 		}()
 	}
@@ -594,12 +587,16 @@ func (b *Agent) uploadDataOutput(
 	kind aranyagopb.MsgType,
 	readTimeout time.Duration,
 	pSeq *uint64,
-	seqMu *sync.Mutex,
 ) {
 	r := iohelper.NewTimeoutReader(rd)
 	go r.FallbackReading(stopSig)
 
-	buf := make([]byte, b.GetClient().MaxPayloadSize())
+	size := b.GetClient().MaxPayloadSize()
+	if size > 64*1024 {
+		size = 64 * 1024
+	}
+
+	buf := make([]byte, size)
 	for r.WaitForData(stopSig) {
 		data, shouldCopy, err := r.Read(readTimeout, buf)
 		if err != nil && err != iohelper.ErrDeadlineExceeded {
@@ -611,17 +608,9 @@ func (b *Agent) uploadDataOutput(
 			_ = copy(data, buf[:len(data)])
 		}
 
-		if seqMu != nil {
-			seqMu.Lock()
-		}
-
-		lastSeq, err := b.PostData(sid, kind, nextSeq(pSeq), false, data)
-		atomic.StoreUint64(pSeq, lastSeq+1)
-
-		if seqMu != nil {
-			seqMu.Unlock()
-		}
-
+		// it will never be fragmented since the buf size is limited to max payload size
+		// so we can just ignore the returned last sequence here
+		_, err = b.PostData(sid, kind, nextSeq(pSeq), false, data)
 		if err != nil {
 			b.handleConnectivityError(sid, err)
 			return
@@ -630,10 +619,5 @@ func (b *Agent) uploadDataOutput(
 }
 
 func nextSeq(p *uint64) uint64 {
-	seq := atomic.LoadUint64(p)
-	for !atomic.CompareAndSwapUint64(p, seq, seq+1) {
-		seq++
-	}
-
-	return seq
+	return atomic.AddUint64(p, 1) - 1
 }

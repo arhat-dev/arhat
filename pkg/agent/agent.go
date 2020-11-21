@@ -205,15 +205,15 @@ func (b *Agent) GetClient() client.Interface {
 }
 
 func (b *Agent) PostData(sid uint64, kind aranyagopb.MsgType, seq uint64, completed bool, data []byte) (uint64, error) {
-	client := b.GetClient()
-	if client == nil {
+	c := b.GetClient()
+	if c == nil {
 		return seq, errClientNotSet
 	}
 
-	n := client.MaxPayloadSize()
+	n := c.MaxPayloadSize()
 	for len(data) > n {
 		buf := data
-		err := client.PostMsg(&aranyagopb.Msg{
+		err := c.PostMsg(&aranyagopb.Msg{
 			Kind:      kind,
 			Sid:       sid,
 			Seq:       seq,
@@ -227,7 +227,7 @@ func (b *Agent) PostData(sid uint64, kind aranyagopb.MsgType, seq uint64, comple
 		data = data[n:]
 	}
 
-	err := client.PostMsg(&aranyagopb.Msg{
+	err := c.PostMsg(&aranyagopb.Msg{
 		Kind:      kind,
 		Sid:       sid,
 		Seq:       seq,
