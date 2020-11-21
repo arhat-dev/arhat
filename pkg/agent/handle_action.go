@@ -39,8 +39,8 @@ import (
 	"ext.arhat.dev/runtimeutil/actionutil"
 
 	"arhat.dev/arhat/pkg/constant"
+	"arhat.dev/arhat/pkg/exec"
 	"arhat.dev/arhat/pkg/util/errconv"
-	"arhat.dev/arhat/pkg/util/exec"
 )
 
 func (b *Agent) handleExec(sid uint64, data []byte) {

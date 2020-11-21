@@ -22,7 +22,7 @@ import (
 
 	"arhat.dev/aranya-proto/aranyagopb"
 
-	"arhat.dev/arhat/pkg/util/sysinfo"
+	"arhat.dev/arhat/pkg/sysinfo"
 	"arhat.dev/arhat/pkg/version"
 )
 
