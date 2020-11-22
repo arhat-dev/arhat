@@ -53,7 +53,7 @@ func (b *Agent) handleExec(sid uint64, data []byte) {
 	}
 
 	b.processInNewGoroutine(sid, "exec", func() {
-		b.handleStreamOperation(
+		b.handleTerminalStreams(
 			b.ctx.Done(),
 			sid, opts.Stdin, opts.Stdout, opts.Stderr, opts.Tty,
 			// preRun check
@@ -87,36 +87,11 @@ func (b *Agent) handleExec(sid uint64, data []byte) {
 							return nil, nil, err
 						}
 
-						file, isFile := pr.(*os.File)
-
-						var fd uintptr
-						if isFile {
-							fd = file.Fd()
-						}
-
 						return &flexWriteCloser{
 								writeFunc: pw.Write,
 								closeFunc: func() error {
-									wait := 5 * time.Second
-									if isFile {
-										n, err2 := iohelper.CheckBytesToRead(fd)
-										if err2 == nil {
-											// assume 100KB/s
-											tmpWait := time.Duration(n/(100*1024)) * time.Second
-											if tmpWait > wait {
-												wait = tmpWait
-											}
-										}
-									}
-
-									// delay close operation
-									go func() {
-										time.Sleep(wait)
-										_ = pw.Close()
-										_ = pr.Close()
-									}()
-
-									return nil
+									closePipeReaderWithDelay(pr, 5*time.Second, 128*1024)
+									return pw.Close()
 								},
 							}, func(cols, rows uint32) {
 								_ = cmd.Resize(cols, rows)
@@ -158,7 +133,7 @@ func (b *Agent) handleAttach(sid uint64, data []byte) {
 	}
 
 	b.processInNewGoroutine(sid, "attach", func() {
-		b.handleStreamOperation(
+		b.handleTerminalStreams(
 			b.ctx.Done(),
 			sid, cmd.Stdin, cmd.Stdout, cmd.Stderr, true,
 			// preRun check
@@ -244,7 +219,7 @@ func (b *Agent) handleLogs(sid uint64, data []byte) {
 	}
 
 	b.processInNewGoroutine(sid, "logs", func() {
-		b.handleStreamOperation(
+		b.handleTerminalStreams(
 			b.ctx.Done(),
 			sid, false, true, true, false,
 			// preRun check
@@ -353,7 +328,7 @@ func (b *Agent) handlePortForward(sid uint64, data []byte) {
 
 		defer func() {
 			_ = pw.Close()
-			_ = pr.Close()
+			closePipeReaderWithDelay(pr, 5*time.Second, 64*1024)
 
 			kind := aranyagopb.MSG_DATA
 			var payload []byte
@@ -398,30 +373,7 @@ func (b *Agent) handlePortForward(sid uint64, data []byte) {
 			return &flexWriteCloser{
 				writeFunc: pw.Write,
 				closeFunc: func() error {
-					f, ok := pr.(*os.File)
-					if !ok {
-						go func() {
-							time.Sleep(5 * time.Second)
-							_ = pw.Close()
-							closeWrite()
-							_ = downstream.Close()
-						}()
-						return nil
-					}
-
-					n, _ := iohelper.CheckBytesToRead(f.Fd())
-
-					// assume 100 KB/s
-					wait := time.Duration(n) / 1024 / 100 * time.Second
-					if wait > 0 {
-						go func() {
-							time.Sleep(wait)
-							_ = pw.Close()
-							closeWrite()
-							_ = downstream.Close()
-						}()
-					}
-
+					closePipeReaderWithDelay(downstream, 10*time.Second, 64*1024)
 					return nil
 				},
 			}, nil, nil
@@ -474,7 +426,7 @@ func (b *Agent) handleTerminalResize(sid uint64, data []byte) {
 	b.streams.Resize(sid, opts.Cols, opts.Rows)
 }
 
-func (b *Agent) handleStreamOperation(
+func (b *Agent) handleTerminalStreams(
 	stopSig <-chan struct{},
 	sid uint64,
 	useStdin, useStdout, useStderr, useTty bool,
@@ -489,13 +441,11 @@ func (b *Agent) handleStreamOperation(
 	)
 
 	defer func() {
-		wg.Wait()
-
 		if err != nil {
 			data, _ := err.Marshal()
 			_, _ = b.PostData(sid, aranyagopb.MSG_ERROR, nextSeq(&seq), true, data)
 		} else {
-			_, _ = b.PostData(sid, aranyagopb.MSG_DATA_DEFAULT, nextSeq(&seq), true, nil)
+			_, _ = b.PostData(sid, aranyagopb.MSG_DATA, nextSeq(&seq), true, nil)
 		}
 
 		b.streams.Del(sid)
@@ -508,15 +458,22 @@ func (b *Agent) handleStreamOperation(
 		}
 	}
 
-	stdout, stderr, closeStream := b.createTerminalStream(
+	stdout, stderr, closeStreams := b.createStreams(
 		stopSig, sid, useStdout, useStderr, useStdin && useTty, &seq, wg,
 	)
-	defer closeStream()
 
 	err = run(stdout, stderr)
+
+	// once run finished, doesn't mean we can close stream(s) immediately
+	// because exec.Cmd won't close stdout/stderr since they are treated as
+	// io.Writer, so we need to close stdout and/or stderr manually
+	closeStreams()
+
+	// and due to os.Pipe buffering, wait until stream are closed
+	wg.Wait()
 }
 
-func (b *Agent) createTerminalStream(
+func (b *Agent) createStreams(
 	stopSig <-chan struct{},
 	sid uint64,
 	useStdout, useStderr, interactive bool,
@@ -538,7 +495,6 @@ func (b *Agent) createTerminalStream(
 		wg.Add(1)
 		go func() {
 			defer func() {
-				_ = stdout.Close()
 				_ = readStdout.Close()
 				wg.Done()
 			}()
@@ -556,7 +512,6 @@ func (b *Agent) createTerminalStream(
 		wg.Add(1)
 		go func() {
 			defer func() {
-				_ = stderr.Close()
 				_ = readStderr.Close()
 				wg.Done()
 			}()
@@ -572,12 +527,37 @@ func (b *Agent) createTerminalStream(
 	return stdout, stderr, func() {
 		if stdout != nil {
 			_ = stdout.Close()
+			closePipeReaderWithDelay(readStdout, 5*time.Second, 128*1024)
 		}
 
 		if stderr != nil {
 			_ = stderr.Close()
+			closePipeReaderWithDelay(readStderr, 5*time.Second, 128*1024)
 		}
 	}
+}
+
+func closePipeReaderWithDelay(r io.ReadCloser, waitAtLeast time.Duration, throughput int) {
+	if r == nil {
+		return
+	}
+
+	file, isFile := r.(*os.File)
+	if isFile {
+		n, err := iohelper.CheckBytesToRead(file.Fd())
+		if err == nil {
+			tmpWait := time.Duration(n/throughput) * time.Second
+			if tmpWait > waitAtLeast {
+				waitAtLeast = tmpWait
+			}
+		}
+	}
+
+	// do not block close function call
+	go func() {
+		time.Sleep(waitAtLeast)
+		_ = r.Close()
+	}()
 }
 
 func (b *Agent) uploadDataOutput(
@@ -599,8 +579,10 @@ func (b *Agent) uploadDataOutput(
 	buf := make([]byte, size)
 	for r.WaitForData(stopSig) {
 		data, shouldCopy, err := r.Read(readTimeout, buf)
-		if err != nil && err != iohelper.ErrDeadlineExceeded {
-			return
+		if err != nil {
+			if len(data) == 0 && err != iohelper.ErrDeadlineExceeded {
+				return
+			}
 		}
 
 		if shouldCopy {
@@ -608,7 +590,7 @@ func (b *Agent) uploadDataOutput(
 			_ = copy(data, buf[:len(data)])
 		}
 
-		// it will never be fragmented since the buf size is limited to max payload size
+		// data will never be fragmented since the buf size is limited to max payload size
 		// so we can just ignore the returned last sequence here
 		_, err = b.PostData(sid, kind, nextSeq(pSeq), false, data)
 		if err != nil {

@@ -223,6 +223,7 @@ func (b *Agent) PostData(sid uint64, kind aranyagopb.MsgType, seq uint64, comple
 		if err != nil {
 			return seq, fmt.Errorf("failed to post msg chunk: %w", err)
 		}
+
 		seq++
 		data = data[n:]
 	}
@@ -324,7 +325,13 @@ func (b *Agent) processInNewGoroutine(sid uint64, cmdName string, process func()
 
 // nolint:unparam
 func (b *Agent) handleUnknownCmd(sid uint64, category string, cmd interface{}) bool {
-	b.logger.I(fmt.Sprintf("unknown %s cmd", category), log.Uint64("sid", sid), log.Any("cmd", cmd))
+	b.logger.I(
+		"cmd unhandled",
+		log.String("kind", category),
+		log.Uint64("sid", sid),
+		log.Any("cmd", cmd),
+	)
+
 	return b.handleRuntimeError(sid, wellknownerrors.ErrNotSupported)
 }
 
