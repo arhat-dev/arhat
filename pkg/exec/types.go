@@ -18,7 +18,31 @@ package exec
 
 import (
 	"io"
+
+	"arhat.dev/pkg/exechelper"
 )
 
-// tryFunc for all kinds of command execution
-type tryFunc func(stdin io.Reader, stdout, stderr io.Writer, command []string, tty bool) error
+// tryFunc for all kinds of command try handler
+type tryFunc func(stdin io.Reader, stdout, stderr io.Writer, command []string, tty bool) (Cmd, error)
+
+type Cmd interface {
+	Resize(cols, rows uint32) error
+	Wait() (int, error)
+}
+
+type flexCmd struct {
+	do func() error
+}
+
+func (c *flexCmd) Resize(cols, rows uint32) error {
+	return nil
+}
+
+func (c *flexCmd) Wait() (int, error) {
+	err := c.do()
+	if err != nil {
+		return exechelper.DefaultExitCodeOnError, err
+	}
+
+	return 0, nil
+}

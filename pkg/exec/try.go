@@ -36,16 +36,19 @@ func DoIfTryFailed(
 	command []string,
 	tty bool,
 	env map[string]string,
-) (*exechelper.Cmd, error) {
-	var err error
+) (Cmd, error) {
+	var (
+		err error
+		cmd Cmd
+	)
 	tryExec, ok := tryCommands[command[0]]
 	if ok {
-		err = tryExec(stdin, stdout, stderr, command, tty)
+		cmd, err = tryExec(stdin, stdout, stderr, command, tty)
 	}
 
 	if ok && err == nil {
 		// handled
-		return nil, nil
+		return cmd, nil
 	}
 
 	// not handled, do it locally

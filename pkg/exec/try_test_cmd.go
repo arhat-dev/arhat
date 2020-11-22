@@ -41,9 +41,9 @@ func tryTestCmd(
 	_, _ io.Writer,
 	command []string,
 	_ bool,
-) error {
+) (Cmd, error) {
 	if len(command) != 3 {
-		return wellknownerrors.ErrNotSupported
+		return nil, wellknownerrors.ErrNotSupported
 	}
 
 	var (
@@ -54,22 +54,26 @@ func tryTestCmd(
 	flags.BoolVarP(&testingDir, "dir", "d", false, "")
 
 	if err := flags.Parse(command[1:]); err != nil {
-		return wellknownerrors.ErrNotSupported
+		return nil, wellknownerrors.ErrNotSupported
 	}
 
 	if !testingDir {
-		return wellknownerrors.ErrNotSupported
+		return nil, wellknownerrors.ErrNotSupported
 	}
 
 	dirName := command[2]
 	f, err := os.Stat(dirName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if !f.IsDir() {
-		return fmt.Errorf("path is not a dir")
+		return nil, fmt.Errorf("path is not a dir")
 	}
 
-	return nil
+	return &flexCmd{
+		do: func() error {
+			return nil
+		},
+	}, nil
 }

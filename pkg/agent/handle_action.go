@@ -73,7 +73,7 @@ func (b *Agent) handleExec(sid uint64, data []byte) {
 				}
 
 				var (
-					cmd *exechelper.Cmd
+					cmd exec.Cmd
 					err error
 				)
 

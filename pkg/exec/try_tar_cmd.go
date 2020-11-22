@@ -84,7 +84,7 @@ func tryTarCmd(
 	stdin io.Reader,
 	stdout, stderr io.Writer,
 	command []string, _ bool,
-) error {
+) (Cmd, error) {
 	var (
 		extract    bool
 		sourceFile string
@@ -100,11 +100,11 @@ func tryTarCmd(
 	flags.BoolVar(&opts.noSamePermission, "no-same-permissions", false, "")
 
 	if err := flags.Parse(command[1:]); err != nil {
-		return wellknownerrors.ErrNotSupported
+		return nil, wellknownerrors.ErrNotSupported
 	}
 
 	if !extract || sourceFile != "-" || opts.targetDir == "" {
-		return wellknownerrors.ErrNotSupported
+		return nil, wellknownerrors.ErrNotSupported
 	}
 
 	w := stdout
@@ -116,7 +116,11 @@ func tryTarCmd(
 		w = ioutil.Discard
 	}
 
-	return runTarCmd(stdin, w, opts)
+	return &flexCmd{
+		do: func() error {
+			return runTarCmd(stdin, w, opts)
+		},
+	}, nil
 }
 
 func runTarCmd(stdin io.Reader, w io.Writer, opts *untarOpts) error {
