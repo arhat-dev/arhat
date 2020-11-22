@@ -43,7 +43,7 @@ import (
 	"arhat.dev/arhat/pkg/util/errconv"
 )
 
-func (b *Agent) handleExec(sid uint64, data []byte) {
+func (b *Agent) handleExec(sid uint64, streamPrepared *uint32, data []byte) {
 	opts := new(aranyagopb.ExecOrAttachCmd)
 
 	err := opts.Unmarshal(data)
@@ -53,6 +53,12 @@ func (b *Agent) handleExec(sid uint64, data []byte) {
 	}
 
 	b.processInNewGoroutine(sid, "exec", func() {
+		defer func() {
+			// release unprepared stream
+			b.pendingStreams.Delete(sid)
+			atomic.StoreUint32(streamPrepared, 0)
+		}()
+
 		b.handleTerminalStreams(
 			b.ctx.Done(),
 			sid, opts.Stdin, opts.Stdout, opts.Stderr, opts.Tty,
@@ -100,6 +106,11 @@ func (b *Agent) handleExec(sid uint64, data []byte) {
 				} else {
 					cmd, err = exec.DoIfTryFailed(nil, stdout, stderr, opts.Command, opts.Tty, opts.Envs)
 				}
+
+				// mark stream prepared
+				b.pendingStreams.Delete(sid)
+				atomic.StoreUint32(streamPrepared, 0)
+
 				if err != nil {
 					return &aranyagopb.ErrorMsg{
 						Kind:        aranyagopb.ERR_COMMON,
@@ -123,7 +134,7 @@ func (b *Agent) handleExec(sid uint64, data []byte) {
 	})
 }
 
-func (b *Agent) handleAttach(sid uint64, data []byte) {
+func (b *Agent) handleAttach(sid uint64, streamPrepared *uint32, data []byte) {
 	cmd := new(aranyagopb.ExecOrAttachCmd)
 
 	err := cmd.Unmarshal(data)
@@ -133,6 +144,12 @@ func (b *Agent) handleAttach(sid uint64, data []byte) {
 	}
 
 	b.processInNewGoroutine(sid, "attach", func() {
+		defer func() {
+			// release unprepared stream
+			b.pendingStreams.Delete(sid)
+			atomic.StoreUint32(streamPrepared, 0)
+		}()
+
 		b.handleTerminalStreams(
 			b.ctx.Done(),
 			sid, cmd.Stdin, cmd.Stdout, cmd.Stderr, true,
@@ -185,6 +202,11 @@ func (b *Agent) handleAttach(sid uint64, data []byte) {
 							_ = cmd.Resize(cols, rows)
 						}, nil
 				})
+
+				// mark stream prepared
+				b.pendingStreams.Delete(sid)
+				atomic.StoreUint32(streamPrepared, 0)
+
 				if err != nil {
 					return &aranyagopb.ErrorMsg{
 						Kind:        aranyagopb.ERR_COMMON,
@@ -209,7 +231,7 @@ func (b *Agent) handleAttach(sid uint64, data []byte) {
 	})
 }
 
-func (b *Agent) handleLogs(sid uint64, data []byte) {
+func (b *Agent) handleLogs(sid uint64, _ *uint32, data []byte) {
 	cmd := new(aranyagopb.LogsCmd)
 
 	err := cmd.Unmarshal(data)
@@ -311,7 +333,7 @@ func (a *flexWriteCloser) Close() error {
 	return a.closeFunc()
 }
 
-func (b *Agent) handlePortForward(sid uint64, data []byte) {
+func (b *Agent) handlePortForward(sid uint64, streamPrepared *uint32, data []byte) {
 	opts := new(aranyagopb.PortForwardCmd)
 	err := opts.Unmarshal(data)
 	if err != nil {
@@ -329,6 +351,10 @@ func (b *Agent) handlePortForward(sid uint64, data []byte) {
 		defer func() {
 			_ = pw.Close()
 			closePipeReaderWithDelay(pr, 5*time.Second, 64*1024)
+
+			// release unprepared stream
+			b.pendingStreams.Delete(sid)
+			atomic.StoreUint32(streamPrepared, 0)
 
 			kind := aranyagopb.MSG_DATA
 			var payload []byte
@@ -378,6 +404,11 @@ func (b *Agent) handlePortForward(sid uint64, data []byte) {
 				},
 			}, nil, nil
 		})
+
+		// mark stream prepared
+		b.pendingStreams.Delete(sid)
+		atomic.StoreUint32(streamPrepared, 0)
+
 		if err != nil {
 			return
 		}
@@ -415,7 +446,7 @@ func (b *Agent) handlePortForward(sid uint64, data []byte) {
 	})
 }
 
-func (b *Agent) handleTerminalResize(sid uint64, data []byte) {
+func (b *Agent) handleTerminalResize(sid uint64, _ *uint32, data []byte) {
 	opts := new(aranyagopb.TerminalResizeCmd)
 	err := opts.Unmarshal(data)
 	if err != nil {

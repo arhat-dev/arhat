@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"runtime"
+	"sync"
 	"sync/atomic"
 
 	"arhat.dev/aranya-proto/aranyagopb"
@@ -47,7 +48,7 @@ var (
 )
 
 type (
-	rawCmdHandleFunc func(sid uint64, data []byte)
+	rawCmdHandleFunc func(sid uint64, streamPreparing *uint32, data []byte)
 )
 
 func NewAgent(appCtx context.Context, logger log.Interface, config *conf.Config) (_ *Agent, err error) {
@@ -104,6 +105,8 @@ func NewAgent(appCtx context.Context, logger log.Interface, config *conf.Config)
 		networkClient: nc,
 
 		streams: extutil.NewStreamManager(),
+
+		pendingStreams: new(sync.Map),
 	}
 
 	err = agent.agentComponentExtension.init(agent, agent.logger, &config.Extension)
@@ -153,6 +156,7 @@ func NewAgent(appCtx context.Context, logger log.Interface, config *conf.Config)
 	return agent, nil
 }
 
+// nolint:maligned
 type Agent struct {
 	ctx    context.Context
 	logger log.Interface
@@ -177,30 +181,24 @@ type Agent struct {
 	client        client.Interface
 
 	funcMap map[aranyagopb.CmdType]rawCmdHandleFunc
+
+	pendingStreams *sync.Map
 }
 
 func (b *Agent) SetClient(client client.Interface) {
 	for !atomic.CompareAndSwapUint32(&b.settingClient, 0, 1) {
 		runtime.Gosched()
 	}
-
 	b.client = client
-
-	for !atomic.CompareAndSwapUint32(&b.settingClient, 1, 0) {
-		runtime.Gosched()
-	}
+	atomic.StoreUint32(&b.settingClient, 0)
 }
 
 func (b *Agent) GetClient() client.Interface {
 	for !atomic.CompareAndSwapUint32(&b.settingClient, 0, 1) {
 		runtime.Gosched()
 	}
-
 	c := b.client
-
-	for !atomic.CompareAndSwapUint32(&b.settingClient, 1, 0) {
-		runtime.Gosched()
-	}
+	atomic.StoreUint32(&b.settingClient, 0)
 	return c
 }
 
@@ -251,6 +249,7 @@ func (b *Agent) PostMsg(sid uint64, kind aranyagopb.MsgType, msg proto.Marshaler
 	return err
 }
 
+// HandleCmd may be called from any goroutine, no calling sequence guaranteed
 func (b *Agent) HandleCmd(cmdBytes []byte) {
 	if b.GetClient() == nil {
 		b.handleConnectivityError(0, fmt.Errorf("client empty"))
@@ -267,23 +266,47 @@ func (b *Agent) HandleCmd(cmdBytes []byte) {
 
 	sid := cmd.Sid
 
-	// handle stream data first
-	if cmd.Kind == aranyagopb.CMD_DATA_UPSTREAM {
-		if b.streams.Has(sid) {
-			// is data for agent
-			b.streams.Write(sid, cmd.Seq, cmd.Payload)
+	// always assume is stream and mark stream as preparing
+	streamPreparing := uint32(1)
+	actual, loaded := b.pendingStreams.LoadOrStore(sid, &streamPreparing)
 
-			if cmd.Completed {
-				// write nil to mark max seq
-				b.streams.Write(sid, cmd.Seq, nil)
-			}
-		} else {
-			// is data for runtime
-			err := b.sendRuntimeCmd(arhatgopb.CMD_DATA_INPUT, sid, cmd.Seq, cmd.Payload)
-			if err != nil {
-				b.handleRuntimeError(sid, err)
+	// handle stream as special target, since data sequence is expected
+	if cmd.Kind == aranyagopb.CMD_DATA_UPSTREAM {
+		handleData := func() {
+			if b.streams.Has(sid) {
+				// is data for agent
+				b.streams.Write(sid, cmd.Seq, cmd.Payload)
+				if cmd.Completed {
+					// write nil to mark max seq
+					b.streams.Write(sid, cmd.Seq, nil)
+				}
+			} else {
+				// is data for runtime
+				err := b.sendRuntimeCmd(arhatgopb.CMD_DATA_INPUT, sid, cmd.Seq, cmd.Payload)
+				if err != nil {
+					b.handleRuntimeError(sid, err)
+				}
 			}
 		}
+
+		if !loaded {
+			// was set by this cmd handle call, the stream is prepared
+			b.pendingStreams.Delete(sid)
+
+			handleData()
+			return
+		}
+
+		// loaded preparing, wait until finished preparing
+		perparing := actual.(*uint32)
+		go func() {
+			// wait for stream if not prepared
+			for atomic.LoadUint32(perparing) != 0 {
+				runtime.Gosched()
+			}
+
+			handleData()
+		}()
 
 		return
 	}
@@ -297,6 +320,8 @@ func (b *Agent) HandleCmd(cmdBytes []byte) {
 
 	switch cmd.Kind {
 	case aranyagopb.CMD_RUNTIME:
+		b.pendingStreams.Delete(sid)
+
 		// deliver runtime cmd
 		err := b.sendRuntimeCmd(
 			arhatgopb.CMD_RUNTIME_ARANYA_PROTO, cmd.Sid, 0, cmdPayload,
@@ -304,15 +329,20 @@ func (b *Agent) HandleCmd(cmdBytes []byte) {
 		if err != nil {
 			b.handleRuntimeError(sid, err)
 		}
+		return
+	case aranyagopb.CMD_EXEC, aranyagopb.CMD_ATTACH, aranyagopb.CMD_PORT_FORWARD:
+		// do not delete pending stream
 	default:
-		handleCmd, ok := b.funcMap[cmd.Kind]
-		if handleCmd == nil || !ok {
-			b.handleUnknownCmd(sid, "unknown or unsupported cmd", cmd)
-			return
-		}
-
-		handleCmd(sid, cmdPayload)
+		b.pendingStreams.Delete(sid)
 	}
+
+	handleCmd, ok := b.funcMap[cmd.Kind]
+	if handleCmd == nil || !ok {
+		b.handleUnknownCmd(sid, "unknown", cmd)
+		return
+	}
+
+	handleCmd(sid, &streamPreparing, cmdPayload)
 }
 
 func (b *Agent) processInNewGoroutine(sid uint64, cmdName string, process func()) {

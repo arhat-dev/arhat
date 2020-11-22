@@ -22,7 +22,7 @@ import (
 	"arhat.dev/aranya-proto/aranyagopb"
 )
 
-func (b *Agent) handleNetwork(sid uint64, data []byte) {
+func (b *Agent) handleNetwork(sid uint64, _ *uint32, data []byte) {
 	cmd := new(aranyagopb.NetworkCmd)
 	err := cmd.Unmarshal(data)
 	if err != nil {

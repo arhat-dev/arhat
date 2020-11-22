@@ -26,7 +26,7 @@ import (
 	"arhat.dev/arhat/pkg/version"
 )
 
-func (b *Agent) handleNodeInfoGet(sid uint64, cmdBytes []byte) {
+func (b *Agent) handleNodeInfoGet(sid uint64, _ *uint32, cmdBytes []byte) {
 	cmd := new(aranyagopb.NodeInfoGetCmd)
 	err := cmd.Unmarshal(cmdBytes)
 	if err != nil {
