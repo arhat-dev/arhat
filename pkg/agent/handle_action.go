@@ -43,7 +43,7 @@ import (
 	"arhat.dev/arhat/pkg/util/errconv"
 )
 
-func (b *Agent) handleExec(sid uint64, streamPrepared *uint32, data []byte) {
+func (b *Agent) handleExec(sid uint64, streamPreparing *uint32, data []byte) {
 	opts := new(aranyagopb.ExecOrAttachCmd)
 
 	err := opts.Unmarshal(data)
@@ -55,13 +55,16 @@ func (b *Agent) handleExec(sid uint64, streamPrepared *uint32, data []byte) {
 	b.processInNewGoroutine(sid, "exec", func() {
 		defer func() {
 			// release unprepared stream
-			b.pendingStreams.Delete(sid)
-			atomic.StoreUint32(streamPrepared, 0)
+			b.markStreamPrepared(sid, streamPreparing)
 		}()
 
+		var (
+			wg  = new(sync.WaitGroup)
+			seq uint64
+		)
 		b.handleTerminalStreams(
 			b.ctx.Done(),
-			sid, opts.Stdin, opts.Stdout, opts.Stderr, opts.Tty,
+			sid, &seq, opts.Stdin, opts.Stdout, opts.Stderr, opts.Tty, wg,
 			// preRun check
 			func() error {
 				if len(opts.Command) == 0 {
@@ -85,19 +88,62 @@ func (b *Agent) handleExec(sid uint64, streamPrepared *uint32, data []byte) {
 
 				if opts.Stdin {
 					err = b.streams.Add(sid, func() (io.WriteCloser, types.ResizeHandleFunc, error) {
-						pr, pw := iohelper.Pipe()
-						cmd, err = exec.DoIfTryFailed(pr, stdout, stderr, opts.Command, opts.Tty, opts.Envs)
+						var (
+							procStdin io.ReadCloser
+							procInput io.WriteCloser
+
+							// create stdin only when tty not required
+							createStdin = !opts.Tty
+						)
+
+						if createStdin {
+							procStdin, procInput = iohelper.Pipe()
+						}
+
+						cmd, err = exec.DoIfTryFailed(procStdin, stdout, stderr, opts.Command, opts.Tty, opts.Envs)
 						if err != nil {
-							_ = pw.Close()
-							_ = pr.Close()
+							if procStdin != nil {
+								_ = procStdin.Close()
+							}
+							if procInput != nil {
+								_ = procInput.Close()
+							}
 							return nil, nil, err
 						}
 
+						if startedCmd, ok := cmd.(*exechelper.Cmd); ok && opts.Tty {
+							if startedCmd.TtyInput == nil || startedCmd.TtyOutput == nil {
+								_ = startedCmd.Release()
+								return nil, nil, fmt.Errorf("invalid return value of cmd with tty")
+							}
+
+							// tty will create a stdin pipe, reuse it
+							procInput = startedCmd.TtyInput
+
+							// upload tty output
+							wg.Add(1)
+							go func() {
+								defer func() {
+									_ = startedCmd.TtyOutput.Close()
+									wg.Done()
+								}()
+
+								b.uploadDataOutput(
+									b.ctx.Done(), sid, startedCmd.TtyOutput,
+									aranyagopb.MSG_DATA_STDOUT,
+									constant.InteractiveStreamReadTimeout,
+									&seq,
+								)
+							}()
+						}
+
 						return &flexWriteCloser{
-								writeFunc: pw.Write,
+								writeFunc: procInput.Write,
 								closeFunc: func() error {
-									closePipeReaderWithDelay(pr, 5*time.Second, 128*1024)
-									return pw.Close()
+									// close stdin with delay
+									closePipeReaderWithDelay(procStdin, 5*time.Second, 128*1024)
+									// close input to stdin immediately
+									return procInput.Close()
 								},
 							}, func(cols, rows uint32) {
 								_ = cmd.Resize(cols, rows)
@@ -108,8 +154,7 @@ func (b *Agent) handleExec(sid uint64, streamPrepared *uint32, data []byte) {
 				}
 
 				// mark stream prepared
-				b.pendingStreams.Delete(sid)
-				atomic.StoreUint32(streamPrepared, 0)
+				b.markStreamPrepared(sid, streamPreparing)
 
 				if err != nil {
 					return &aranyagopb.ErrorMsg{
@@ -134,10 +179,10 @@ func (b *Agent) handleExec(sid uint64, streamPrepared *uint32, data []byte) {
 	})
 }
 
-func (b *Agent) handleAttach(sid uint64, streamPrepared *uint32, data []byte) {
-	cmd := new(aranyagopb.ExecOrAttachCmd)
+func (b *Agent) handleAttach(sid uint64, streamPreparing *uint32, data []byte) {
+	opts := new(aranyagopb.ExecOrAttachCmd)
 
-	err := cmd.Unmarshal(data)
+	err := opts.Unmarshal(data)
 	if err != nil {
 		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal ContainerExecOrAttachCmd: %w", err))
 		return
@@ -146,13 +191,16 @@ func (b *Agent) handleAttach(sid uint64, streamPrepared *uint32, data []byte) {
 	b.processInNewGoroutine(sid, "attach", func() {
 		defer func() {
 			// release unprepared stream
-			b.pendingStreams.Delete(sid)
-			atomic.StoreUint32(streamPrepared, 0)
+			b.markStreamPrepared(sid, streamPreparing)
 		}()
 
+		var (
+			wg  = new(sync.WaitGroup)
+			seq uint64
+		)
 		b.handleTerminalStreams(
 			b.ctx.Done(),
-			sid, cmd.Stdin, cmd.Stdout, cmd.Stderr, true,
+			sid, &seq, true, opts.Stdout, opts.Stderr, true, wg,
 			// preRun check
 			nil,
 			// run
@@ -170,33 +218,50 @@ func (b *Agent) handleAttach(sid uint64, streamPrepared *uint32, data []byte) {
 					case "windows":
 						shell = "cmd"
 					default:
-						shell = "/bin/sh"
+						shell = "sh"
 					}
 				}
 
 				var cmd *exechelper.Cmd
 				err = b.streams.Add(sid, func() (io.WriteCloser, types.ResizeHandleFunc, error) {
-					pr, pw := iohelper.Pipe()
 					cmd, err = exechelper.Do(exechelper.Spec{
 						Context: nil,
 						Command: []string{shell},
-						Stdin:   pr,
-						Stdout:  stdout,
-						Stderr:  stderr,
+						Stdin:   nil,
+						Stdout:  nil,
+						Stderr:  nil,
 						Tty:     true,
 					})
 					if err != nil {
-						_ = pw.Close()
-						_ = pr.Close()
 						return nil, nil, err
 					}
 
+					if cmd.TtyInput == nil || cmd.TtyOutput == nil {
+						_ = cmd.Release()
+						return nil, nil, fmt.Errorf("invalid return value of cmd with tty")
+					}
+
+					// upload tty output
+					wg.Add(1)
+					go func() {
+						defer func() {
+							_ = cmd.TtyOutput.Close()
+							wg.Done()
+						}()
+
+						b.uploadDataOutput(
+							b.ctx.Done(), sid, cmd.TtyOutput,
+							aranyagopb.MSG_DATA_STDOUT,
+							constant.InteractiveStreamReadTimeout,
+							&seq,
+						)
+					}()
+
 					return &flexWriteCloser{
-							writeFunc: pw.Write,
+							writeFunc: cmd.TtyInput.Write,
 							closeFunc: func() error {
-								_ = pw.Close()
-								_ = pr.Close()
-								return nil
+								closePipeReaderWithDelay(cmd.TtyOutput, 5*time.Second, 128*1024)
+								return cmd.TtyInput.Close()
 							},
 						}, func(cols, rows uint32) {
 							_ = cmd.Resize(cols, rows)
@@ -204,8 +269,7 @@ func (b *Agent) handleAttach(sid uint64, streamPrepared *uint32, data []byte) {
 				})
 
 				// mark stream prepared
-				b.pendingStreams.Delete(sid)
-				atomic.StoreUint32(streamPrepared, 0)
+				b.markStreamPrepared(sid, streamPreparing)
 
 				if err != nil {
 					return &aranyagopb.ErrorMsg{
@@ -241,9 +305,13 @@ func (b *Agent) handleLogs(sid uint64, _ *uint32, data []byte) {
 	}
 
 	b.processInNewGoroutine(sid, "logs", func() {
+		var (
+			wg  = new(sync.WaitGroup)
+			seq uint64
+		)
 		b.handleTerminalStreams(
 			b.ctx.Done(),
-			sid, false, true, true, false,
+			sid, &seq, false, true, true, false, wg,
 			// preRun check
 			nil,
 			// run
@@ -333,7 +401,7 @@ func (a *flexWriteCloser) Close() error {
 	return a.closeFunc()
 }
 
-func (b *Agent) handlePortForward(sid uint64, streamPrepared *uint32, data []byte) {
+func (b *Agent) handlePortForward(sid uint64, streamPreparing *uint32, data []byte) {
 	opts := new(aranyagopb.PortForwardCmd)
 	err := opts.Unmarshal(data)
 	if err != nil {
@@ -353,8 +421,7 @@ func (b *Agent) handlePortForward(sid uint64, streamPrepared *uint32, data []byt
 			closePipeReaderWithDelay(pr, 5*time.Second, 64*1024)
 
 			// release unprepared stream
-			b.pendingStreams.Delete(sid)
-			atomic.StoreUint32(streamPrepared, 0)
+			b.markStreamPrepared(sid, streamPreparing)
 
 			kind := aranyagopb.MSG_DATA
 			var payload []byte
@@ -406,8 +473,7 @@ func (b *Agent) handlePortForward(sid uint64, streamPrepared *uint32, data []byt
 		})
 
 		// mark stream prepared
-		b.pendingStreams.Delete(sid)
-		atomic.StoreUint32(streamPrepared, 0)
+		b.markStreamPrepared(sid, streamPreparing)
 
 		if err != nil {
 			return
@@ -460,23 +526,23 @@ func (b *Agent) handleTerminalResize(sid uint64, _ *uint32, data []byte) {
 func (b *Agent) handleTerminalStreams(
 	stopSig <-chan struct{},
 	sid uint64,
+	pSeq *uint64,
 	useStdin, useStdout, useStderr, useTty bool,
+	wg *sync.WaitGroup,
 	preRun func() error,
 	run func(stdout, stderr io.WriteCloser) *aranyagopb.ErrorMsg,
 ) {
 	var (
-		seq       uint64
 		preRunErr error
 		err       *aranyagopb.ErrorMsg
-		wg        = new(sync.WaitGroup)
 	)
 
 	defer func() {
 		if err != nil {
 			data, _ := err.Marshal()
-			_, _ = b.PostData(sid, aranyagopb.MSG_ERROR, nextSeq(&seq), true, data)
+			_, _ = b.PostData(sid, aranyagopb.MSG_ERROR, nextSeq(pSeq), true, data)
 		} else {
-			_, _ = b.PostData(sid, aranyagopb.MSG_DATA, nextSeq(&seq), true, nil)
+			_, _ = b.PostData(sid, aranyagopb.MSG_DATA, nextSeq(pSeq), true, nil)
 		}
 
 		b.streams.Del(sid)
@@ -490,7 +556,7 @@ func (b *Agent) handleTerminalStreams(
 	}
 
 	stdout, stderr, closeStreams := b.createStreams(
-		stopSig, sid, useStdout, useStderr, useStdin && useTty, &seq, wg,
+		stopSig, sid, useStdin, useStdout, useStderr, useTty, pSeq, wg,
 	)
 
 	err = run(stdout, stderr)
@@ -507,7 +573,7 @@ func (b *Agent) handleTerminalStreams(
 func (b *Agent) createStreams(
 	stopSig <-chan struct{},
 	sid uint64,
-	useStdout, useStderr, interactive bool,
+	useStdin, useStdout, useStderr, tty bool,
 	pSeq *uint64,
 	wg *sync.WaitGroup,
 ) (stdout, stderr io.WriteCloser, close func()) {
@@ -517,11 +583,13 @@ func (b *Agent) createStreams(
 		readTimeout = constant.NonInteractiveStreamReadTimeout
 	)
 
-	if interactive {
+	// is interactive stream, strive low latency
+	if useStdin && tty {
 		readTimeout = constant.InteractiveStreamReadTimeout
 	}
 
-	if useStdout {
+	// stdout is not used when tty is required
+	if !tty && useStdout {
 		readStdout, stdout = iohelper.Pipe()
 		wg.Add(1)
 		go func() {
@@ -538,7 +606,8 @@ func (b *Agent) createStreams(
 		}()
 	}
 
-	if useStderr {
+	// stderr is not used when tty is required
+	if !tty && useStderr {
 		readStderr, stderr = iohelper.Pipe()
 		wg.Add(1)
 		go func() {

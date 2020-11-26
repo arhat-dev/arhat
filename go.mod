@@ -6,7 +6,7 @@ require (
 	arhat.dev/aranya-proto v0.2.6-0.20201120144800-fe89fc38a23a
 	arhat.dev/arhat-proto v0.4.3
 	arhat.dev/libext v0.4.9
-	arhat.dev/pkg v0.4.4
+	arhat.dev/pkg v0.4.5-0.20201126201029-2a21f05d3c77
 	ext.arhat.dev/runtimeutil v0.2.4
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/denisbrodbeck/machineid v1.0.1
@@ -32,14 +32,14 @@ require (
 	github.com/prometheus/node_exporter v1.0.1
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/crypto v0.0.0-20201117144127-c1f2f97bffc9 // indirect
-	golang.org/x/sys v0.0.0-20201113233024-12cec1faf1ba
+	golang.org/x/sys v0.0.0-20201119102817-f84b799fce68
 	google.golang.org/grpc v1.33.2
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
 )
 
 replace (
-	github.com/creack/pty => github.com/creack/pty v1.1.11
+	github.com/creack/pty => github.com/jeffreystoke/pty v1.1.12-0.20201126172251-5ea3b23b02ac
 	github.com/dsnet/golib => github.com/dsnet/golib v0.0.0-20200723050859-c110804dfa93
 	github.com/fsnotify/fsnotify => github.com/fsnotify/fsnotify v1.4.9
 	github.com/klauspost/compress => github.com/klauspost/compress v1.11.3

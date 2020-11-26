@@ -18,6 +18,6 @@ package exechelper
 
 import "syscall"
 
-func getSysProcAttr(setsid bool) *syscall.SysProcAttr {
+func getSysProcAttr(tty bool) *syscall.SysProcAttr {
 	return &syscall.SysProcAttr{}
 }

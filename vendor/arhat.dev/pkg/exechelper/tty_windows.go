@@ -1,5 +1,3 @@
-// +build !windows,!js,!plan9
-
 /*
 Copyright 2020 The arhat.dev Authors.
 
@@ -19,18 +17,43 @@ limitations under the License.
 package exechelper
 
 import (
-	"syscall"
+	"io"
+	"os/exec"
+
+	"github.com/creack/pty"
 )
 
-func getSysProcAttr(tty bool) *syscall.SysProcAttr {
-	// https://github.com/creack/pty/issues/35#issuecomment-147947212
-	// do not Setpgid if already Setsid
-	if tty {
-		return nil
+func startCmdWithTty(
+	cmd *exec.Cmd,
+) (
+	doResize resizeFunc,
+	close func(),
+	stdin io.WriteCloser,
+	stdout io.ReadCloser,
+	err error,
+) {
+	f, err := pty.Start(cmd)
+	if err != nil {
+		return nil, nil, nil, nil, err
 	}
 
-	return &syscall.SysProcAttr{
-		Setpgid: true,
-		Pgid:    0,
+	doResize = func(cols, rows uint32) error {
+		return pty.Setsize(f, &pty.Winsize{
+			Cols: uint16(cols), Rows: uint16(rows),
+		})
 	}
+
+	close = func() { _ = f.Close() }
+
+	switch t := f.(type) {
+	case *pty.WindowsPty:
+		stdin = t.InputPipe()
+		stdout = t.OutputPipe()
+	default:
+		// unreachable, defensive
+		stdin = f
+		stdout = f
+	}
+
+	return
 }

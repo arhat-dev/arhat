@@ -1,4 +1,4 @@
-// +build windows js plan9 aix
+// +build js plan9 aix
 
 /*
 Copyright 2020 The arhat.dev Authors.

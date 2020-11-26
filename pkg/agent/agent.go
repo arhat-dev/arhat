@@ -249,6 +249,13 @@ func (b *Agent) PostMsg(sid uint64, kind aranyagopb.MsgType, msg proto.Marshaler
 	return err
 }
 
+func (b *Agent) markStreamPrepared(sid uint64, preparing interface{}) {
+	b.pendingStreams.Delete(sid)
+	if preparing != nil {
+		atomic.StoreUint32(preparing.(*uint32), 0)
+	}
+}
+
 // HandleCmd may be called from any goroutine, no calling sequence guaranteed
 func (b *Agent) HandleCmd(cmdBytes []byte) {
 	if b.GetClient() == nil {
@@ -291,7 +298,7 @@ func (b *Agent) HandleCmd(cmdBytes []byte) {
 
 		if !loaded {
 			// was set by this cmd handle call, the stream is prepared
-			b.pendingStreams.Delete(sid)
+			b.markStreamPrepared(sid, &streamPreparing)
 
 			handleData()
 			return
@@ -320,7 +327,7 @@ func (b *Agent) HandleCmd(cmdBytes []byte) {
 
 	switch cmd.Kind {
 	case aranyagopb.CMD_RUNTIME:
-		b.pendingStreams.Delete(sid)
+		b.markStreamPrepared(sid, &streamPreparing)
 
 		// deliver runtime cmd
 		err := b.sendRuntimeCmd(
@@ -333,7 +340,7 @@ func (b *Agent) HandleCmd(cmdBytes []byte) {
 	case aranyagopb.CMD_EXEC, aranyagopb.CMD_ATTACH, aranyagopb.CMD_PORT_FORWARD:
 		// do not delete pending stream
 	default:
-		b.pendingStreams.Delete(sid)
+		b.markStreamPrepared(sid, &streamPreparing)
 	}
 
 	handleCmd, ok := b.funcMap[cmd.Kind]

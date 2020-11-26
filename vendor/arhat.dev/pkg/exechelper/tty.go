@@ -1,4 +1,4 @@
-// +build !windows,!js,!plan9,!aix
+// +build !js,!plan9,!aix,!windows
 
 /*
 Copyright 2020 The arhat.dev Authors.
@@ -27,34 +27,28 @@ import (
 
 func startCmdWithTty(
 	cmd *exec.Cmd,
-	stdin io.Reader,
-	stdout io.Writer,
-	onCopyErr func(error),
-) (resizeFunc, func(), error) {
+) (
+	doResize resizeFunc,
+	close func(),
+	stdin io.WriteCloser,
+	stdout io.ReadCloser,
+	err error,
+) {
 	f, err := pty.Start(cmd)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
-	if stdin != nil {
-		go func() {
-			_, err := io.Copy(f, stdin)
-			if err != nil {
-				onCopyErr(err)
-			}
-		}()
+	doResize = func(cols, rows uint32) error {
+		return pty.Setsize(f, &pty.Winsize{
+			Cols: uint16(cols), Rows: uint16(rows),
+		})
 	}
 
-	if stdout != nil {
-		go func() {
-			_, err := io.Copy(stdout, f)
-			if err != nil {
-				onCopyErr(err)
-			}
-		}()
-	}
+	close = func() { _ = f.Close() }
 
-	return func(cols, rows uint32) error {
-		return pty.Setsize(f, &pty.Winsize{Cols: uint16(cols), Rows: uint16(rows)})
-	}, func() { _ = f.Close() }, nil
+	stdin = f
+	stdout = f
+
+	return
 }

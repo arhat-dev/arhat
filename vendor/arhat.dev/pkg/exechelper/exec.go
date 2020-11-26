@@ -31,11 +31,11 @@ type Spec struct {
 
 	ExtraLookupPaths []string
 
+	// stdin/stdout/stderr streams, not used if tty required
 	Stdin          io.Reader
 	Stdout, Stderr io.Writer
 
-	Tty            bool
-	OnTtyCopyError func(err error)
+	Tty bool
 }
 
 const (
@@ -46,6 +46,10 @@ type resizeFunc func(cols, rows uint32) error
 
 type Cmd struct {
 	ExecCmd *exec.Cmd
+
+	// stdin/stdout set when created with tty enabled
+	TtyInput  io.WriteCloser
+	TtyOutput io.ReadCloser
 
 	doResize resizeFunc
 	cleanup  func()
@@ -150,12 +154,8 @@ func Do(s Spec) (*Cmd, error) {
 	}
 
 	if s.Tty {
-		handErr := s.OnTtyCopyError
-		if handErr == nil {
-			handErr = func(error) {}
-		}
-
-		startedCmd.doResize, startedCmd.cleanup, err = startCmdWithTty(cmd, s.Stdin, s.Stdout, handErr)
+		startedCmd.doResize, startedCmd.cleanup, startedCmd.TtyInput,
+			startedCmd.TtyOutput, err = startCmdWithTty(cmd)
 		if err != nil {
 			if cmd.Process != nil {
 				_ = cmd.Process.Release()
