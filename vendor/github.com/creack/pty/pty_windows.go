@@ -1,7 +1,6 @@
 package pty
 
 import (
-	"io"
 	"os"
 	"syscall"
 	"unsafe"
@@ -107,10 +106,6 @@ func (p *WindowsPty) Fd() uintptr {
 
 func (p *WindowsPty) Read(data []byte) (int, error) {
 	return p.r.Read(data)
-}
-
-func (p *WindowsPty) ReadFrom(r io.Reader) (int64, error) {
-	return p.w.ReadFrom(r)
 }
 
 func (p *WindowsPty) Write(data []byte) (int, error) {

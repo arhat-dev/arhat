@@ -27,9 +27,12 @@ import (
 
 func startCmdWithTty(
 	cmd *exec.Cmd,
-	stdin io.Reader,
-	stdout io.Writer,
-	onCopyErr func(error),
-) (resizeFunc, func(), error) {
-	return nil, nil, wellknownerrors.ErrNotSupported
+) (
+	doResize resizeFunc,
+	close func(),
+	stdin io.WriteCloser,
+	stdout io.ReadCloser,
+	err error,
+) {
+	return nil, nil, nil, nil, wellknownerrors.ErrNotSupported
 }

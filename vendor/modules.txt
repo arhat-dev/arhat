@@ -16,7 +16,7 @@ arhat.dev/libext/extutil
 arhat.dev/libext/protoutil
 arhat.dev/libext/server
 arhat.dev/libext/types
-# arhat.dev/pkg v0.4.5-0.20201126201029-2a21f05d3c77
+# arhat.dev/pkg v0.4.5-0.20201126204715-3971a8a6833b
 ## explicit
 arhat.dev/pkg/backoff
 arhat.dev/pkg/envhelper
@@ -91,7 +91,7 @@ github.com/cespare/xxhash/v2
 github.com/containerd/cgroups/stats/v1
 # github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 github.com/coreos/go-systemd/dbus
-# github.com/creack/pty v1.1.11 => github.com/jeffreystoke/pty v1.1.12-0.20201126172251-5ea3b23b02ac
+# github.com/creack/pty v1.1.11 => github.com/jeffreystoke/pty v1.1.12-0.20201126201855-c1c1e24408f9
 github.com/creack/pty
 # github.com/denisbrodbeck/machineid v1.0.1
 ## explicit
@@ -497,7 +497,7 @@ nhooyr.io/websocket/internal/bpool
 nhooyr.io/websocket/internal/errd
 nhooyr.io/websocket/internal/wsjs
 nhooyr.io/websocket/internal/xsync
-# github.com/creack/pty => github.com/jeffreystoke/pty v1.1.12-0.20201126172251-5ea3b23b02ac
+# github.com/creack/pty => github.com/jeffreystoke/pty v1.1.12-0.20201126201855-c1c1e24408f9
 # github.com/dsnet/golib => github.com/dsnet/golib v0.0.0-20200723050859-c110804dfa93
 # github.com/fsnotify/fsnotify => github.com/fsnotify/fsnotify v1.4.9
 # github.com/klauspost/compress => github.com/klauspost/compress v1.11.3
