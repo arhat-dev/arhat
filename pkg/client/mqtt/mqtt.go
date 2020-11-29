@@ -52,7 +52,7 @@ func init() {
 				ClientID:           "",
 				Username:           "",
 				Password:           "",
-				Keepalive:          60,
+				KeepaliveInterval:  60 * time.Second,
 			}
 		},
 		NewMQTTClient,
@@ -121,10 +121,15 @@ func NewMQTTClient(
 		options = append(options, libmqtt.WithCustomTLS(connInfo.TLSConfig))
 	}
 
-	keepalive := config.Keepalive
+	keepalive := uint16(config.KeepaliveInterval.Seconds())
 	if keepalive == 0 {
 		// default to 60 seconds
 		keepalive = 60
+	}
+
+	if keepalive < 1 {
+		// minimum keepalive interval in mqtt is 1s
+		keepalive = 1
 	}
 
 	options = append(options, libmqtt.WithRouter(connInfo.TopicRouter))
@@ -132,8 +137,8 @@ func NewMQTTClient(
 		Username:     connInfo.Username,
 		Password:     connInfo.Password,
 		ClientID:     connInfo.ClientID,
-		Keepalive:    uint16(keepalive),
-		CleanSession: true,
+		Keepalive:    keepalive,
+		CleanSession: false, // retain session data on connection lost for data streaming
 		IsWill:       true,
 		WillTopic:    connInfo.WillPubTopic,
 		WillQos:      libmqtt.Qos1,
@@ -187,7 +192,7 @@ type Client struct {
 	connErrCh chan error
 	subErrCh  chan error
 
-	exited        int32
+	exited        uint32
 	supportRetain bool
 }
 
@@ -212,6 +217,8 @@ func (c *Client) Connect(dialCtx context.Context) error {
 	select {
 	case <-dialCtx.Done():
 		return dialCtx.Err()
+	case <-c.Context().Done():
+		return c.Context().Err()
 	case err = <-c.netErrCh:
 		if err != nil {
 			return err
@@ -232,6 +239,10 @@ func (c *Client) Start(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
+	case err := <-c.netErrCh:
+		return err
+	case <-c.Context().Done():
+		return c.Context().Err()
 	case err := <-c.subErrCh:
 		if err != nil {
 			return err
@@ -245,8 +256,10 @@ func (c *Client) Start(ctx context.Context) error {
 	select {
 	case err := <-c.netErrCh:
 		return err
+	case <-c.Context().Done():
+		return c.Context().Err()
 	case <-ctx.Done():
-		return ctx.Err()
+		return nil
 	}
 }
 
@@ -265,7 +278,7 @@ func (c *Client) Close() error {
 	return c.OnClose(func() error {
 		c.client.Destroy(true)
 
-		if atomic.CompareAndSwapInt32(&c.exited, 0, 1) {
+		if atomic.CompareAndSwapUint32(&c.exited, 0, 1) {
 			close(c.netErrCh)
 		}
 
@@ -283,15 +296,23 @@ func (c *Client) pubOnline() {
 }
 
 func (c *Client) handleNet(client libmqtt.Client, server string, err error) {
-	if err != nil {
-		c.Log.I("network error happened", log.String("server", server), log.Error(err))
+	if err == nil {
+		c.Log.D("connected to broker", log.String("server", server), log.Error(err))
+		return
+	}
 
-		// exit client on network error
-		if atomic.CompareAndSwapInt32(&c.exited, 0, 1) {
-			c.netErrCh <- err
+	// close client on network error
+	c.Log.I("connection error", log.String("server", server), log.Error(err))
+	if atomic.CompareAndSwapUint32(&c.exited, 0, 1) {
+		select {
+		case c.netErrCh <- err:
 			close(c.netErrCh)
+		case <-c.Context().Done():
 		}
 	}
+
+	c.Log.I("closing client on network error", log.Error(err))
+	_ = c.Close()
 }
 
 // nolint:gocritic
@@ -311,14 +332,14 @@ func (c *Client) handleConn(dialExitSig <-chan struct{}) libmqtt.ConnHandleFunc 
 			case c.connErrCh <- fmt.Errorf("rejected by mqtt broker, code: %d", code):
 				return
 			}
-		} else {
-			// connected to broker
-			select {
-			case <-dialExitSig:
-				return
-			case c.connErrCh <- nil:
-				return
-			}
+		}
+
+		// connected to broker
+		select {
+		case <-dialExitSig:
+			return
+		case c.connErrCh <- nil:
+			return
 		}
 	}
 }

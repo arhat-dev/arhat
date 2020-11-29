@@ -46,7 +46,7 @@ type Config struct {
 	ClientID           string             `json:"clientID" yaml:"clientID"`
 	Username           string             `json:"username" yaml:"username"`
 	Password           string             `json:"password" yaml:"password"`
-	Keepalive          int32              `json:"keepalive" yaml:"keepalive"`
+	KeepaliveInterval  time.Duration      `json:"keepaliveInterval" yaml:"keepaliveInterval"`
 }
 
 type ConfigConnectInfo struct {
