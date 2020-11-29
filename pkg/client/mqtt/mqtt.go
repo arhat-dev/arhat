@@ -121,8 +121,8 @@ func NewMQTTClient(
 		options = append(options, libmqtt.WithCustomTLS(connInfo.TLSConfig))
 	}
 
-	keepalive := uint16(config.KeepaliveInterval.Seconds())
-	if keepalive == 0 {
+	keepalive := config.KeepaliveInterval.Seconds()
+	if keepalive <= 0 || keepalive > 0xffff {
 		// default to 60 seconds
 		keepalive = 60
 	}
@@ -137,7 +137,7 @@ func NewMQTTClient(
 		Username:     connInfo.Username,
 		Password:     connInfo.Password,
 		ClientID:     connInfo.ClientID,
-		Keepalive:    keepalive,
+		Keepalive:    uint16(keepalive),
 		CleanSession: false, // retain session data on connection lost for data streaming
 		IsWill:       true,
 		WillTopic:    connInfo.WillPubTopic,

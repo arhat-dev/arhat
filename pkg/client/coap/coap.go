@@ -65,7 +65,7 @@ func init() {
 				PathNamespaceFrom: conf.ValueFromSpec{},
 				Transport:         "tcp",
 				URIQueries:        make(map[string]string),
-				Keepalive:         60,
+				KeepaliveInterval: 60 * time.Second,
 			}
 		},
 		NewCoAPClient,
@@ -155,13 +155,18 @@ func NewCoAPClient(
 
 	brokerAddr := config.Endpoint
 
-	keepaliveInterval := time.Second * time.Duration(config.Keepalive)
-	if keepaliveInterval == 0 {
-		keepaliveInterval = time.Second * 6
+	keepaliveInterval := config.KeepaliveInterval
+	if keepaliveInterval <= 0 {
+		keepaliveInterval = 60 * time.Second
 	}
+
+	if keepaliveInterval < time.Second {
+		keepaliveInterval = time.Second
+	}
+
 	keepaliveOpt := keepalive.New(keepalive.WithConfig(keepalive.Config{
 		Interval:    keepaliveInterval,
-		WaitForPong: keepaliveInterval,
+		WaitForPong: time.Duration(float64(keepaliveInterval) * 1.2),
 		NewRetryPolicy: func() keepalive.RetryFunc {
 			// The first failure is detected after 2*duration:
 			// 1 since the previous ping, plus 1 for the next ping-pong to timeout
