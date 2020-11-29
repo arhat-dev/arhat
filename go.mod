@@ -5,9 +5,9 @@ go 1.15
 require (
 	arhat.dev/aranya-proto v0.2.6
 	arhat.dev/arhat-proto v0.4.3
-	arhat.dev/libext v0.4.9
+	arhat.dev/libext v0.4.10
 	arhat.dev/pkg v0.4.5
-	ext.arhat.dev/runtimeutil v0.2.4
+	ext.arhat.dev/runtimeutil v0.2.5
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
