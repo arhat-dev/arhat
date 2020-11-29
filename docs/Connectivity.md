@@ -68,6 +68,9 @@ connectivity:
       #   - websocket
       transport: tcp
 
+      # mqtt keepalive ping interval
+      keepaliveInterval: 60s
+
       # custom topic namespace used to pub/sub mqtt topics
       #
       # its meaning depends on the value of variant:
@@ -207,6 +210,9 @@ connectivity:
         #exec: []
         # set pathNamespace explicitly
         text: /ps/exmaple/topic/foo
+
+      # coap keepalive ping interval
+      keepaliveInterval: 60s
 
       # custom string key value pair for coap uri-query options
       uriQueries:
