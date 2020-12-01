@@ -1,4 +1,4 @@
-// +build go1.15
+// +build !nohashhelper_sha256
 
 /*
 Copyright 2020 The arhat.dev Authors.
@@ -16,17 +16,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package iohelper
+package hashhelper
 
 import (
-	"errors"
-	"os"
+	"crypto/sha256"
 )
 
-var (
-	ErrDeadlineExceeded = os.ErrDeadlineExceeded
-)
-
-func isDeadlineExceeded(err error) bool {
-	return errors.Is(err, os.ErrDeadlineExceeded)
+func Sha256Sum(data []byte) []byte {
+	h := sha256.New()
+	_, _ = h.Write(data)
+	return h.Sum(nil)
 }

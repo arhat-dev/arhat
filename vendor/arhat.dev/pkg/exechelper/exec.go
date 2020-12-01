@@ -21,13 +21,15 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"syscall"
 )
 
 type Spec struct {
 	Context context.Context
 
-	Env     map[string]string
-	Command []string
+	Env         map[string]string
+	Command     []string
+	SysProcAttr *syscall.SysProcAttr
 
 	ExtraLookupPaths []string
 
@@ -108,34 +110,27 @@ func DoHeadless(command []string, env map[string]string) (int, error) {
 }
 
 // Prepare an unstarted exec.Cmd
-func Prepare(
-	ctx context.Context,
-	command, extraPaths []string,
-	tty bool,
-	env map[string]string,
-) (*exec.Cmd, error) {
-	if len(command) == 0 {
+func Prepare(s Spec) (*exec.Cmd, error) {
+	if len(s.Command) == 0 {
 		// defensive check
 		return nil, fmt.Errorf("empty command")
 	}
 
-	bin, err := Lookup(command[0], extraPaths)
+	bin, err := Lookup(s.Command[0], s.ExtraLookupPaths)
 	if err != nil {
 		return nil, err
 	}
 
 	var cmd *exec.Cmd
-	if ctx == nil {
-		cmd = exec.Command(bin, command[1:]...)
+	if s.Context == nil {
+		cmd = exec.Command(bin, s.Command[1:]...)
 	} else {
-		cmd = exec.CommandContext(ctx, bin, command[1:]...)
+		cmd = exec.CommandContext(s.Context, bin, s.Command[1:]...)
 	}
 
-	// if using tty in unix, github.com/creack/pty will Setsid, and if we
-	// Setpgid, will fail the process creation
-	cmd.SysProcAttr = getSysProcAttr(tty)
+	cmd.SysProcAttr = getSysProcAttr(s.Tty, s.SysProcAttr)
 
-	for k, v := range env {
+	for k, v := range s.Env {
 		cmd.Env = append(cmd.Env, k+"="+v)
 	}
 
@@ -144,7 +139,7 @@ func Prepare(
 
 // Do execute command directly in host
 func Do(s Spec) (*Cmd, error) {
-	cmd, err := Prepare(s.Context, s.Command, s.ExtraLookupPaths, s.Tty, s.Env)
+	cmd, err := Prepare(s)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +149,9 @@ func Do(s Spec) (*Cmd, error) {
 	}
 
 	if s.Tty {
-		startedCmd.doResize, startedCmd.cleanup, startedCmd.TtyInput,
+		startedCmd.doResize,
+			startedCmd.cleanup,
+			startedCmd.TtyInput,
 			startedCmd.TtyOutput, err = startCmdWithTty(cmd)
 		if err != nil {
 			if cmd.Process != nil {

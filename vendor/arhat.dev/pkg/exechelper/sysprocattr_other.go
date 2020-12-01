@@ -1,3 +1,5 @@
+// +build js plan9 windows
+
 /*
 Copyright 2020 The arhat.dev Authors.
 
@@ -16,8 +18,10 @@ limitations under the License.
 
 package exechelper
 
-import "syscall"
+import (
+	"syscall"
+)
 
-func getSysProcAttr(tty bool) *syscall.SysProcAttr {
-	return &syscall.SysProcAttr{}
+func getSysProcAttr(tty bool, origin *syscall.SysProcAttr) *syscall.SysProcAttr {
+	return origin
 }

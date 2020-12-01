@@ -21,7 +21,6 @@ package agent
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"sync"
 
 	"arhat.dev/aranya-proto/aranyagopb"
@@ -33,21 +32,20 @@ import (
 )
 
 type agentComponentMetrics struct {
-	zstdPool *sync.Pool
+	zstdEncoder *zstd.Encoder
 
 	metricsMU          *sync.RWMutex
 	collectNodeMetrics metrics.CollectFunc
 }
 
 func (b *agentComponentMetrics) init() error {
-	b.zstdPool = &sync.Pool{
-		New: func() interface{} {
-			enc, _ := zstd.NewWriter(
-				nil,
-				zstd.WithEncoderLevel(zstd.SpeedBestCompression),
-			)
-			return enc
-		},
+	var err error
+	b.zstdEncoder, err = zstd.NewWriter(
+		nil,
+		zstd.WithEncoderLevel(zstd.SpeedBestCompression),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create zstd encoder: %w", err)
 	}
 
 	b.metricsMU = new(sync.RWMutex)
@@ -72,7 +70,7 @@ func (b *Agent) handleMetricsConfig(sid uint64, _ *uint32, data []byte) {
 		return
 	}
 
-	err = b.PostMsg(sid, aranyagopb.MSG_DONE, &aranyagopb.Empty{})
+	err = b.PostMsg(sid, aranyagopb.MSG_DONE, nil)
 	if err != nil {
 		b.handleConnectivityError(sid, err)
 	} else {
@@ -80,36 +78,19 @@ func (b *Agent) handleMetricsConfig(sid uint64, _ *uint32, data []byte) {
 	}
 }
 
-func (b *Agent) getZstdWriter(w io.Writer) *zstd.Encoder {
-	enc := b.zstdPool.Get().(*zstd.Encoder)
-	enc.Reset(w)
-	return enc
-}
-
 func (b *Agent) encodeMetrics(metrics []*dto.MetricFamily) ([]byte, error) {
 	buf := new(bytes.Buffer)
-	enc := b.getZstdWriter(buf)
-
-	defer func() {
-		_ = enc.Close()
-		b.zstdPool.Put(enc)
-	}()
-
-	err := metricsutils.EncodeMetrics(enc, metrics)
+	err := metricsutils.EncodeMetrics(buf, metrics)
 	if err != nil {
 		return nil, err
 	}
 
-	return buf.Bytes(), nil
+	return b.zstdEncoder.EncodeAll(buf.Bytes(), nil), nil
 }
 
 func (b *Agent) handleMetricsCollect(sid uint64, _ *uint32, data []byte) {
-	cmd := new(aranyagopb.MetricsCollectCmd)
-	err := cmd.Unmarshal(data)
-	if err != nil {
-		b.handleRuntimeError(sid, fmt.Errorf("failed to unmarshal MetricsCollectCmd: %w", err))
-		return
-	}
+	// data is ignore and shold be nil
+	_ = data
 
 	b.metricsMU.RLock()
 	collect := b.collectNodeMetrics

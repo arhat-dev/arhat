@@ -141,7 +141,7 @@ func (b *Agent) handleExec(sid uint64, streamPreparing *uint32, data []byte) {
 								writeFunc: procInput.Write,
 								closeFunc: func() error {
 									// close stdin with delay
-									closePipeReaderWithDelay(procStdin, 5*time.Second, 128*1024)
+									closeReaderWithDelay(procStdin, 5*time.Second, 128*1024)
 									// close input to stdin immediately
 									return procInput.Close()
 								},
@@ -260,7 +260,7 @@ func (b *Agent) handleAttach(sid uint64, streamPreparing *uint32, data []byte) {
 					return &flexWriteCloser{
 							writeFunc: cmd.TtyInput.Write,
 							closeFunc: func() error {
-								closePipeReaderWithDelay(cmd.TtyOutput, 5*time.Second, 128*1024)
+								closeReaderWithDelay(cmd.TtyOutput, 5*time.Second, 128*1024)
 								return cmd.TtyInput.Close()
 							},
 						}, func(cols, rows uint32) {
@@ -418,7 +418,7 @@ func (b *Agent) handlePortForward(sid uint64, streamPreparing *uint32, data []by
 
 		defer func() {
 			_ = pw.Close()
-			closePipeReaderWithDelay(pr, 5*time.Second, 64*1024)
+			closeReaderWithDelay(pr, 5*time.Second, 64*1024)
 
 			// release unprepared stream
 			b.markStreamPrepared(sid, streamPreparing)
@@ -449,9 +449,22 @@ func (b *Agent) handlePortForward(sid uint64, streamPreparing *uint32, data []by
 		)
 
 		err = b.streams.Add(sid, func() (io.WriteCloser, types.ResizeHandleFunc, error) {
+			address := opts.Host
+
+			if opts.Port > 0 {
+				// ip based network protocols with port option
+				if len(address) == 0 {
+					address = "localhost"
+				}
+
+				address = net.JoinHostPort(address, strconv.FormatInt(int64(opts.Port), 10))
+			}
+
 			downstream, closeWrite, errCh, err = nethelper.Forward(
-				b.ctx, nil, opts.Protocol,
-				net.JoinHostPort("localhost", strconv.FormatInt(int64(opts.Port), 10)),
+				b.ctx,
+				nil,
+				opts.Network,
+				address,
 				pr,
 				nil,
 			)
@@ -466,7 +479,9 @@ func (b *Agent) handlePortForward(sid uint64, streamPreparing *uint32, data []by
 			return &flexWriteCloser{
 				writeFunc: pw.Write,
 				closeFunc: func() error {
-					closePipeReaderWithDelay(downstream, 10*time.Second, 64*1024)
+					closeWrite()
+					// assume 64KB/s
+					closeReaderWithDelay(downstream, 10*time.Second, 64*1024)
 					return nil
 				},
 			}, nil, nil
@@ -627,17 +642,17 @@ func (b *Agent) createStreams(
 	return stdout, stderr, func() {
 		if stdout != nil {
 			_ = stdout.Close()
-			closePipeReaderWithDelay(readStdout, 5*time.Second, 128*1024)
+			closeReaderWithDelay(readStdout, 5*time.Second, 128*1024)
 		}
 
 		if stderr != nil {
 			_ = stderr.Close()
-			closePipeReaderWithDelay(readStderr, 5*time.Second, 128*1024)
+			closeReaderWithDelay(readStderr, 5*time.Second, 128*1024)
 		}
 	}
 }
 
-func closePipeReaderWithDelay(r io.ReadCloser, waitAtLeast time.Duration, throughput int) {
+func closeReaderWithDelay(r io.ReadCloser, waitAtLeast time.Duration, throughput int) {
 	if r == nil {
 		return
 	}

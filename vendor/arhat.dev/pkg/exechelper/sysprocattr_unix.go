@@ -22,15 +22,20 @@ import (
 	"syscall"
 )
 
-func getSysProcAttr(tty bool) *syscall.SysProcAttr {
-	// https://github.com/creack/pty/issues/35#issuecomment-147947212
-	// do not Setpgid if already Setsid
+func getSysProcAttr(tty bool, origin *syscall.SysProcAttr) *syscall.SysProcAttr {
 	if tty {
-		return nil
+		// if using tty in unix, github.com/creack/pty will Setsid, and if we
+		// Setpgid, will fail the process creation
+		//
+		// https://github.com/creack/pty/issues/35#issuecomment-147947212
+		// do not Setpgid if already Setsid
+		if origin != nil {
+			origin.Setpgid = false
+			origin.Pgid = 0
+		}
+
+		return origin
 	}
 
-	return &syscall.SysProcAttr{
-		Setpgid: true,
-		Pgid:    0,
-	}
+	return origin
 }

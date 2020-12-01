@@ -97,7 +97,10 @@ func (vf *ValueFromSpec) Get() (string, error) {
 	}
 
 	if len(vf.Exec) > 0 {
-		cmd, err := exechelper.Prepare(context.TODO(), vf.Exec, nil, false, nil)
+		cmd, err := exechelper.Prepare(exechelper.Spec{
+			Context: context.TODO(),
+			Command: vf.Exec,
+		})
 		if err != nil {
 			return "", err
 		}

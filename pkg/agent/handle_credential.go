@@ -33,7 +33,7 @@ func (b *Agent) handleCredentialEnsure(sid uint64, _ *uint32, data []byte) {
 	}
 
 	msg := &aranyagopb.CredentialStatusMsg{
-		SshPrivateKeySha256Hex: hashhelper.Sha256SumHex(cmd.SshPrivateKey),
+		SshPrivateKeySha256: hashhelper.Sha256Sum(cmd.SshPrivateKey),
 	}
 
 	err = b.PostMsg(sid, aranyagopb.MSG_CRED_STATUS, msg)

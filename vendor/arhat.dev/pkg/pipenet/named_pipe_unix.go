@@ -23,6 +23,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -231,7 +232,7 @@ accept:
 		}
 
 		// open a new pipe writer for this client
-		serverReadFile := filepath.Join(c.config.ConnectionDir, hashhelper.MD5SumHex([]byte(path)))
+		serverReadFile := filepath.Join(c.config.ConnectionDir, hex.EncodeToString(hashhelper.MD5Sum([]byte(path))))
 
 		var serverR, clientW *os.File
 		serverR, clientW, err = createPipe(serverReadFile, c.config.Permission)
@@ -268,8 +269,7 @@ accept:
 		}
 
 		// wait for one byte acknowledge
-
-		expected := append([]byte(hashhelper.Sha512SumHex([]byte(serverReadFile))), '\n')
+		expected := append([]byte(hex.EncodeToString(hashhelper.MD5Sum([]byte(serverReadFile)))), '\n')
 		ack := make([]byte, len(expected))
 
 		// checksum read must be finished in a single read call
@@ -546,7 +546,7 @@ func (d *Dialer) DialPipeContext(ctx context.Context, raddr *PipeAddr) (_ net.Co
 	}
 
 	// send filename checksum
-	_, err = conn.Write(append([]byte(hashhelper.Sha512SumHex([]byte(serverReadFile))), '\n'))
+	_, err = conn.Write(append([]byte(hex.EncodeToString(hashhelper.MD5Sum([]byte(serverReadFile)))), '\n'))
 	if err != nil {
 		return nil, err
 	}

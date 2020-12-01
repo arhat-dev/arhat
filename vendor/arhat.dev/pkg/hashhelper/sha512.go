@@ -1,3 +1,5 @@
+// +build !nohashhelper_sha512
+
 /*
 Copyright 2020 The arhat.dev Authors.
 
@@ -14,14 +16,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package exechelper
+package hashhelper
 
-import "syscall"
+import (
+	"crypto/sha512"
+)
 
-func getSysProcAttr(tty bool) *syscall.SysProcAttr {
-	if tty {
-		return nil
-	}
-
-	return &syscall.SysProcAttr{}
+func Sha512Sum(data []byte) []byte {
+	h := sha512.New()
+	_, _ = h.Write(data)
+	return h.Sum(nil)
 }

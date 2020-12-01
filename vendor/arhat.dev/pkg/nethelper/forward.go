@@ -37,7 +37,8 @@ const (
 // 	packetReadBuf is the buffer used for udp/ip/unix connection
 //
 // the return values:
-// 	downstream is used to read data sent from the forwarded port and close connection
+// 	downstream is used to read data sent from the forwarded port and close connection, it actually is a
+//    net.Conn and you can cast it to any real type it is, but kept as reader here for better understanding.
 // 	closeWrite is intended to close write in stream oriented connection
 // 	readErrCh is used to check read error and whether donwstream reading finished
 //	err if not nil the port forward failed
@@ -72,19 +73,19 @@ func Forward(
 		closeWrite = func() {}
 	}
 
-	// find read from support
 	errCh := make(chan error)
+
+	// find read from support to take advantage of splice syscall (supported in linux tcp connections)
 	switch c := conn.(type) {
 	case io.ReaderFrom:
-		// take advantage of splice syscall if possible (usually used in tcp)
 		go func() {
 			defer close(errCh)
 
 			_, err2 := c.ReadFrom(upstream)
 			if err2 != nil {
 				select {
-				case errCh <- err2:
 				case <-ctx.Done():
+				case errCh <- err2:
 				}
 			}
 		}()

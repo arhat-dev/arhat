@@ -34,7 +34,8 @@ arhat() {
   _build "${GOBUILD} -tags='\
     arhat netgo noflaghelper noenvhelper_kube \
     noperfhelper_metrics noperfhelper_tracing \
-    nonethelper_pipenet noqueue_jobqueue ${PREDEFINED_BUILD_TAGS} ${TAGS}' ./cmd/arhat"
+    nonethelper_pipenet noqueue_jobqueue \
+    ${PREDEFINED_BUILD_TAGS} ${TAGS}' ./cmd/arhat"
 }
 
 COMP=$(printf "%s" "$@" | cut -d. -f1)

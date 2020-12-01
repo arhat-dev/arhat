@@ -240,12 +240,19 @@ func (b *Agent) PostData(sid uint64, kind aranyagopb.MsgType, seq uint64, comple
 }
 
 func (b *Agent) PostMsg(sid uint64, kind aranyagopb.MsgType, msg proto.Marshaler) error {
-	data, err := msg.Marshal()
-	if err != nil {
-		return fmt.Errorf("failed to marshal msg body: %w", err)
+	var (
+		payload []byte
+		err     error
+	)
+
+	if msg != nil {
+		payload, err = msg.Marshal()
+		if err != nil {
+			return fmt.Errorf("failed to marshal msg body: %w", err)
+		}
 	}
 
-	_, err = b.PostData(sid, kind, 0, true, data)
+	_, err = b.PostData(sid, kind, 0, true, payload)
 	return err
 }
 
