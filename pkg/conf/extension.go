@@ -50,6 +50,7 @@ type PeripheralExtensionConfig struct {
 }
 
 type RuntimeExtensionConfig struct {
+	Wait bool `json:"wait" yaml:"wait"`
 }
 
 func FlagsForExtensionConfig(prefix string, config *ExtensionConfig) *pflag.FlagSet {

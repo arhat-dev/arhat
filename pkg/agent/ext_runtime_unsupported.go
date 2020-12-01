@@ -20,6 +20,6 @@ package agent
 
 type extensionComponentRuntime struct{}
 
-func (c *extensionComponentRuntime) init(_, _, _ interface{}) {}
-
+func (c *extensionComponentRuntime) init(_, _, _ interface{})                    {}
+func (c *extensionComponentRuntime) start(agent *Agent) error                    { return nil }
 func (c *extensionComponentRuntime) sendRuntimeCmd(_, _, _, _ interface{}) error { return nil }

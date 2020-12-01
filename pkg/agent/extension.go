@@ -80,5 +80,15 @@ func (c *agentComponentExtension) init(
 		}
 	}()
 
+	err = c.extensionComponentPeripheral.start(agent)
+	if err != nil {
+		return fmt.Errorf("failed to start peripheral manager: %w", err)
+	}
+
+	err = c.extensionComponentRuntime.start(agent)
+	if err != nil {
+		return fmt.Errorf("failed to start runtime manager: %w", err)
+	}
+
 	return nil
 }

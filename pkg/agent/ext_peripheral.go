@@ -43,6 +43,8 @@ func (c *extensionComponentPeripheral) init(
 	srv.Handle(arhatgopb.EXTENSION_PERIPHERAL, c.Manager.CreateExtensionHandleFunc)
 }
 
+func (c *extensionComponentPeripheral) start(agent *Agent) error { return nil }
+
 func (b *Agent) handlePeripheralList(sid uint64, _ *uint32, data []byte) {
 	if b.Manager == nil {
 		b.handleUnknownCmd(sid, "peripheral.list", nil)

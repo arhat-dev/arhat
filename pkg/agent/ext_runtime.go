@@ -40,6 +40,9 @@ type extensionComponentRuntime struct {
 
 	workingOnPost uintptr
 	sessionSeq    map[uint64]uint64
+
+	waitForRuntime   bool
+	runtimeConnected chan struct{}
 }
 
 func (c *extensionComponentRuntime) init(
@@ -48,11 +51,31 @@ func (c *extensionComponentRuntime) init(
 	config *conf.RuntimeExtensionConfig,
 ) {
 	c.postData = agent.PostData
+	c.runtimeConnected = make(chan struct{})
+
 	srv.Handle(arhatgopb.EXTENSION_RUNTIME, func(extensionName string) (
 		server.ExtensionHandleFunc, server.OutOfBandMsgHandleFunc,
 	) {
 		return c.handleRuntimeConn, c.handleRuntimeMsg
 	})
+
+	// wait until runtime registered
+	c.waitForRuntime = config.Wait
+}
+
+func (c *extensionComponentRuntime) start(agent *Agent) error {
+	if c.waitForRuntime {
+		agent.logger.I("waiting for runtime")
+
+		select {
+		case <-agent.ctx.Done():
+			return agent.ctx.Err()
+		case <-c.runtimeConnected:
+			agent.logger.I("runtime connected")
+		}
+	}
+
+	return nil
 }
 
 func (c *extensionComponentRuntime) handleRuntimeConn(ctx *server.ExtensionContext) {
@@ -62,6 +85,7 @@ func (c *extensionComponentRuntime) handleRuntimeConn(ctx *server.ExtensionConte
 
 	ok := c.runtimeCtx == nil
 	if ok {
+		// no runtime connected
 		c.runtimeCtx = ctx
 	}
 
@@ -72,6 +96,12 @@ func (c *extensionComponentRuntime) handleRuntimeConn(ctx *server.ExtensionConte
 	if !ok {
 		// runtime already connected, do not accept new
 		return
+	}
+
+	select {
+	case <-c.runtimeConnected:
+	default:
+		close(c.runtimeConnected)
 	}
 
 	// wait until connection lost

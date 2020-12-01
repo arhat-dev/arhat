@@ -21,6 +21,7 @@ package agent
 type extensionComponentPeripheral struct{}
 
 func (b *extensionComponentPeripheral) init(_, _, _ interface{})           {}
+func (c *extensionComponentPeripheral) start(agent *Agent) error           { return nil }
 func (b *extensionComponentPeripheral) RetrieveCachedMetrics() interface{} { return nil }
 func (b *extensionComponentPeripheral) CacheMetrics(_ interface{})         {}
 func (b *extensionComponentPeripheral) CollectMetrics(_ ...string) (_, _, _ interface{}) {
