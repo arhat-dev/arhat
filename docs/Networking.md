@@ -38,3 +38,23 @@ __NOTE:__ if `arhat` has no container runtime support (e.g. `arhat`), container 
   - __issue infra container creation request__
     - if the pod is not using host network, this will create a sandbox network for the pod: `arhat` will execute `abbot` with base64 encoded protobuf bytes of provided network options
   - ... (other actions omitted)
+
+## Configuration
+
+```yaml
+network:
+  # enable abbot request processing
+  enabled: false
+  
+  # command to invoke abbot for request processing
+  #
+  # with the reference abbot implementation (https://github.com/arhat-dev/abbot)
+  # you need to specify the cmdline used to start abbot and its sub command `process`
+  #
+  # NOTE: you can also use `docker exec -i` (MUST provide stdin)
+  abbotExec:
+  - /path/to/abbot
+  - -c
+  - /path/to/abbot-config.yaml
+  - process
+```

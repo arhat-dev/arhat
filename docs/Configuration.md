@@ -10,15 +10,17 @@
 
 The configuration of `arhat` is defined in a `yaml` or `json` file
 
-The `arhat` configuration file contains four major sections (`arhat`, `storage`, `connectivity` and `extension`):
+The `arhat` configuration file contains four major sections (`arhat`, `connectivity`, `storage`, `network` and `extension`):
 
 ```yaml
 # arhat section controls application behavior
 arhat:
   # ...
+connectivity:
+  # ...
 storage:
   # ...
-connectivity:
+network:
   # ...
 extension:
   # ...
@@ -152,6 +154,12 @@ see [Connectivity Configuration](./Connectivity.md#configuration)
 This section defines how to mount remote volumes
 
 see [Storage Configuration](./Storage.md#configuration)
+
+### Section `network`
+
+This section defines how to process abbot requests
+
+see [Networking Configuration](./Networking.md#configuration)
 
 ### Section `extension`
 
