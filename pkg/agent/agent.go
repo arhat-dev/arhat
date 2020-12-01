@@ -76,7 +76,7 @@ func NewAgent(appCtx context.Context, logger log.Interface, config *conf.Config)
 			// execute host command for abbot request
 			cmd, err2 := exechelper.Do(exechelper.Spec{
 				Context: ctx,
-				Command: config.Network.AbbotRequestExec,
+				Command: config.Network.AbbotExec,
 				Env:     env,
 				Stdin:   stdin,
 				Stdout:  stdout,

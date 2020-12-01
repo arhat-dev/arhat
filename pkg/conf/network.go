@@ -19,5 +19,5 @@ package conf
 type NetworkConfig struct {
 	Enabled bool `json:"enabled" yaml:"enabled"`
 
-	AbbotRequestExec []string `json:"abbotRequestExec" yaml:"abbotRequestExec"`
+	AbbotExec []string `json:"abbotExec" yaml:"abbotExec"`
 }
