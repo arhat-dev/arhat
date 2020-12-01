@@ -45,7 +45,7 @@ __NOTE:__ if `arhat` has no container runtime support (e.g. `arhat`), container 
 network:
   # enable abbot request processing
   enabled: false
-  
+
   # command to invoke abbot for request processing
   #
   # with the reference abbot implementation (https://github.com/arhat-dev/abbot)
