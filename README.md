@@ -30,9 +30,7 @@ The reference `EdgeDevice` agent for `aranya`, serving as the connectivity hub f
 - [Connectivity](./docs/Connectivity.md)
 - [Networking](./docs/Networking.md)
 - [Storage](./docs/Storage.md)
-- [Extension](./docs/Extension.md)
-  - [Runtime](./docs/Extension-Runtime.md)
-  - [Peripheral](./docs/Extension-Peripheral.md)
+- [Extension](./docs/Extension.md) for runtime and peripheral
 
 ## Build
 

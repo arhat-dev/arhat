@@ -19,7 +19,7 @@ __TL;DR:__ To get started with your own extension plugin, we recommend you havin
 ## Purpose
 
 - Interact with your peripherals via Kubernetes API (e.g. kubectl exec)
-- Collect prometheus metrics from your peripherals with simple string key value args
+- Collect standard prometheus metrics from your peripherals with simple string key value args
 
 ## Design
 
@@ -30,23 +30,31 @@ There are two major parts contributing to the extension system:
 
 The interaction between the `hub` and `plugin`s:
 
-- `server` listen on some addresses (`tcp`, `unix`, etc.)
+- `hub` listen on some addresses (`tcp`, `unix`, etc.)
 - `plugin` connect to one of these addresses that `hub` is listening
   - once connected, `plugin` will register itself to the `hub` with a unique name
-- `hub` maintains all valid connections from `plugin`s until network error happened
+- `hub` maintains all valid connections initiated by `plugin`s until network error happened
 - `hub` will interact with registered `extension plugin` when necessary (e.g. received certain command from upstream controller)
-- `plugin` can send messages to `hub` at any time
+- `plugin`s can send messages to `hub` at any time
 
 ## Extensions
 
 ### `peripheral`s: Interact with physical world
 
-- This extension is designed to support operations and metrics collections for all kinds of physical peripherals
-  - e.g. lights, sensors, routers...
+- This kind of extension is designed to support operations and metrics collections for all kinds of physical peripherals
+  - e.g.
+    - lights, sensors, switches
+    - routers
+    - CCTV/Video streaming
+- You can also develop software perihperals as operation helper
+  - e.g.
+    - Custom robotic process automation based on [robotframework](https://github.com/robotframework/robotframework)
+    - Control via proprietary software (e.g. mikrotik winbox)
 
 ### `runtime`s: Workload management made easy
 
 - This extension is designed to support various runtime engine not just oci containers
+- You are free to translate Kubernetes pod specification to any runtime objects
   - e.g. `LXC`, `BSD Jail`, `Systemd Unit`...
 
 ## Configuration
@@ -126,5 +134,7 @@ extension:
     metricsCacheTimeout: 1h
 
   # runtime extension config
-  runtime: {}
+  runtime:
+    # wait for runtime registration before creating client connectivity
+    wait: false
 ```
