@@ -16,7 +16,7 @@ arhat.dev/libext/extutil
 arhat.dev/libext/protoutil
 arhat.dev/libext/server
 arhat.dev/libext/types
-# arhat.dev/pkg v0.5.0
+# arhat.dev/pkg v0.5.1-0.20201202232442-3a479f71d735
 ## explicit
 arhat.dev/pkg/backoff
 arhat.dev/pkg/envhelper

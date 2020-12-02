@@ -29,7 +29,7 @@ const (
 
 // Forward network traffic
 // the parameters:
-// 	ctx is used to cancel dial operation
+// 	ctx is used to cancel dial operation and read error sending
 // 	dialer is optional for custom network dial options
 // 	network is the network name, e.g. tcp, udp, tcp4
 // 	addr is the endpoint address
@@ -75,9 +75,13 @@ func Forward(
 
 	errCh := make(chan error)
 
-	// find read from support to take advantage of splice syscall (supported in linux tcp connections)
 	switch c := conn.(type) {
 	case io.ReaderFrom:
+		// find ReadFrom support to take advantage of splice syscall or sendfile
+		//
+		// it is checked in io.CopyBuffer but we check it explicitly to avoid unnecessary
+		// buffer allocation
+
 		go func() {
 			defer close(errCh)
 
@@ -90,22 +94,39 @@ func Forward(
 			}
 		}()
 	default:
-		// other kind of connections will use copy
-		go func() {
-			defer close(errCh)
+		switch u := upstream.(type) {
+		case io.WriterTo:
+			// it is checked in io.CopyBuffer but we check it explicitly to avoid unnecessary
+			// buffer allocation
+			go func() {
+				defer close(errCh)
 
-			if len(packetReadBuf) == 0 {
-				packetReadBuf = make([]byte, defaultPacketReadBufSize)
-			}
-
-			_, err2 := io.CopyBuffer(conn, upstream, packetReadBuf)
-			if err2 != nil {
-				select {
-				case <-ctx.Done():
-				case errCh <- err2:
+				_, err2 := u.WriteTo(conn)
+				if err2 != nil {
+					select {
+					case <-ctx.Done():
+					case errCh <- err2:
+					}
 				}
-			}
-		}()
+			}()
+		default:
+			// other kind of connections will copy directly
+			go func() {
+				defer close(errCh)
+
+				if len(packetReadBuf) == 0 {
+					packetReadBuf = make([]byte, defaultPacketReadBufSize)
+				}
+
+				_, err2 := io.CopyBuffer(conn, upstream, packetReadBuf)
+				if err2 != nil {
+					select {
+					case <-ctx.Done():
+					case errCh <- err2:
+					}
+				}
+			}()
+		}
 	}
 
 	return conn, closeWrite, errCh, nil
