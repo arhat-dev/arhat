@@ -328,7 +328,7 @@ func (b *Agent) HandleCmd(cmdBytes []byte) {
 	// reassamble cmd payload
 	cmdPayload, complete := b.cmdMgr.Process(cmd)
 	if !complete {
-		b.logger.V("partial cmd not compelete")
+		b.logger.V("partial cmd not complete")
 		return
 	}
 
@@ -336,13 +336,14 @@ func (b *Agent) HandleCmd(cmdBytes []byte) {
 	case aranyagopb.CMD_RUNTIME:
 		b.markStreamPrepared(sid, &streamPreparing)
 
-		// deliver runtime cmd
+		// deliver runtime cmd directly
 		err := b.sendRuntimeCmd(
 			arhatgopb.CMD_RUNTIME_ARANYA_PROTO, cmd.Sid, 0, cmdPayload,
 		)
 		if err != nil {
 			b.handleRuntimeError(sid, err)
 		}
+
 		return
 	case aranyagopb.CMD_EXEC, aranyagopb.CMD_ATTACH, aranyagopb.CMD_PORT_FORWARD:
 		// do not delete pending stream
