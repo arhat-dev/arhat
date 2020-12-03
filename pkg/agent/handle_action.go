@@ -28,6 +28,7 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"arhat.dev/aranya-proto/aranyagopb"
@@ -141,7 +142,7 @@ func (b *Agent) handleExec(sid uint64, streamPreparing *uint32, data []byte) {
 								writeFunc: procInput.Write,
 								closeFunc: func() error {
 									// close stdin with delay
-									closeReaderWithDelay(procStdin, 5*time.Second, 128*1024)
+									closeWithDelay(procStdin, 5*time.Second, 128*1024)
 									// close input to stdin immediately
 									return procInput.Close()
 								},
@@ -260,7 +261,7 @@ func (b *Agent) handleAttach(sid uint64, streamPreparing *uint32, data []byte) {
 					return &flexWriteCloser{
 							writeFunc: cmd.TtyInput.Write,
 							closeFunc: func() error {
-								closeReaderWithDelay(cmd.TtyOutput, 5*time.Second, 128*1024)
+								closeWithDelay(cmd.TtyOutput, 5*time.Second, 128*1024)
 								return cmd.TtyInput.Close()
 							},
 						}, func(cols, rows uint32) {
@@ -411,16 +412,20 @@ func (b *Agent) handlePortForward(sid uint64, streamPreparing *uint32, data []by
 
 	b.processInNewGoroutine(sid, "port-forward", func() {
 		var (
-			seq uint64
+			seq        uint64
+			downstream io.ReadCloser
+			closeWrite func()
+			errCh      <-chan error
 
 			pr, pw = iohelper.Pipe()
 		)
 
 		defer func() {
 			_ = pw.Close()
-			closeReaderWithDelay(pr, 5*time.Second, 64*1024)
+			closeWithDelay(pr, 5*time.Second, 64*1024)
+			closeWithDelay(downstream, 5*time.Second, 64*1024)
 
-			// release unprepared stream
+			// release unprepared stream on error
 			b.markStreamPrepared(sid, streamPreparing)
 
 			kind := aranyagopb.MSG_DATA
@@ -441,12 +446,6 @@ func (b *Agent) handlePortForward(sid uint64, streamPreparing *uint32, data []by
 			// close this session locally (no more input data should be delivered to this session)
 			b.streams.Del(sid)
 		}()
-
-		var (
-			downstream io.ReadCloser
-			closeWrite func()
-			errCh      <-chan error
-		)
 
 		err = b.streams.Add(sid, func() (io.WriteCloser, types.ResizeHandleFunc, error) {
 			address := opts.Host
@@ -480,8 +479,10 @@ func (b *Agent) handlePortForward(sid uint64, streamPreparing *uint32, data []by
 				writeFunc: pw.Write,
 				closeFunc: func() error {
 					closeWrite()
+
 					// assume 64KB/s
-					closeReaderWithDelay(downstream, 10*time.Second, 64*1024)
+					closeWithDelay(pr, 10*time.Second, 64*1024)
+					closeWithDelay(downstream, 10*time.Second, 64*1024)
 					return nil
 				},
 			}, nil, nil
@@ -494,16 +495,22 @@ func (b *Agent) handlePortForward(sid uint64, streamPreparing *uint32, data []by
 			return
 		}
 
-		b.uploadDataOutput(
-			b.ctx.Done(),
-			sid,
-			downstream,
-			aranyagopb.MSG_DATA,
-			constant.PortForwardStreamReadTimeout,
-			&seq,
-		)
+		go func() {
+			defer func() {
+				_, _ = b.PostData(sid, aranyagopb.MSG_DATA, nextSeq(&seq), true, nil)
+			}()
 
-		// downstream read exited
+			b.uploadDataOutput(
+				b.ctx.Done(),
+				sid,
+				downstream,
+				aranyagopb.MSG_DATA,
+				constant.PortForwardStreamReadTimeout,
+				&seq,
+			)
+		}()
+
+		// wait until downstream read exited
 
 		for {
 			// drain errCh
@@ -642,36 +649,84 @@ func (b *Agent) createStreams(
 	return stdout, stderr, func() {
 		if stdout != nil {
 			_ = stdout.Close()
-			closeReaderWithDelay(readStdout, 5*time.Second, 128*1024)
+			closeWithDelay(readStdout, 5*time.Second, 128*1024)
 		}
 
 		if stderr != nil {
 			_ = stderr.Close()
-			closeReaderWithDelay(readStderr, 5*time.Second, 128*1024)
+			closeWithDelay(readStderr, 5*time.Second, 128*1024)
 		}
 	}
 }
 
-func closeReaderWithDelay(r io.ReadCloser, waitAtLeast time.Duration, throughput int) {
+func closeWithDelay(r io.Closer, waitAtLeast time.Duration, throughput int) {
 	if r == nil {
 		return
 	}
 
-	file, isFile := r.(*os.File)
-	if isFile {
-		n, err := iohelper.CheckBytesToRead(file.Fd())
+	var (
+		fd    uintptr
+		hasFd = false
+	)
+	switch t := r.(type) {
+	case interface {
+		Fd() uintptr
+	}:
+		fd = t.Fd()
+		hasFd = true
+	case interface {
+		SyscallConn() (syscall.RawConn, error)
+	}:
+		rawConn, err := t.SyscallConn()
 		if err == nil {
-			tmpWait := time.Duration(n/throughput) * time.Second
-			if tmpWait > waitAtLeast {
-				waitAtLeast = tmpWait
-			}
+			err = rawConn.Control(func(_fd uintptr) {
+				fd = _fd
+			})
 		}
+		hasFd = err == nil
 	}
 
 	// do not block close function call
+
+	if !hasFd {
+		go func() {
+			time.Sleep(waitAtLeast)
+			_ = r.Close()
+		}()
+		return
+	}
+
 	go func() {
-		time.Sleep(waitAtLeast)
-		_ = r.Close()
+		defer func() {
+			_ = r.Close()
+		}()
+
+		var wait time.Duration
+		for {
+			n, err := iohelper.CheckBytesToRead(fd)
+			if err != nil {
+				// unable to check bytes to read
+				if waitAtLeast > 0 {
+					time.Sleep(waitAtLeast)
+				}
+
+				return
+			}
+
+			if n == 0 {
+				// no data unread
+				return
+			}
+
+			// get time to wait
+			wait = time.Duration(n/throughput) * time.Second
+			if wait < time.Second {
+				wait = time.Second
+			}
+
+			waitAtLeast -= wait
+			time.Sleep(wait)
+		}
 	}()
 }
 
