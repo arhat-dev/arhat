@@ -30,7 +30,5 @@ const (
 )
 
 const (
-	InteractiveStreamReadTimeout    = 20 * time.Millisecond
-	NonInteractiveStreamReadTimeout = 200 * time.Millisecond
-	PortForwardStreamReadTimeout    = 100 * time.Millisecond
+	InteractiveStreamReadTimeout = 20 * time.Millisecond
 )

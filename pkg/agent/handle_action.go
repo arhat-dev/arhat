@@ -64,8 +64,7 @@ func (b *Agent) handleExec(sid uint64, streamPreparing *uint32, data []byte) {
 			seq uint64
 		)
 		b.handleTerminalStreams(
-			b.ctx.Done(),
-			sid, &seq, opts.Stdin, opts.Stdout, opts.Stderr, opts.Tty, wg,
+			sid, &seq, opts.Stdout, opts.Stderr, opts.Tty, wg,
 			// preRun check
 			func() error {
 				if len(opts.Command) == 0 {
@@ -129,7 +128,7 @@ func (b *Agent) handleExec(sid uint64, streamPreparing *uint32, data []byte) {
 									wg.Done()
 								}()
 
-								b.uploadDataOutput(
+								b.uploadDataOutputWithDelay(
 									b.ctx.Done(), sid, startedCmd.TtyOutput,
 									aranyagopb.MSG_DATA_STDOUT,
 									constant.InteractiveStreamReadTimeout,
@@ -200,8 +199,7 @@ func (b *Agent) handleAttach(sid uint64, streamPreparing *uint32, data []byte) {
 			seq uint64
 		)
 		b.handleTerminalStreams(
-			b.ctx.Done(),
-			sid, &seq, true, opts.Stdout, opts.Stderr, true, wg,
+			sid, &seq, opts.Stdout, opts.Stderr, true, wg,
 			// preRun check
 			nil,
 			// run
@@ -250,7 +248,7 @@ func (b *Agent) handleAttach(sid uint64, streamPreparing *uint32, data []byte) {
 							wg.Done()
 						}()
 
-						b.uploadDataOutput(
+						b.uploadDataOutputWithDelay(
 							b.ctx.Done(), sid, cmd.TtyOutput,
 							aranyagopb.MSG_DATA_STDOUT,
 							constant.InteractiveStreamReadTimeout,
@@ -311,8 +309,7 @@ func (b *Agent) handleLogs(sid uint64, _ *uint32, data []byte) {
 			seq uint64
 		)
 		b.handleTerminalStreams(
-			b.ctx.Done(),
-			sid, &seq, false, true, true, false, wg,
+			sid, &seq, true, true, false, wg,
 			// preRun check
 			nil,
 			// run
@@ -500,12 +497,10 @@ func (b *Agent) handlePortForward(sid uint64, streamPreparing *uint32, data []by
 				_, _ = b.PostData(sid, aranyagopb.MSG_DATA, nextSeq(&seq), true, nil)
 			}()
 
-			b.uploadDataOutput(
-				b.ctx.Done(),
+			b.uploadDataOutputEveryRead(
 				sid,
 				downstream,
 				aranyagopb.MSG_DATA,
-				constant.PortForwardStreamReadTimeout,
 				&seq,
 			)
 		}()
@@ -546,10 +541,9 @@ func (b *Agent) handleTerminalResize(sid uint64, _ *uint32, data []byte) {
 }
 
 func (b *Agent) handleTerminalStreams(
-	stopSig <-chan struct{},
 	sid uint64,
 	pSeq *uint64,
-	useStdin, useStdout, useStderr, useTty bool,
+	useStdout, useStderr, useTty bool,
 	wg *sync.WaitGroup,
 	preRun func() error,
 	run func(stdout, stderr io.WriteCloser) *aranyagopb.ErrorMsg,
@@ -578,7 +572,7 @@ func (b *Agent) handleTerminalStreams(
 	}
 
 	stdout, stderr, closeStreams := b.createStreams(
-		stopSig, sid, useStdin, useStdout, useStderr, useTty, pSeq, wg,
+		sid, useStdout, useStderr, useTty, pSeq, wg,
 	)
 
 	err = run(stdout, stderr)
@@ -593,25 +587,22 @@ func (b *Agent) handleTerminalStreams(
 }
 
 func (b *Agent) createStreams(
-	stopSig <-chan struct{},
 	sid uint64,
-	useStdin, useStdout, useStderr, tty bool,
+	useStdout, useStderr, tty bool,
 	pSeq *uint64,
 	wg *sync.WaitGroup,
 ) (stdout, stderr io.WriteCloser, close func()) {
 	var (
-		readStdout  io.ReadCloser
-		readStderr  io.ReadCloser
-		readTimeout = constant.NonInteractiveStreamReadTimeout
+		readStdout io.ReadCloser
+		readStderr io.ReadCloser
 	)
 
-	// is interactive stream, strive low latency
-	if useStdin && tty {
-		readTimeout = constant.InteractiveStreamReadTimeout
+	// stdout/stderr is not used when tty is required
+	if tty {
+		return nil, nil, func() {}
 	}
 
-	// stdout is not used when tty is required
-	if !tty && useStdout {
+	if useStdout {
 		readStdout, stdout = iohelper.Pipe()
 		wg.Add(1)
 		go func() {
@@ -620,16 +611,13 @@ func (b *Agent) createStreams(
 				wg.Done()
 			}()
 
-			b.uploadDataOutput(
-				stopSig, sid, readStdout,
-				aranyagopb.MSG_DATA_STDOUT,
-				readTimeout, pSeq,
+			b.uploadDataOutputEveryRead(
+				sid, readStdout, aranyagopb.MSG_DATA_STDOUT, pSeq,
 			)
 		}()
 	}
 
-	// stderr is not used when tty is required
-	if !tty && useStderr {
+	if useStderr {
 		readStderr, stderr = iohelper.Pipe()
 		wg.Add(1)
 		go func() {
@@ -638,10 +626,8 @@ func (b *Agent) createStreams(
 				wg.Done()
 			}()
 
-			b.uploadDataOutput(
-				stopSig, sid, readStderr,
-				aranyagopb.MSG_DATA_STDERR,
-				readTimeout, pSeq,
+			b.uploadDataOutputEveryRead(
+				sid, readStderr, aranyagopb.MSG_DATA_STDERR, pSeq,
 			)
 		}()
 	}
@@ -730,7 +716,38 @@ func closeWithDelay(r io.Closer, waitAtLeast time.Duration, throughput int) {
 	}()
 }
 
-func (b *Agent) uploadDataOutput(
+func (b *Agent) uploadDataOutputEveryRead(
+	sid uint64,
+	rd io.Reader,
+	kind aranyagopb.MsgType,
+	pSeq *uint64,
+) {
+	size := b.GetClient().MaxPayloadSize()
+	if size > 64*1024 {
+		size = 64 * 1024
+	}
+
+	buf := make([]byte, size)
+	for {
+		n, err := rd.Read(buf)
+		if err != nil {
+			if n == 0 {
+				return
+			}
+		}
+
+		data := make([]byte, n)
+		_ = copy(data, buf)
+
+		// do not check returned last seq since we have limited the buffer size
+		_, err = b.PostData(sid, kind, nextSeq(pSeq), false, data)
+		if err != nil {
+			return
+		}
+	}
+}
+
+func (b *Agent) uploadDataOutputWithDelay(
 	stopSig <-chan struct{},
 	sid uint64,
 	rd io.Reader,
