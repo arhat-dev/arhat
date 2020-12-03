@@ -16,7 +16,7 @@ arhat.dev/libext/extutil
 arhat.dev/libext/protoutil
 arhat.dev/libext/server
 arhat.dev/libext/types
-# arhat.dev/pkg v0.5.1-0.20201202232442-3a479f71d735
+# arhat.dev/pkg v0.5.1-0.20201203060323-a732394169d2
 ## explicit
 arhat.dev/pkg/backoff
 arhat.dev/pkg/envhelper
@@ -184,7 +184,7 @@ github.com/mholt/archiver/v3
 # github.com/mssola/user_agent v0.5.2
 ## explicit
 github.com/mssola/user_agent
-# github.com/nats-io/jwt v1.2.0
+# github.com/nats-io/jwt v1.2.2
 ## explicit
 github.com/nats-io/jwt
 # github.com/nats-io/nats-streaming-server v0.19.0

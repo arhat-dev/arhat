@@ -6,7 +6,7 @@ require (
 	arhat.dev/aranya-proto v0.3.1
 	arhat.dev/arhat-proto v0.4.3
 	arhat.dev/libext v0.4.10
-	arhat.dev/pkg v0.5.1-0.20201202232442-3a479f71d735
+	arhat.dev/pkg v0.5.1-0.20201203060323-a732394169d2
 	ext.arhat.dev/runtimeutil v0.2.5
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/denisbrodbeck/machineid v1.0.1
@@ -16,7 +16,7 @@ require (
 	github.com/klauspost/compress v1.11.3
 	github.com/mholt/archiver/v3 v3.5.0
 	github.com/mssola/user_agent v0.5.2
-	github.com/nats-io/jwt v1.2.0
+	github.com/nats-io/jwt v1.2.2
 	github.com/nats-io/nats-streaming-server v0.19.0 // indirect
 	github.com/nats-io/nats.go v1.10.0
 	github.com/nats-io/nkeys v0.2.0
