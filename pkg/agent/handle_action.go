@@ -100,7 +100,15 @@ func (b *Agent) handleExec(sid uint64, streamPreparing *uint32, data []byte) {
 							procStdin, procInput = iohelper.Pipe()
 						}
 
-						cmd, err = exec.DoIfTryFailed(procStdin, stdout, stderr, opts.Command, opts.Tty, opts.Envs)
+						cmd, err = exec.DoIfTryFailed(
+							procStdin,
+							stdout,
+							stderr,
+							opts.Command,
+							opts.Tty,
+							opts.Envs,
+							false,
+						)
 						if err != nil {
 							if procStdin != nil {
 								_ = procStdin.Close()
@@ -150,7 +158,9 @@ func (b *Agent) handleExec(sid uint64, streamPreparing *uint32, data []byte) {
 							}, nil
 					})
 				} else {
-					cmd, err = exec.DoIfTryFailed(nil, stdout, stderr, opts.Command, opts.Tty, opts.Envs)
+					cmd, err = exec.DoIfTryFailed(
+						nil, stdout, stderr, opts.Command, opts.Tty, opts.Envs, false,
+					)
 				}
 
 				// mark stream prepared

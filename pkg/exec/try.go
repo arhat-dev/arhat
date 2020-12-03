@@ -20,8 +20,10 @@ package exec
 
 import (
 	"io"
+	"path/filepath"
 
 	"arhat.dev/pkg/exechelper"
+	"arhat.dev/pkg/wellknownerrors"
 )
 
 var (
@@ -36,19 +38,30 @@ func DoIfTryFailed(
 	command []string,
 	tty bool,
 	env map[string]string,
+	tryOnly bool,
 ) (Cmd, error) {
 	var (
 		err error
 		cmd Cmd
 	)
-	tryExec, ok := tryCommands[command[0]]
+
+	bin := filepath.Base(command[0])
+	tryExec, ok := tryCommands[bin]
 	if ok {
+		// can try this command, do it
 		cmd, err = tryExec(stdin, stdout, stderr, command, tty)
+		if err == nil {
+			// handled
+			return cmd, nil
+		}
+
+		if tryOnly {
+			return nil, err
+		}
 	}
 
-	if ok && err == nil {
-		// handled
-		return cmd, nil
+	if tryOnly {
+		return nil, wellknownerrors.ErrNotSupported
 	}
 
 	// not handled, do it locally

@@ -20,9 +20,11 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"time"
 
 	"arhat.dev/arhat/pkg/conf"
+	"arhat.dev/arhat/pkg/exec"
 
 	// connectivity methods
 	_ "arhat.dev/arhat/pkg/client/coap" // add coap client support
@@ -45,16 +47,32 @@ import (
 )
 
 func printErr(msg string, err error) {
-	_, _ = fmt.Fprintf(os.Stderr, "%s: %v", msg, err)
+	_, _ = fmt.Fprintf(os.Stderr, "%s: %v\n", msg, err)
 }
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
+	bin := filepath.Base(os.Args[0])
 	err := flags.Parse(os.Args)
 	if err != nil {
-		printErr("failed to parse options", err)
-		os.Exit(128)
+		// not valid args, can be symlinked targets
+		startedCmd, err2 := exec.DoIfTryFailed(
+			os.Stdin, os.Stdout, os.Stderr,
+			append([]string{bin}, os.Args[1:]...),
+			false, nil, true,
+		)
+		if err2 != nil {
+			printErr("failed to run as command "+bin, err2)
+			printErr("failed to parse options", err)
+			os.Exit(128)
+		}
+
+		exitCode, err2 := startedCmd.Wait()
+		if err2 != nil {
+			printErr("failed to run as command "+bin, err2)
+		}
+		os.Exit(exitCode)
 	}
 
 	if showVersion {
@@ -64,8 +82,23 @@ func main() {
 
 	appCtx, err = conf.ReadConfig(flags, &configFile, cliLogConfig, config)
 	if err != nil {
-		printErr("failed to parse config", err)
-		os.Exit(128)
+		// not valid args, can be symlinked targets
+		startedCmd, err2 := exec.DoIfTryFailed(
+			os.Stdin, os.Stdout, os.Stderr,
+			append([]string{bin}, os.Args[1:]...),
+			false, nil, true,
+		)
+		if err2 != nil {
+			printErr("failed to run as command "+bin, err2)
+			printErr("failed to parse config", err)
+			os.Exit(128)
+		}
+
+		exitCode, err2 := startedCmd.Wait()
+		if err2 != nil {
+			printErr("failed to run as command "+bin, err2)
+		}
+		os.Exit(exitCode)
 	}
 
 	err = runApp(appCtx, config)

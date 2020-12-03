@@ -57,30 +57,30 @@ PREDEFINED_BUILD_TAGS=""
 case "${GOOS}" in
   js)
     PREDEFINED_BUILD_TAGS="nogrpc nocoap nometrics noexectry \
-    nonethelper_pipenet nonethelper_stdnet nonethelper_piondtls \
+    nonethelper_stdnet nonethelper_piondtls \
     noextension noextension_peripheral noperipheral noextension_runtime \
     nostorage_sshfs nostorage_general"
   ;;
   darwin)
-    PREDEFINED_BUILD_TAGS="noexectry nonethelper_pipenet"
+    PREDEFINED_BUILD_TAGS=""
   ;;
   openbsd)
-    PREDEFINED_BUILD_TAGS="nonethelper_pipenet"
+    PREDEFINED_BUILD_TAGS=""
   ;;
   netbsd)
-    PREDEFINED_BUILD_TAGS="nonethelper_pipenet"
+    PREDEFINED_BUILD_TAGS=""
   ;;
   freebsd)
-    PREDEFINED_BUILD_TAGS="nonethelper_pipenet"
+    PREDEFINED_BUILD_TAGS=""
   ;;
   plan9)
-    PREDEFINED_BUILD_TAGS="nonethelper_pipenet"
+    PREDEFINED_BUILD_TAGS=""
   ;;
   aix)
-    PREDEFINED_BUILD_TAGS="nonethelper_pipenet"
+    PREDEFINED_BUILD_TAGS=""
   ;;
   solaris)
-    PREDEFINED_BUILD_TAGS="nonethelper_pipenet"
+    PREDEFINED_BUILD_TAGS=""
   ;;
   linux)
     case "${ARCH}" in

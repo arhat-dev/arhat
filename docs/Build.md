@@ -40,9 +40,9 @@ make -qp \
   - Disable system resource (memory, disk, cpu, etc.) report, not updates will be applied to kubernetes Node object.
 - `noexectry` (save ~3MB space)
   - Disable all internal handling of command execution, to disable specific command handling, use following build tags:
-    - `noexectry_tar` (save ~3MB space)
-      - Disable internal handling of `tar`, this command handling is useful for those busybox based rootfs or windows with no standard GNU `tar` installed
-      - NOTE: `kubectl cp` uses `tar` command execution to copy file
+    - `noexectry_archive` (save ~3MB space)
+      - Disable internal handling of `tar/zip/unzip/unrar`
+      - NOTE: `kubectl cp` uses `tar` command execution to copy file, so this command handling is useful for those busybox based rootfs or windows with no standard GNU `tar` installed
     - `noexectry_test`
       - Disable internal handling of `test`, this command handling is useful for windows without `test` command support for `kubectl cp`
       - NOTE: `kubectl cp` will invoke `test` command to check whether destination path is a directory
