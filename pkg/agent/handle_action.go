@@ -131,10 +131,10 @@ func (b *Agent) handleExec(sid uint64, data []byte) {
 									wg.Done()
 								}()
 
-								b.uploadDataOutputWithDelay(
-									b.ctx.Done(), sid, startedCmd.TtyOutput,
+								b.uploadDataOutput(
+									sid,
+									startedCmd.TtyOutput,
 									aranyagopb.MSG_DATA_STDOUT,
-									constant.InteractiveStreamReadTimeout,
 									&seq,
 								)
 							}()
@@ -260,10 +260,9 @@ func (b *Agent) handleAttach(sid uint64, data []byte) {
 							wg.Done()
 						}()
 
-						b.uploadDataOutputWithDelay(
-							b.ctx.Done(), sid, cmd.TtyOutput,
+						b.uploadDataOutput(
+							sid, cmd.TtyOutput,
 							aranyagopb.MSG_DATA_STDOUT,
-							constant.InteractiveStreamReadTimeout,
 							&seq,
 						)
 					}()
@@ -518,7 +517,7 @@ func (b *Agent) handlePortForward(sid uint64, data []byte) {
 				_, _ = b.PostData(sid, aranyagopb.MSG_DATA, nextSeq(&seq), true, nil)
 			}()
 
-			b.uploadDataOutputEveryRead(
+			b.uploadDataOutput(
 				sid,
 				downstream,
 				aranyagopb.MSG_DATA,
@@ -632,7 +631,7 @@ func (b *Agent) createStreams(
 				wg.Done()
 			}()
 
-			b.uploadDataOutputEveryRead(
+			b.uploadDataOutput(
 				sid, readStdout, aranyagopb.MSG_DATA_STDOUT, pSeq,
 			)
 		}()
@@ -647,7 +646,7 @@ func (b *Agent) createStreams(
 				wg.Done()
 			}()
 
-			b.uploadDataOutputEveryRead(
+			b.uploadDataOutput(
 				sid, readStderr, aranyagopb.MSG_DATA_STDERR, pSeq,
 			)
 		}()
@@ -737,7 +736,7 @@ func closeWithDelay(r io.Closer, waitAtLeast time.Duration, throughput int) {
 	}()
 }
 
-func (b *Agent) uploadDataOutputEveryRead(
+func (b *Agent) uploadDataOutput(
 	sid uint64,
 	rd io.Reader,
 	kind aranyagopb.MsgType,
@@ -757,52 +756,16 @@ func (b *Agent) uploadDataOutputEveryRead(
 			}
 		}
 
+		if n == 0 {
+			continue
+		}
+
 		data := make([]byte, n)
 		_ = copy(data, buf)
 
 		// do not check returned last seq since we have limited the buffer size
 		_, err = b.PostData(sid, kind, nextSeq(pSeq), false, data)
 		if err != nil {
-			return
-		}
-	}
-}
-
-func (b *Agent) uploadDataOutputWithDelay(
-	stopSig <-chan struct{},
-	sid uint64,
-	rd io.Reader,
-	kind aranyagopb.MsgType,
-	readTimeout time.Duration,
-	pSeq *uint64,
-) {
-	r := iohelper.NewTimeoutReader(rd)
-	go r.FallbackReading(stopSig)
-
-	size := b.GetClient().MaxPayloadSize()
-	if size > 64*1024 {
-		size = 64 * 1024
-	}
-
-	buf := make([]byte, size)
-	for r.WaitForData(stopSig) {
-		data, shouldCopy, err := r.Read(readTimeout, buf)
-		if err != nil {
-			if len(data) == 0 && err != iohelper.ErrDeadlineExceeded {
-				return
-			}
-		}
-
-		if shouldCopy {
-			data = make([]byte, len(data))
-			_ = copy(data, buf[:len(data)])
-		}
-
-		// data will never be fragmented since the buf size is limited to max payload size
-		// so we can just ignore the returned last sequence here
-		_, err = b.PostData(sid, kind, nextSeq(pSeq), false, data)
-		if err != nil {
-			b.handleConnectivityError(sid, err)
 			return
 		}
 	}

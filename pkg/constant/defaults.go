@@ -28,7 +28,3 @@ const (
 	// peripheral
 	DefaultPeripheralMetricsCacheTimeout = 30 * time.Minute
 )
-
-const (
-	InteractiveStreamReadTimeout = 20 * time.Millisecond
-)
