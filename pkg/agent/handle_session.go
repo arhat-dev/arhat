@@ -23,7 +23,7 @@ import (
 	"arhat.dev/pkg/log"
 )
 
-func (b *Agent) handleSessionClose(sid uint64, _ *uint32, data []byte) {
+func (b *Agent) handleSessionClose(sid uint64, data []byte) {
 	cmd := new(aranyagopb.SessionCloseCmd)
 
 	err := cmd.Unmarshal(data)

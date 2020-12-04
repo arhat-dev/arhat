@@ -17,7 +17,8 @@ limitations under the License.
 package manager
 
 import (
-	"sync"
+	"runtime"
+	"sync/atomic"
 
 	"arhat.dev/aranya-proto/aranyagopb"
 	"arhat.dev/pkg/queue"
@@ -27,7 +28,6 @@ func NewCmdManager() *CmdManager {
 	return &CmdManager{
 		sessionSQ:   make(map[uint64]*queue.SeqQueue),
 		partialCmds: make(map[uint64][]byte),
-		mu:          new(sync.RWMutex),
 	}
 }
 
@@ -35,7 +35,17 @@ type CmdManager struct {
 	sessionSQ   map[uint64]*queue.SeqQueue
 	partialCmds map[uint64][]byte
 
-	mu *sync.RWMutex
+	_working uint32
+}
+
+func (m *CmdManager) doExclusive(f func()) {
+	for !atomic.CompareAndSwapUint32(&m._working, 0, 1) {
+		runtime.Gosched()
+	}
+
+	f()
+
+	atomic.StoreUint32(&m._working, 0)
 }
 
 func (m *CmdManager) Process(cmd *aranyagopb.Cmd) (cmdPayload []byte, complete bool) {
@@ -46,36 +56,36 @@ func (m *CmdManager) Process(cmd *aranyagopb.Cmd) (cmdPayload []byte, complete b
 
 	sid := cmd.Sid
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	sq, ok := m.sessionSQ[sid]
-	if !ok {
-		sq = queue.NewSeqQueue()
-		m.sessionSQ[sid] = sq
-	}
-
-	cmdByteChunks, complete := sq.Offer(cmd.Seq, cmd.Payload)
-	for _, ck := range cmdByteChunks {
-		if ck == nil {
-			continue
+	m.doExclusive(func() {
+		sq, ok := m.sessionSQ[sid]
+		if !ok {
+			sq = queue.NewSeqQueue()
+			m.sessionSQ[sid] = sq
 		}
 
-		m.partialCmds[sid] = append(m.partialCmds[sid], ck.([]byte)...)
-	}
+		var cmdByteChunks []interface{}
+		cmdByteChunks, complete = sq.Offer(cmd.Seq, cmd.Payload)
+		for _, ck := range cmdByteChunks {
+			if ck == nil {
+				continue
+			}
 
-	if cmd.Completed {
-		complete = sq.SetMaxSeq(cmd.Seq)
-	}
+			m.partialCmds[sid] = append(m.partialCmds[sid], ck.([]byte)...)
+		}
 
-	if !complete {
-		return
-	}
+		if cmd.Completed {
+			complete = sq.SetMaxSeq(cmd.Seq)
+		}
 
-	cmdPayload = m.partialCmds[sid]
+		if !complete {
+			return
+		}
 
-	delete(m.sessionSQ, sid)
-	delete(m.partialCmds, sid)
+		cmdPayload = m.partialCmds[sid]
+
+		delete(m.sessionSQ, sid)
+		delete(m.partialCmds, sid)
+	})
 
 	return
 }

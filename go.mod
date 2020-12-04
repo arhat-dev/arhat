@@ -3,11 +3,11 @@ module arhat.dev/arhat
 go 1.15
 
 require (
-	arhat.dev/aranya-proto v0.3.1
+	arhat.dev/aranya-proto v0.3.2
 	arhat.dev/arhat-proto v0.4.3
-	arhat.dev/libext v0.4.10
-	arhat.dev/pkg v0.5.1-0.20201203060323-a732394169d2
-	ext.arhat.dev/runtimeutil v0.2.5
+	arhat.dev/libext v0.5.0
+	arhat.dev/pkg v0.5.1
+	ext.arhat.dev/runtimeutil v0.2.6
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible

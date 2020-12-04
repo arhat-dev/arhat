@@ -28,18 +28,18 @@ func (b *extensionComponentPeripheral) CollectMetrics(_ ...string) (_, _, _ inte
 	return nil, nil, nil
 }
 
-func (b *Agent) handlePeripheralList(sid uint64, _ *uint32, data []byte) {
+func (b *Agent) handlePeripheralList(sid uint64, data []byte) {
 	b.handleUnknownCmd(sid, "peripheral.list", nil)
 }
 
-func (b *Agent) handlePeripheralEnsure(sid uint64, _ *uint32, data []byte) {
+func (b *Agent) handlePeripheralEnsure(sid uint64, data []byte) {
 	b.handleUnknownCmd(sid, "peripheral.ensure", nil)
 }
 
-func (b *Agent) handlePeripheralDelete(sid uint64, _ *uint32, data []byte) {
+func (b *Agent) handlePeripheralDelete(sid uint64, data []byte) {
 	b.handleUnknownCmd(sid, "peripheral.unknown", nil)
 }
 
-func (b *Agent) handlePeripheralOperate(sid uint64, _ *uint32, data []byte) {
+func (b *Agent) handlePeripheralOperate(sid uint64, data []byte) {
 	b.handleUnknownCmd(sid, "peripheral.operate", nil)
 }

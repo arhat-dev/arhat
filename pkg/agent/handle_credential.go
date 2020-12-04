@@ -23,7 +23,7 @@ import (
 	"arhat.dev/pkg/hashhelper"
 )
 
-func (b *Agent) handleCredentialEnsure(sid uint64, _ *uint32, data []byte) {
+func (b *Agent) handleCredentialEnsure(sid uint64, data []byte) {
 	cmd := new(aranyagopb.CredentialEnsureCmd)
 
 	err := cmd.Unmarshal(data)

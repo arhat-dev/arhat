@@ -49,12 +49,12 @@ test.tags:
 
 	# exec try support
 	CGO_ENABLED=1 $(MAKE) arhat TAGS='noexectry'
-	CGO_ENABLED=1 $(MAKE) arhat TAGS='noexectry_tar'
+	CGO_ENABLED=1 $(MAKE) arhat TAGS='noexectry_archive'
 	CGO_ENABLED=1 $(MAKE) arhat TAGS='noexectry_test'
-	CGO_ENABLED=1 $(MAKE) arhat TAGS='noexectry_tar noexectry_test'
-	CGO_ENABLED=1 $(MAKE) arhat TAGS='noexectry noexectry_tar'
+	CGO_ENABLED=1 $(MAKE) arhat TAGS='noexectry_archive noexectry_test'
+	CGO_ENABLED=1 $(MAKE) arhat TAGS='noexectry noexectry_archive'
 	CGO_ENABLED=1 $(MAKE) arhat TAGS='noexectry noexectry_test'
-	CGO_ENABLED=1 $(MAKE) arhat TAGS='noexectry noexectry_tar noexectry_test'
+	CGO_ENABLED=1 $(MAKE) arhat TAGS='noexectry noexectry_archive noexectry_test'
 
 	# connectivity methods
 	CGO_ENABLED=1 $(MAKE) arhat TAGS='noclient_mqtt'

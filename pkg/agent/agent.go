@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"runtime"
-	"sync"
 	"sync/atomic"
 
 	"arhat.dev/aranya-proto/aranyagopb"
@@ -48,7 +47,7 @@ var (
 )
 
 type (
-	rawCmdHandleFunc func(sid uint64, streamPreparing *uint32, data []byte)
+	rawCmdHandleFunc func(sid uint64, data []byte)
 )
 
 func NewAgent(appCtx context.Context, logger log.Interface, config *conf.Config) (_ *Agent, err error) {
@@ -105,8 +104,6 @@ func NewAgent(appCtx context.Context, logger log.Interface, config *conf.Config)
 		networkClient: nc,
 
 		streams: extutil.NewStreamManager(),
-
-		pendingStreams: new(sync.Map),
 	}
 
 	err = agent.agentComponentExtension.init(agent, agent.logger, &config.Extension)
@@ -181,8 +178,6 @@ type Agent struct {
 	client        client.Interface
 
 	funcMap map[aranyagopb.CmdType]rawCmdHandleFunc
-
-	pendingStreams *sync.Map
 }
 
 func (b *Agent) SetClient(client client.Interface) {
@@ -256,13 +251,6 @@ func (b *Agent) PostMsg(sid uint64, kind aranyagopb.MsgType, msg proto.Marshaler
 	return err
 }
 
-func (b *Agent) markStreamPrepared(sid uint64, preparing interface{}) {
-	b.pendingStreams.Delete(sid)
-	if preparing != nil {
-		atomic.StoreUint32(preparing.(*uint32), 0)
-	}
-}
-
 // HandleCmd may be called from any goroutine, no calling sequence guaranteed
 func (b *Agent) HandleCmd(cmdBytes []byte) {
 	if b.GetClient() == nil {
@@ -280,47 +268,21 @@ func (b *Agent) HandleCmd(cmdBytes []byte) {
 
 	sid := cmd.Sid
 
-	// always assume is stream and mark stream as preparing
-	streamPreparing := uint32(1)
-	actual, loaded := b.pendingStreams.LoadOrStore(sid, &streamPreparing)
-
 	// handle stream as special target, since data sequence is expected
 	if cmd.Kind == aranyagopb.CMD_DATA_UPSTREAM {
-		handleData := func() {
-			if b.streams.Has(sid) {
-				// is data for agent
-				b.streams.Write(sid, cmd.Seq, cmd.Payload)
-				if cmd.Completed {
-					// write nil to mark max seq
-					b.streams.Write(sid, cmd.Seq, nil)
-				}
-			} else {
-				// is data for runtime
-				err := b.sendRuntimeCmd(arhatgopb.CMD_DATA_INPUT, sid, cmd.Seq, cmd.Payload)
-				if err != nil {
-					b.handleRuntimeError(sid, err)
-				}
+		if b.streams.Write(sid, cmd.Seq, cmd.Payload) {
+			// is data for agent
+			if cmd.Completed {
+				// write nil to mark max seq
+				b.streams.Write(sid, cmd.Seq, nil)
+			}
+		} else {
+			// is data for runtime
+			err := b.sendRuntimeCmd(arhatgopb.CMD_DATA_INPUT, sid, cmd.Seq, cmd.Payload)
+			if err != nil {
+				b.handleRuntimeError(sid, err)
 			}
 		}
-
-		if !loaded {
-			// was set by this cmd handle call, the stream is prepared
-			b.markStreamPrepared(sid, &streamPreparing)
-
-			handleData()
-			return
-		}
-
-		// loaded preparing, wait until finished preparing
-		perparing := actual.(*uint32)
-		go func() {
-			// wait for stream if not prepared
-			for atomic.LoadUint32(perparing) != 0 {
-				runtime.Gosched()
-			}
-
-			handleData()
-		}()
 
 		return
 	}
@@ -332,10 +294,7 @@ func (b *Agent) HandleCmd(cmdBytes []byte) {
 		return
 	}
 
-	switch cmd.Kind {
-	case aranyagopb.CMD_RUNTIME:
-		b.markStreamPrepared(sid, &streamPreparing)
-
+	if cmd.Kind == aranyagopb.CMD_RUNTIME {
 		// deliver runtime cmd directly
 		err := b.sendRuntimeCmd(
 			arhatgopb.CMD_RUNTIME_ARANYA_PROTO, cmd.Sid, 0, cmdPayload,
@@ -345,10 +304,6 @@ func (b *Agent) HandleCmd(cmdBytes []byte) {
 		}
 
 		return
-	case aranyagopb.CMD_EXEC, aranyagopb.CMD_ATTACH, aranyagopb.CMD_PORT_FORWARD:
-		// do not delete pending stream
-	default:
-		b.markStreamPrepared(sid, &streamPreparing)
 	}
 
 	handleCmd, ok := b.funcMap[cmd.Kind]
@@ -357,7 +312,7 @@ func (b *Agent) HandleCmd(cmdBytes []byte) {
 		return
 	}
 
-	handleCmd(sid, &streamPreparing, cmdPayload)
+	handleCmd(sid, cmdPayload)
 }
 
 func (b *Agent) processInNewGoroutine(sid uint64, cmdName string, process func()) {

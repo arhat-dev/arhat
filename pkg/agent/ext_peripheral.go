@@ -45,7 +45,7 @@ func (c *extensionComponentPeripheral) init(
 
 func (c *extensionComponentPeripheral) start(agent *Agent) error { return nil }
 
-func (b *Agent) handlePeripheralList(sid uint64, _ *uint32, data []byte) {
+func (b *Agent) handlePeripheralList(sid uint64, data []byte) {
 	if b.Manager == nil {
 		b.handleUnknownCmd(sid, "peripheral.list", nil)
 		return
@@ -73,7 +73,7 @@ func (b *Agent) handlePeripheralList(sid uint64, _ *uint32, data []byte) {
 	})
 }
 
-func (b *Agent) handlePeripheralEnsure(sid uint64, _ *uint32, data []byte) {
+func (b *Agent) handlePeripheralEnsure(sid uint64, data []byte) {
 	if b.Manager == nil {
 		b.handleUnknownCmd(sid, "peripheral.ensure", nil)
 		return
@@ -102,7 +102,7 @@ func (b *Agent) handlePeripheralEnsure(sid uint64, _ *uint32, data []byte) {
 	})
 }
 
-func (b *Agent) handlePeripheralDelete(sid uint64, _ *uint32, data []byte) {
+func (b *Agent) handlePeripheralDelete(sid uint64, data []byte) {
 	if b.Manager == nil {
 		b.handleUnknownCmd(sid, "peripheral.delete", nil)
 		return
@@ -141,7 +141,7 @@ func (b *Agent) handlePeripheralDelete(sid uint64, _ *uint32, data []byte) {
 	})
 }
 
-func (b *Agent) handlePeripheralOperate(sid uint64, _ *uint32, data []byte) {
+func (b *Agent) handlePeripheralOperate(sid uint64, data []byte) {
 	if b.Manager == nil {
 		b.handleUnknownCmd(sid, "peripheral.operate", nil)
 		return

@@ -44,7 +44,7 @@ import (
 	"arhat.dev/arhat/pkg/util/errconv"
 )
 
-func (b *Agent) handleExec(sid uint64, streamPreparing *uint32, data []byte) {
+func (b *Agent) handleExec(sid uint64, data []byte) {
 	opts := new(aranyagopb.ExecOrAttachCmd)
 
 	err := opts.Unmarshal(data)
@@ -54,11 +54,6 @@ func (b *Agent) handleExec(sid uint64, streamPreparing *uint32, data []byte) {
 	}
 
 	b.processInNewGoroutine(sid, "exec", func() {
-		defer func() {
-			// release unprepared stream
-			b.markStreamPrepared(sid, streamPreparing)
-		}()
-
 		var (
 			wg  = new(sync.WaitGroup)
 			seq uint64
@@ -163,14 +158,24 @@ func (b *Agent) handleExec(sid uint64, streamPreparing *uint32, data []byte) {
 					)
 				}
 
-				// mark stream prepared
-				b.markStreamPrepared(sid, streamPreparing)
-
 				if err != nil {
 					return &aranyagopb.ErrorMsg{
 						Kind:        aranyagopb.ERR_COMMON,
 						Description: err.Error(),
 						Code:        exechelper.DefaultExitCodeOnError,
+					}
+				}
+
+				// mark stream prepared (can be obsolute)
+				_, err = b.PostData(
+					sid, aranyagopb.MSG_STREAM_CONTINUE, nextSeq(&seq), false, nil,
+				)
+
+				if err != nil {
+					b.handleConnectivityError(sid, err)
+					return &aranyagopb.ErrorMsg{
+						Kind:        aranyagopb.ERR_COMMON,
+						Description: err.Error(),
 					}
 				}
 
@@ -189,7 +194,7 @@ func (b *Agent) handleExec(sid uint64, streamPreparing *uint32, data []byte) {
 	})
 }
 
-func (b *Agent) handleAttach(sid uint64, streamPreparing *uint32, data []byte) {
+func (b *Agent) handleAttach(sid uint64, data []byte) {
 	opts := new(aranyagopb.ExecOrAttachCmd)
 
 	err := opts.Unmarshal(data)
@@ -199,11 +204,6 @@ func (b *Agent) handleAttach(sid uint64, streamPreparing *uint32, data []byte) {
 	}
 
 	b.processInNewGoroutine(sid, "attach", func() {
-		defer func() {
-			// release unprepared stream
-			b.markStreamPrepared(sid, streamPreparing)
-		}()
-
 		var (
 			wg  = new(sync.WaitGroup)
 			seq uint64
@@ -277,14 +277,24 @@ func (b *Agent) handleAttach(sid uint64, streamPreparing *uint32, data []byte) {
 						}, nil
 				})
 
-				// mark stream prepared
-				b.markStreamPrepared(sid, streamPreparing)
-
 				if err != nil {
 					return &aranyagopb.ErrorMsg{
 						Kind:        aranyagopb.ERR_COMMON,
 						Description: err.Error(),
 						Code:        exechelper.DefaultExitCodeOnError,
+					}
+				}
+
+				// mark stream prepared (can be obsolute)
+				_, err = b.PostData(
+					sid, aranyagopb.MSG_STREAM_CONTINUE, nextSeq(&seq), false, nil,
+				)
+
+				if err != nil {
+					b.handleConnectivityError(sid, err)
+					return &aranyagopb.ErrorMsg{
+						Kind:        aranyagopb.ERR_COMMON,
+						Description: err.Error(),
 					}
 				}
 
@@ -304,7 +314,7 @@ func (b *Agent) handleAttach(sid uint64, streamPreparing *uint32, data []byte) {
 	})
 }
 
-func (b *Agent) handleLogs(sid uint64, _ *uint32, data []byte) {
+func (b *Agent) handleLogs(sid uint64, data []byte) {
 	cmd := new(aranyagopb.LogsCmd)
 
 	err := cmd.Unmarshal(data)
@@ -409,7 +419,7 @@ func (a *flexWriteCloser) Close() error {
 	return a.closeFunc()
 }
 
-func (b *Agent) handlePortForward(sid uint64, streamPreparing *uint32, data []byte) {
+func (b *Agent) handlePortForward(sid uint64, data []byte) {
 	opts := new(aranyagopb.PortForwardCmd)
 	err := opts.Unmarshal(data)
 	if err != nil {
@@ -431,9 +441,6 @@ func (b *Agent) handlePortForward(sid uint64, streamPreparing *uint32, data []by
 			_ = pw.Close()
 			closeWithDelay(pr, 5*time.Second, 64*1024)
 			closeWithDelay(downstream, 5*time.Second, 64*1024)
-
-			// release unprepared stream on error
-			b.markStreamPrepared(sid, streamPreparing)
 
 			kind := aranyagopb.MSG_DATA
 			var payload []byte
@@ -494,12 +501,16 @@ func (b *Agent) handlePortForward(sid uint64, streamPreparing *uint32, data []by
 				},
 			}, nil, nil
 		})
-
-		// mark stream prepared
-		b.markStreamPrepared(sid, streamPreparing)
-
 		if err != nil {
 			return
+		}
+
+		// mark stream prepared (can be obsolute)
+		_, err = b.PostData(
+			sid, aranyagopb.MSG_STREAM_CONTINUE, nextSeq(&seq), false, nil,
+		)
+		if err != nil {
+			b.handleConnectivityError(sid, err)
 		}
 
 		go func() {
@@ -539,7 +550,7 @@ func (b *Agent) handlePortForward(sid uint64, streamPreparing *uint32, data []by
 	})
 }
 
-func (b *Agent) handleTerminalResize(sid uint64, _ *uint32, data []byte) {
+func (b *Agent) handleTerminalResize(sid uint64, data []byte) {
 	opts := new(aranyagopb.TerminalResizeCmd)
 	err := opts.Unmarshal(data)
 	if err != nil {

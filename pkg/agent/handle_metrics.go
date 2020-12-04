@@ -53,7 +53,7 @@ func (b *agentComponentMetrics) init() error {
 	return nil
 }
 
-func (b *Agent) handleMetricsConfig(sid uint64, _ *uint32, data []byte) {
+func (b *Agent) handleMetricsConfig(sid uint64, data []byte) {
 	cmd := new(aranyagopb.MetricsConfigCmd)
 	err := cmd.Unmarshal(data)
 	if err != nil {
@@ -88,7 +88,7 @@ func (b *Agent) encodeMetrics(metrics []*dto.MetricFamily) ([]byte, error) {
 	return b.zstdEncoder.EncodeAll(buf.Bytes(), nil), nil
 }
 
-func (b *Agent) handleMetricsCollect(sid uint64, _ *uint32, data []byte) {
+func (b *Agent) handleMetricsCollect(sid uint64, data []byte) {
 	// data is ignore and shold be nil
 	_ = data
 

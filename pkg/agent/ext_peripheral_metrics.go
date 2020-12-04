@@ -25,7 +25,7 @@ import (
 	"arhat.dev/aranya-proto/aranyagopb"
 )
 
-func (b *Agent) handlePeripheralMetricsCollect(sid uint64, _ *uint32, data []byte) {
+func (b *Agent) handlePeripheralMetricsCollect(sid uint64, data []byte) {
 	if b.Manager == nil {
 		b.handleUnknownCmd(sid, "peripheral.metrics", nil)
 		return

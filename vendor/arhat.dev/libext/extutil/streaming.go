@@ -1,9 +1,24 @@
+/*
+Copyright 2020 The arhat.dev Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package extutil
 
 import (
 	"io"
 	"runtime"
-	"sync"
 	"sync/atomic"
 
 	"arhat.dev/pkg/queue"
@@ -17,77 +32,98 @@ func noopHandleResize(cols, rows uint32) {}
 func NewStreamManager() *StreamManager {
 	return &StreamManager{
 		sessions: make(map[uint64]*stream),
-		mu:       new(sync.RWMutex),
 	}
 }
 
 type StreamManager struct {
 	sessions map[uint64]*stream
 
-	mu *sync.RWMutex
+	_working uint32
 }
 
-func (m *StreamManager) Has(sid uint64) bool {
-	m.mu.Lock()
-	_, ok := m.sessions[sid]
-	m.mu.Unlock()
+func (m *StreamManager) doExclusive(f func()) {
+	for !atomic.CompareAndSwapUint32(&m._working, 0, 1) {
+		runtime.Gosched()
+	}
 
-	return ok
+	f()
+
+	atomic.StoreUint32(&m._working, 0)
 }
 
-func (m *StreamManager) Add(sid uint64, create func() (io.WriteCloser, types.ResizeHandleFunc, error)) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+func (m *StreamManager) Has(sid uint64) (exists bool) {
+	m.doExclusive(func() {
+		_, exists = m.sessions[sid]
+	})
 
-	if _, ok := m.sessions[sid]; ok {
-		return wellknownerrors.ErrAlreadyExists
-	}
+	return
+}
 
-	w, rF, err := create()
-	if err != nil {
-		return err
-	}
+func (m *StreamManager) Add(sid uint64, create func() (io.WriteCloser, types.ResizeHandleFunc, error)) (err error) {
+	m.doExclusive(func() {
+		if _, ok := m.sessions[sid]; ok {
+			err = wellknownerrors.ErrAlreadyExists
+			return
+		}
 
-	if rF == nil {
-		rF = noopHandleResize
-	}
+		var (
+			w  io.WriteCloser
+			rF types.ResizeHandleFunc
+		)
+		w, rF, err = create()
+		if err != nil {
+			return
+		}
 
-	m.sessions[sid] = &stream{
-		_w:  w,
-		_rF: rF,
+		if rF == nil {
+			rF = noopHandleResize
+		}
 
-		_seqQ: queue.NewSeqQueue(),
-	}
+		m.sessions[sid] = &stream{
+			_w:  w,
+			_rF: rF,
 
-	return nil
+			_seqQ: queue.NewSeqQueue(),
+		}
+	})
+
+	return
 }
 
 func (m *StreamManager) Del(sid uint64) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if s, ok := m.sessions[sid]; ok {
-		s.close()
-		delete(m.sessions, sid)
-	}
+	m.doExclusive(func() {
+		if s, ok := m.sessions[sid]; ok {
+			s.close()
+			delete(m.sessions, sid)
+		}
+	})
 }
 
-func (m *StreamManager) Write(sid, seq uint64, data []byte) {
-	m.mu.RLock()
-	s, ok := m.sessions[sid]
-	m.mu.RUnlock()
+func (m *StreamManager) Write(sid, seq uint64, data []byte) bool {
+	var (
+		s  *stream
+		ok bool
+	)
+
+	m.doExclusive(func() {
+		s, ok = m.sessions[sid]
+	})
 	if !ok {
-		return
+		return false
 	}
 
 	s.write(seq, data)
+	return true
 }
 
 func (m *StreamManager) Resize(sid uint64, cols, rows uint32) {
-	m.mu.RLock()
-	s, ok := m.sessions[sid]
-	m.mu.RUnlock()
-
+	var (
+		s  *stream
+		ok bool
+	)
+	m.doExclusive(func() {
+		s, ok = m.sessions[sid]
+	})
 	if !ok {
 		return
 	}
@@ -101,28 +137,34 @@ type stream struct {
 	_w  io.WriteCloser
 	_rF types.ResizeHandleFunc
 
-	working uint32
+	_working uint32
 }
 
-func (s *stream) write(seq uint64, data []byte) {
-	for !atomic.CompareAndSwapUint32(&s.working, 0, 1) {
+func (m *stream) doExclusive(f func()) {
+	for !atomic.CompareAndSwapUint32(&m._working, 0, 1) {
 		runtime.Gosched()
 	}
 
-	if len(data) == 0 {
-		_ = s._seqQ.SetMaxSeq(seq)
-	}
+	f()
 
-	out, complete := s._seqQ.Offer(seq, data)
-	for _, d := range out {
-		_, _ = s._w.Write(d.([]byte))
-	}
+	atomic.StoreUint32(&m._working, 0)
+}
 
-	if complete {
-		_ = s._w.Close()
-	}
+func (s *stream) write(seq uint64, data []byte) {
+	s.doExclusive(func() {
+		if len(data) == 0 {
+			_ = s._seqQ.SetMaxSeq(seq)
+		}
 
-	atomic.StoreUint32(&s.working, 0)
+		out, complete := s._seqQ.Offer(seq, data)
+		for _, d := range out {
+			_, _ = s._w.Write(d.([]byte))
+		}
+
+		if complete {
+			_ = s._w.Close()
+		}
+	})
 }
 
 func (s *stream) resize(cols, rows uint32) {
@@ -130,11 +172,7 @@ func (s *stream) resize(cols, rows uint32) {
 }
 
 func (s *stream) close() {
-	for !atomic.CompareAndSwapUint32(&s.working, 0, 1) {
-		runtime.Gosched()
-	}
-
-	_ = s._w.Close()
-
-	atomic.StoreUint32(&s.working, 0)
+	s.doExclusive(func() {
+		_ = s._w.Close()
+	})
 }

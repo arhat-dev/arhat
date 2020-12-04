@@ -19,6 +19,6 @@ limitations under the License.
 
 package agent
 
-func (b *Agent) handlePeripheralMetricsCollect(sid uint64, _ *uint32,data []byte) {
+func (b *Agent) handlePeripheralMetricsCollect(sid uint64, data []byte) {
 	b.handleUnknownCmd(sid, "peripheral.metrics.collect", nil)
 }

@@ -23,7 +23,7 @@ import (
 	"arhat.dev/pkg/log"
 )
 
-func (b *Agent) handleRejectCmd(sid uint64, _ *uint32, data []byte) {
+func (b *Agent) handleRejectCmd(sid uint64, data []byte) {
 	cmd := new(aranyagopb.RejectCmd)
 
 	err := cmd.Unmarshal(data)
