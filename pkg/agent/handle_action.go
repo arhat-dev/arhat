@@ -141,7 +141,7 @@ func (b *Agent) handleExec(sid uint64, data []byte) {
 						}
 
 						return &flexWriteCloser{
-								writeFunc: procInput.Write,
+								Writer: procInput,
 								closeFunc: func() error {
 									// close stdin with delay
 									closeWithDelay(procStdin, 5*time.Second, 128*1024)
@@ -269,7 +269,7 @@ func (b *Agent) handleAttach(sid uint64, data []byte) {
 					}()
 
 					return &flexWriteCloser{
-							writeFunc: cmd.TtyInput.Write,
+							Writer: cmd.TtyInput,
 							closeFunc: func() error {
 								closeWithDelay(cmd.TtyOutput, 5*time.Second, 128*1024)
 								return cmd.TtyInput.Close()
@@ -411,12 +411,8 @@ func (b *Agent) handleLogs(sid uint64, data []byte) {
 }
 
 type flexWriteCloser struct {
-	writeFunc func([]byte) (int, error)
+	io.Writer
 	closeFunc func() error
-}
-
-func (a *flexWriteCloser) Write(p []byte) (n int, err error) {
-	return a.writeFunc(p)
 }
 
 func (a *flexWriteCloser) Close() error {
@@ -494,7 +490,7 @@ func (b *Agent) handlePortForward(sid uint64, data []byte) {
 			}
 
 			return &flexWriteCloser{
-				writeFunc: pw.Write,
+				Writer: pw,
 				closeFunc: func() error {
 					closeWrite()
 
