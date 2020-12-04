@@ -172,6 +172,8 @@ func (b *Agent) handleExec(sid uint64, data []byte) {
 				)
 
 				if err != nil {
+					_ = cmd.Release()
+
 					b.handleConnectivityError(sid, err)
 					return &aranyagopb.ErrorMsg{
 						Kind:        aranyagopb.ERR_COMMON,
@@ -291,6 +293,8 @@ func (b *Agent) handleAttach(sid uint64, data []byte) {
 				)
 
 				if err != nil {
+					_ = cmd.Release()
+
 					b.handleConnectivityError(sid, err)
 					return &aranyagopb.ErrorMsg{
 						Kind:        aranyagopb.ERR_COMMON,

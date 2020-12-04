@@ -28,6 +28,7 @@ type tryFunc func(stdin io.Reader, stdout, stderr io.Writer, command []string, t
 type Cmd interface {
 	Resize(cols, rows uint32) error
 	Wait() (int, error)
+	Release() error
 }
 
 type flexCmd struct {
@@ -46,3 +47,5 @@ func (c *flexCmd) Wait() (int, error) {
 
 	return 0, nil
 }
+
+func (c *flexCmd) Release() error { return nil }
