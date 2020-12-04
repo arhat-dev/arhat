@@ -5,14 +5,14 @@ kind: Secret
 metadata:
   name: arhat
   labels:
-    helm.sh/chart: arhat-0.0.2
+    helm.sh/chart: arhat-0.0.3
     app.kubernetes.io/name: arhat
     app.kubernetes.io/instance: arhat
     app.kubernetes.io/version: "latest"
     app.kubernetes.io/managed-by: Helm
 type: Opaque
 data:
-  config.yaml: YXJoYXQ6CiAgaG9zdDoKICAgIGFsbG93QXR0YWNoOiB0cnVlCiAgICBhbGxvd0V4ZWM6IHRydWUKICAgIGFsbG93TG9nOiBmYWxzZQogICAgYWxsb3dQb3J0Rm9yd2FyZDogdHJ1ZQogICAgcm9vdGZzOiAvaG9zdAogIGxvZzoKICAtIGZpbGU6IHN0ZGVycgogICAgZm9ybWF0OiBjb25zb2xlCiAgICBsZXZlbDogdmVyYm9zZQogIG5vZGU6CiAgICBtYWNoaW5lSURGcm9tOgogICAgICB0ZXh0OiAke1BPRF9VSUR9CiAgcHByb2Y6CiAgICBibG9ja1Byb2ZpbGVGcmFjdGlvbjogMQogICAgY3B1UHJvZmlsZUZyZXF1ZW5jeUh6OiAxMDAKICAgIGVuYWJsZWQ6IHRydWUKICAgIGh0dHBQYXRoOiAvZGVidWcvcHByb2YKICAgIGxpc3RlbjogbG9jYWxob3N0OjgwODAKICAgIG11dGV4UHJvZmlsZUZyYWN0aW9uOiAxMDAKY29ubmVjdGl2aXR5OgogIGJhY2tvZmZGYWN0b3I6IDEuNQogIGRpYWxUaW1lb3V0OiA1cwogIGluaXRpYWxCYWNrb2ZmOiAxcwogIG1heEJhY2tvZmY6IDEwcwogIG1ldGhvZHM6IFtdCmV4dGVuc2lvbjoKICBlbmFibGVkOiBmYWxzZQogIGVuZHBvaW50czoKICAtIGtlZXBhbGl2ZUludGVydmFsOiAxMHMKICAgIGxpc3RlbjogdW5peDovLy92YXIvcnVuL2FyaGF0L2V4dGVuc2lvbi5zb2NrCiAgICBtZXNzYWdlVGltZW91dDogMW0KICAgIHRsczoKICAgICAgY2FDZXJ0OiAvcGF0aC90by9jYS5jcnQKICAgICAgY2VydDogL3BhdGgvdG8vY2xpZW50LmNydAogICAgICBjaXBoZXJTdWl0ZXM6IFtdCiAgICAgIGVuYWJsZWQ6IGZhbHNlCiAgICAgIGtleTogL3BhdGgvdG8vY2xpZW50LmtleQogICAgICBzZXJ2ZXJOYW1lOiBmb28uZXhhbXBsZS5jb20KICAgICAgdmVyaWZ5Q2xpZW50Q2VydDogZmFsc2UKICBwZXJpcGhlcmFsOgogICAgbWV0cmljc0NhY2hlVGltZW91dDogMWgKICBydW50aW1lOiB7fQ==
+  config.yaml: YXJoYXQ6CiAgaG9zdDoKICAgIGFsbG93QXR0YWNoOiB0cnVlCiAgICBhbGxvd0V4ZWM6IHRydWUKICAgIGFsbG93TG9nOiBmYWxzZQogICAgYWxsb3dQb3J0Rm9yd2FyZDogdHJ1ZQogICAgcm9vdGZzOiAiIgogIGxvZzoKICAtIGZpbGU6IHN0ZGVycgogICAgZm9ybWF0OiBjb25zb2xlCiAgICBsZXZlbDogdmVyYm9zZQogIG5vZGU6CiAgICBtYWNoaW5lSURGcm9tOgogICAgICB0ZXh0OiAke1BPRF9VSUR9CiAgcHByb2Y6CiAgICBibG9ja1Byb2ZpbGVGcmFjdGlvbjogMQogICAgY3B1UHJvZmlsZUZyZXF1ZW5jeUh6OiAxMDAKICAgIGVuYWJsZWQ6IHRydWUKICAgIGh0dHBQYXRoOiAvZGVidWcvcHByb2YKICAgIGxpc3RlbjogbG9jYWxob3N0OjgwODAKICAgIG11dGV4UHJvZmlsZUZyYWN0aW9uOiAxMDAKY29ubmVjdGl2aXR5OgogIGJhY2tvZmZGYWN0b3I6IDEuNQogIGRpYWxUaW1lb3V0OiA1cwogIGluaXRpYWxCYWNrb2ZmOiAxcwogIG1heEJhY2tvZmY6IDEwcwogIG1ldGhvZHM6IFtdCmV4dGVuc2lvbjoKICBlbmFibGVkOiBmYWxzZQogIGVuZHBvaW50czoKICAtIGtlZXBhbGl2ZUludGVydmFsOiAxMHMKICAgIGxpc3RlbjogdW5peDovLy92YXIvcnVuL2FyaGF0L2V4dGVuc2lvbi5zb2NrCiAgICBtZXNzYWdlVGltZW91dDogMW0KICAgIHRsczoKICAgICAgY2FDZXJ0OiAvcGF0aC90by9jYS5jcnQKICAgICAgY2VydDogL3BhdGgvdG8vY2xpZW50LmNydAogICAgICBjaXBoZXJTdWl0ZXM6IFtdCiAgICAgIGVuYWJsZWQ6IGZhbHNlCiAgICAgIGtleTogL3BhdGgvdG8vY2xpZW50LmtleQogICAgICBzZXJ2ZXJOYW1lOiBmb28uZXhhbXBsZS5jb20KICAgICAgdmVyaWZ5Q2xpZW50Q2VydDogZmFsc2UKICBwZXJpcGhlcmFsOgogICAgbWV0cmljc0NhY2hlVGltZW91dDogMWgKICBydW50aW1lOiB7fQ==
 ---
 # Source: arhat/templates/daemonset.yaml
 apiVersion: apps/v1
@@ -20,7 +20,7 @@ kind: DaemonSet
 metadata:
   name: arhat
   labels:
-    helm.sh/chart: arhat-0.0.2
+    helm.sh/chart: arhat-0.0.3
     app.kubernetes.io/name: arhat
     app.kubernetes.io/instance: arhat
     app.kubernetes.io/version: "latest"
@@ -42,18 +42,13 @@ spec:
         - name: arhat-config
           secret:
             secretName: arhat
-        - name: host-rootfs
-          hostPath:
-            path: /
-            type: Directory
-      hostPID: true
-      hostIPC: true
-      hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
+      hostPID: false
+      hostIPC: false
+      hostNetwork: false
       containers:
         - name: arhat
           securityContext:
-            privileged: true
+            privileged: false
           image: "ghcr.io/arhat-dev/arhat:latest"
           imagePullPolicy: IfNotPresent
           resources:
@@ -75,6 +70,3 @@ spec:
             - name: arhat-config
               mountPath: /etc/arhat/config.yaml
               subPath: config.yaml
-            - name: host-rootfs
-              mountPath: /host
-              mountPropagation: Bidirectional

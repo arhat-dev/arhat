@@ -20,5 +20,5 @@ home: https://github.com/arhat-dev/arhat
 sources:
 - https://github.com/arhat-dev/arhat
 - https://github.com/arhat-dev/helm-charts
-version: 0.0.2
+version: 0.0.3
 appVersion: latest

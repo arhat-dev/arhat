@@ -38,13 +38,13 @@ extraEnv: []
 
 securityContext:
   # required when rootfs is set
-  privileged: true
+  privileged: false
   #procMount: Unmasked
 
-hostIPC: true
-hostPID: true
+hostIPC: false
+hostPID: false
 # enable host network to allow port-forward to host
-hostNetwork: true
+hostNetwork: false
 
 config:
   arhat:
@@ -55,7 +55,7 @@ config:
 
     host:
       # chroot to host rootfs, disable it by setting it to empty
-      rootfs: /host
+      rootfs: ""
 
       #setuid: 0
       #setgid: 0
