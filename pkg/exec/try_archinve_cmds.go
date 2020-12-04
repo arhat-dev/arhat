@@ -190,7 +190,6 @@ func runArchiveCmd(
 				_ = os.Remove(tmpDestFile)
 			}()
 
-			println("created")
 			dataOut = f
 			tmpDestR = f
 			resetDest = func(erase bool) {
@@ -363,20 +362,17 @@ func runArchiveCmd(
 		return arc.Archive(opts.newBundleSourcePaths, opts.newBundleDest)
 	}
 
-	println("tmpdestr")
 	_ = tmpDestR.Close()
 
 	err = arc.Archive(opts.newBundleSourcePaths, tmpDestFile)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "failed to archive files: %v\n", err)
-		println(err.Error())
 		return err
 	}
 
 	f, err := os.Open(tmpDestFile)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "failed to open temp archive file: %v\n", err)
-		println(err.Error())
 		return err
 	}
 
