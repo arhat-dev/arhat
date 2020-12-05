@@ -10,20 +10,20 @@
 
     <key>Program</key>
     <string>/usr/local/bin/arhat</string>
-    
+
     <key>ProgramArguments</key>
     <array>
         <string>/usr/local/bin/arhat</string>
         <string>-c</string>
         <string>/usr/local/etc/arhat/config.yaml</string>
     </array>
-    
+
     <key>KeepAlive</key>
     <dict>
         <key>Crashed</key>
         <true/>
     </dict>
-    
+
     <key>RunAtLoad</key>
     <true/>
 
