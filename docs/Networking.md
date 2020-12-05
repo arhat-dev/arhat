@@ -28,15 +28,15 @@ By this way, `arhat` don't have to know `abbot-proto` at all, you can develop yo
 
 ### Container Network Design
 
-__NOTE:__ if `arhat` has no container runtime support (e.g. `arhat`), container network support is totally dropped
+In addition to host network design, aranya manages pod creation, and pod creation message contains encoded abbot-proto request bytes
 
-- `aranya` manages the `Node` resource, so it knows the pod CIDRs of the node, and these pod CIDRs are for connected `arhat`
-- if `arhat` supports container runtime (`arhat-docker`, `arhat-libpod`), `aranya` will update container network config everytime `arhat` get connected to the `aranya`
-  - `arhat` just invoke `abbot` to notify `abbot` with updated config
+- if `arhat` supports container runtime (runtime extension connected), `aranya` will update container network config everytime `arhat` get connected
+  - `aranya` manages the `Node` resource for `EdgeDevice`, so it knows the pod CIDRs of the node, and these pod CIDRs are sent to runtime extension
+  - runtime extension will invoke `abbot` through the runtime exec api to notify `abbot` with updated config
 - once `aranya` decides to create pod in edge device, it will
   - issue image pull request
-  - __issue infra container creation request__
-    - if the pod is not using host network, this will create a sandbox network for the pod: `arhat` will execute `abbot` with base64 encoded protobuf bytes of provided network options
+  - __issue pod ensure request__
+    - if the pod is not using host network, runtime extension will execute `abbot` with provided abbot-proto protobuf bytes to create a sandbox network
   - ... (other actions omitted)
 
 ## Configuration
