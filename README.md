@@ -26,7 +26,27 @@ The reference `EdgeDevice` agent for `aranya`, serving as the connectivity hub f
   - Efficient built-in dynamic prometheus `node_exporter`/`windows-exporter` with no port exposed
   - Collect all kinds of metrics with `aranya` and Kubernetes API, including metrics from peripherals
 
+## Project State
+
+__TL;DR:__ Currently you can treate `araht` as a cloud native replacement of `sshd` with node metrics reporting support working with `aranya` through Kubernetes API
+
+Currently State of functionalities:
+
+- Stable:
+  - port-forward
+  - exec/attach
+  - node metrics collecting
+  - extended node info reporting
+- Unstable (subject to design change):
+  - peripheral extension
+  - runtime extension
+- Experimental (not fully supported):
+  - networking with abbot
+  - remote storage mount
+
 ## Design
+
+__NOTE:__ This is not the final design, and docs may not reflect the actual implementation for now
 
 - [Connectivity](./docs/Connectivity.md)
 - [Networking](./docs/Networking.md)
