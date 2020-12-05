@@ -6,7 +6,7 @@
 [![GoReportCard](https://goreportcard.com/badge/arhat.dev/arhat)](https://goreportcard.com/report/arhat.dev/arhat)
 [![codecov](https://codecov.io/gh/arhat-dev/arhat/branch/master/graph/badge.svg)](https://codecov.io/gh/arhat-dev/arhat)
 
-The reference `EdgeDevice` agent implementing [`aranya-proto`](https://github.com/arhat-dev/aranya-proto).
+The reference agent implementation of [`aranya-proto`](https://github.com/arhat-dev/aranya-proto) and [`EdgeDevice`](https://github.com/arhat-dev/aranya/blob/master/docs/EdgeDevice.md)
 
 ## Features
 
