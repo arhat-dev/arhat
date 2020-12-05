@@ -280,3 +280,9 @@ arhat.plan9.all: \
 # 		/go/src/arhat.dev/arhat/cmd/arhat
 arhat.js.wasm:
 	sh scripts/build/build.sh $@
+
+arhat.wasi.wasm:
+	@echo NOTE: requires experimental go toolchain https://github.com/neelance/go/tree/wasi ,\
+		provide GO=/path/to/go/binary to specify the toolchain 'go' binary
+	@echo NOTE: requires manual changes to vendor/github.com/sirupsen/logrus
+	sh scripts/build/build.sh $@

@@ -48,8 +48,8 @@ ARCH="$(printf "%s" "$@" | cut -d. -f3 || true)"
 
 if [ -z "${GOOS}" ] || [ "${GOOS}" = "${COMP}" ]; then
   # fallback to goos and goarch values
-  GOOS="$(go env GOHOSTOS)"
-  ARCH="$(go env GOHOSTARCH)"
+  GOOS="$($GO env GOHOSTOS)"
+  ARCH="$($GO env GOHOSTARCH)"
 fi
 
 GOEXE=""
@@ -170,24 +170,24 @@ GO_LDFLAGS="-s -w \
   -X arhat.dev/arhat/pkg/version.commit=${GIT_COMMIT} \
   -X arhat.dev/arhat/pkg/version.tag=${GIT_TAG} \
   -X arhat.dev/arhat/pkg/version.arch=${ARCH} \
-  -X arhat.dev/arhat/pkg/version.goCompilerPlatform=$(go version | cut -d\  -f4)"
+  -X arhat.dev/arhat/pkg/version.goCompilerPlatform=$($GO version | cut -d\  -f4)"
 
 GOARM="$(_get_goarm "${ARCH}")"
 if [ -z "${GOARM}" ]; then
   # this can happen if no ARCH specified
-  GOARM="$(go env GOARM)"
+  GOARM="$($GO env GOARM)"
 fi
 
 GOMIPS="$(_get_gomips "${ARCH}")"
 if [ -z "${GOMIPS}" ]; then
   # this can happen if no ARCH specified
-  GOMIPS="$(go env GOMIPS)"
+  GOMIPS="$($GO env GOMIPS)"
 fi
 
 GOBUILD="GO111MODULE=on GOOS=${GOOS} GOARCH=$(_get_goarch "${ARCH}") \
   GOARM=${GOARM} GOMIPS=${GOMIPS} GOWASM=satconv,signext \
   ${CGO_FLAGS} \
-  go build -trimpath -buildmode=${BUILD_MODE:-default} \
+  $GO build -trimpath -buildmode=${BUILD_MODE:-default} \
   -mod=vendor -ldflags='${GO_LDFLAGS}' -o build/$*${GOEXE}"
 
 $CMD

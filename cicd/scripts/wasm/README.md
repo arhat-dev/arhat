@@ -1,13 +1,13 @@
 # wasm
 
-Run `arhat` in browser
+Run `arhat` wasm
 
 ## Files
 
 - `config.yaml` - Sample config with mqtt websocket connection
 - `index.html` - Sample html page to load `arhat.js.wasm`
 - `wasm_exec.js` - Sample wasm runtime setup script
-- `arhat.js.wasm` - The wasm binary
+- `arhat.js.wasm` - The wasm binary for browser
 
 ## Example Setup
 
@@ -36,3 +36,7 @@ Run `arhat` in browser
     ```
 
 5. Open your browser and navigate to [`http://localhost:8080/`](http://localhost:8080/) and you will find the log output on the web page
+
+## Note for wasi
+
+Currently go support for wasi is still in progress happening in [this fork](https://github.com/neelance/go/tree/wasi), you need to install that go toolchain from source and compile `arhat` with `GO=/path/to/go-wasi make arhat.wasi.wasm`
