@@ -6,7 +6,7 @@
 [![GoReportCard](https://goreportcard.com/badge/arhat.dev/arhat)](https://goreportcard.com/report/arhat.dev/arhat)
 [![codecov](https://codecov.io/gh/arhat-dev/arhat/branch/master/graph/badge.svg)](https://codecov.io/gh/arhat-dev/arhat)
 
-The reference `EdgeDevice` agent for `aranya`, serving as the connectivity hub for real world.
+The reference `EdgeDevice` agent implementing [`aranya-proto`](https://github.com/arhat-dev/aranya-proto).
 
 ## Features
 
@@ -37,12 +37,19 @@ Currently State of functionalities:
   - exec/attach
   - node metrics collecting
   - extended node info reporting
+  - MQTT connectivity
+  - gRPC connectivity
 - Unstable (subject to design change):
   - peripheral extension
   - runtime extension
 - Experimental (not fully supported):
   - networking with abbot
   - remote storage mount
+  - credential update
+  - CoAP connectivity
+  - NATS Stream connectivity
+
+__NOTE:__ This project lacks tests, all kinds of contribution especially tests are welcome!
 
 ## Design
 
