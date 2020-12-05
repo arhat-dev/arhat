@@ -19,9 +19,11 @@ limitations under the License.
 package iohelper
 
 import (
-	"syscall"
+	"errors"
 )
 
+var errNOSYS = errors.New("function not implemented")
+
 func CheckBytesToRead(fd uintptr) (int, error) {
-	return 0, syscall.ENOSYS
+	return 0, errNOSYS
 }

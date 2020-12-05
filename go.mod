@@ -6,7 +6,7 @@ require (
 	arhat.dev/aranya-proto v0.3.2
 	arhat.dev/arhat-proto v0.4.3
 	arhat.dev/libext v0.5.1
-	arhat.dev/pkg v0.5.2
+	arhat.dev/pkg v0.5.3-0.20201205203348-e1350a8c66d5
 	ext.arhat.dev/runtimeutil v0.3.0
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/denisbrodbeck/machineid v1.0.1

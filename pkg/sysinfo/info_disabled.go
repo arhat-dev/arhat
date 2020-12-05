@@ -1,4 +1,4 @@
-// +build nosysinfo !darwin,!linux,!freebsd,!openbsd,!netbsd,!aix,!solaris,!dragonfly,!windows,!js
+// +build nosysinfo !darwin,!linux,!freebsd,!openbsd,!netbsd,!aix,!solaris,!dragonfly,!windows,!js,!plan9
 
 /*
 Copyright 2020 The arhat.dev Authors.
