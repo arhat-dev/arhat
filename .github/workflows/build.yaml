@@ -31,6 +31,7 @@ defaults:
   run:
     shell: bash
 
+# pprof support is dropped in automated build
 jobs:
   build-on-linux:
     if: contains(github.head_ref, 'deps/') == false
