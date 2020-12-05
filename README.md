@@ -30,24 +30,28 @@ The reference `EdgeDevice` agent implementing [`aranya-proto`](https://github.co
 
 __TL;DR:__ Currently you can treate `araht` as a cloud native replacement of `sshd` with node metrics reporting support working with `aranya` through Kubernetes API
 
-Currently State of functionalities:
+Currently state of functionalities:
 
 - Stable:
-  - port-forward
-  - exec/attach
-  - node metrics collecting
-  - extended node info reporting
+  - Port-forward
+  - Exec/Attach
+  - Node metrics collecting
+  - Extended node info reporting
   - MQTT connectivity
   - gRPC connectivity
 - Unstable (subject to design change):
-  - peripheral extension
-  - runtime extension
+  - Peripheral extension
+  - Runtime extension
 - Experimental (not fully supported):
-  - networking with abbot
-  - remote storage mount
-  - credential update
+  - Networking with abbot
+  - Remote storage mount
+  - Credential update
   - CoAP connectivity
   - NATS Stream connectivity
+- TODO:
+  - Conditional connectivity switch on unrecoverable error
+  - Kafka connectivity
+  - MQTT-SN connectivity
 
 __NOTE:__ This project lacks tests, all kinds of contribution especially tests are welcome!
 
