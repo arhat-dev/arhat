@@ -1,5 +1,4 @@
 // +build !nosysinfo
-// +build js
 
 /*
 Copyright 2020 The arhat.dev Authors.
@@ -38,30 +37,6 @@ func init() {
 	browserName, browserVersion = userAgent.Browser()
 }
 
-func GetMachineID() string {
-	return ""
-}
-
-func GetTotalMemory() uint64 {
-	return 0
-}
-
-func GetKernelVersion() string {
-	return browserVersion
-}
-
-func GetTotalDiskSpace() uint64 {
-	return 0
-}
-
-func GetOSImage() string {
-	return browserName
-}
-
-func GetSystemUUID() string {
-	return ""
-}
-
-func GetBootID() string {
-	return ""
-}
+func GetOSImage() string    { return browserName }
+func GetSystemUUID() string { return "" }
+func GetBootID() string     { return "" }

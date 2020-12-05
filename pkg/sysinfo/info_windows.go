@@ -1,5 +1,4 @@
 // +build !nosysinfo
-// +build windows
 
 /*
 Copyright 2020 The arhat.dev Authors.
@@ -23,7 +22,6 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
-	"unsafe"
 
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
@@ -80,32 +78,6 @@ func init() {
 
 		kernelVersion = fmt.Sprintf("%d.%d.%s.%d", majorVersionNumber, minorVersionNumber, buildNumber, revision)
 	}
-}
-
-func GetKernelVersion() string {
-	return kernelVersion
-}
-
-func GetTotalDiskSpace() uint64 {
-	_, totalBytes := checkDisk("")
-	return totalBytes
-}
-
-func checkDisk(dataDir string) (freeBytes, totalBytes uint64) {
-	var totalFreeBytes uint64
-
-	ptr, err := windows.UTF16PtrFromString(dataDir)
-	if err != nil {
-		return
-	}
-
-	_, _, _ = getDiskFreeSpaceExW.Call(uintptr(unsafe.Pointer(ptr)),
-		uintptr(unsafe.Pointer(&freeBytes)),
-		uintptr(unsafe.Pointer(&totalBytes)),
-		uintptr(unsafe.Pointer(&totalFreeBytes)),
-	)
-
-	return
 }
 
 func getFreeDiskSpace() uint64 {

@@ -64,3 +64,11 @@ test.tags:
 	CGO_ENABLED=1 $(MAKE) arhat TAGS='noclient_coap noclient_grpc'
 	CGO_ENABLED=1 $(MAKE) arhat TAGS='noclient_coap noclient_mqtt'
 	CGO_ENABLED=1 $(MAKE) arhat TAGS='noclient_mqtt noclient_grpc noclient_coap'
+
+test.build.sysinfo:
+	go tool dist list | xargs -Ipair \
+	sh -c '\
+		CGO_ENABLED=false \
+		GOOS=$$(echo pair | cut -d/ -f1) \
+		GOARCH=$$(echo pair | cut -d/ -f2) \
+		echo "Building pair" && go build ./pkg/sysinfo'

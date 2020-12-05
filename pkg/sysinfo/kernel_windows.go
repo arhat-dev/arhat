@@ -1,5 +1,4 @@
 // +build !nosysinfo
-// +build !darwin,!linux,!freebsd,!openbsd,!netbsd,!dragonfly,!solaris,!aix,!js
 
 /*
 Copyright 2020 The arhat.dev Authors.
@@ -20,5 +19,5 @@ limitations under the License.
 package sysinfo
 
 func GetKernelVersion() string {
-	return ""
+	return kernelVersion
 }

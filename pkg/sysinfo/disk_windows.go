@@ -1,5 +1,4 @@
 // +build !nosysinfo
-// +build !darwin,!linux,!freebsd,!openbsd,!netbsd,!dragonfly,!solaris,!aix,!js
 
 /*
 Copyright 2020 The arhat.dev Authors.
@@ -17,8 +16,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sysinfo
+func GetTotalDiskSpace() uint64 {
+	_, totalBytes := checkDisk("")
+	return totalBytes
+}
 
-func GetKernelVersion() string {
-	return ""
+func checkDisk(dataDir string) (freeBytes, totalBytes uint64) {
+	var totalFreeBytes uint64
+
+	ptr, err := windows.UTF16PtrFromString(dataDir)
+	if err != nil {
+		return
+	}
+
+	_, _, _ = getDiskFreeSpaceExW.Call(uintptr(unsafe.Pointer(ptr)),
+		uintptr(unsafe.Pointer(&freeBytes)),
+		uintptr(unsafe.Pointer(&totalBytes)),
+		uintptr(unsafe.Pointer(&totalFreeBytes)),
+	)
+
+	return
 }

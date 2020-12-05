@@ -21,7 +21,6 @@ package exec
 import (
 	"io"
 
-	"arhat.dev/pkg/exechelper"
 	"arhat.dev/pkg/wellknownerrors"
 )
 
@@ -31,6 +30,7 @@ func DoIfTryFailed(
 	command []string,
 	tty bool,
 	env map[string]string,
-) (*exechelper.Cmd, error) {
+	tryOnly bool,
+) (Cmd, error) {
 	return nil, wellknownerrors.ErrNotSupported
 }

@@ -1,4 +1,4 @@
-// +build !aix,!windows,!js,!plan9
+// +build darwin linux freebsd openbsd netbsd solaris dragonfly
 
 /*
 Copyright 2020 The arhat.dev Authors.

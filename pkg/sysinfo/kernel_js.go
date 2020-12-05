@@ -1,4 +1,4 @@
-// +build nosysinfo
+// +build !nosysinfo
 
 /*
 Copyright 2020 The arhat.dev Authors.
@@ -16,12 +16,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sysinfo
-
-func GetMachineID() string      { return "" }
-func GetTotalMemory() uint64    { return 0 }
-func GetKernelVersion() string  { return "" }
-func GetTotalDiskSpace() uint64 { return 0 }
-func GetOSImage() string        { return "" }
-func GetSystemUUID() string     { return "" }
-func GetBootID() string         { return "" }
+func GetKernelVersion() string {
+	return browserVersion
+}

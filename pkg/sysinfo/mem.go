@@ -1,5 +1,5 @@
 // +build !nosysinfo
-// +build !js,!plan9,!aix
+// +build darwin linux freebsd openbsd dragonfly netbsd windows
 
 /*
 Copyright 2020 The arhat.dev Authors.

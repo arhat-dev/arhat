@@ -1,5 +1,4 @@
-// +build !nosysinfo
-// +build !darwin,!linux,!freebsd,!openbsd,!netbsd,!dragonfly,!solaris,!aix,!js
+// +build nosysinfo !darwin,!linux,!freebsd,!openbsd,!netbsd,!aix,!solaris,!dragonfly,!windows,!js
 
 /*
 Copyright 2020 The arhat.dev Authors.
@@ -19,6 +18,10 @@ limitations under the License.
 
 package sysinfo
 
-func GetKernelVersion() string {
-	return ""
-}
+func GetMachineID() string      { return "" }
+func GetTotalMemory() uint64    { return 0 }
+func GetKernelVersion() string  { return "" }
+func GetTotalDiskSpace() uint64 { return 0 }
+func GetOSImage() string        { return "" }
+func GetSystemUUID() string     { return "" }
+func GetBootID() string         { return "" }
