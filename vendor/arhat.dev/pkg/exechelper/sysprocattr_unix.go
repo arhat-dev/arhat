@@ -1,4 +1,4 @@
-// +build !windows,!js,!plan9
+// +build darwin dragonfly linux openbsd freebsd solaris
 
 /*
 Copyright 2020 The arhat.dev Authors.
@@ -33,8 +33,6 @@ func getSysProcAttr(tty bool, origin *syscall.SysProcAttr) *syscall.SysProcAttr 
 			origin.Setpgid = false
 			origin.Pgid = 0
 		}
-
-		return origin
 	}
 
 	return origin

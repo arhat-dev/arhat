@@ -1,4 +1,4 @@
-// +build windows plan9 solaris aix js
+// +build !darwin,!linux,!freebsd,!openbsd,!netbsd,!dragonfly
 
 /*
 Copyright 2020 The arhat.dev Authors.
@@ -23,5 +23,5 @@ import (
 )
 
 func CheckBytesToRead(fd uintptr) (int, error) {
-	return 0, syscall.EINVAL
+	return 0, syscall.ENOSYS
 }

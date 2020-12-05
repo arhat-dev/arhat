@@ -140,14 +140,14 @@ type stream struct {
 	_working uint32
 }
 
-func (m *stream) doExclusive(f func()) {
-	for !atomic.CompareAndSwapUint32(&m._working, 0, 1) {
+func (s *stream) doExclusive(f func()) {
+	for !atomic.CompareAndSwapUint32(&s._working, 0, 1) {
 		runtime.Gosched()
 	}
 
 	f()
 
-	atomic.StoreUint32(&m._working, 0)
+	atomic.StoreUint32(&s._working, 0)
 }
 
 func (s *stream) write(seq uint64, data []byte) {
