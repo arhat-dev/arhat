@@ -4,20 +4,22 @@
 
 Edge/IoT devices usually comes with special peripherals like sensors for data collecting.
 
-In kubernetes you the most relative idea to manage these peripherals is the device plugin, the workflow is like:
+In kubernetes the most relative idea to manage these peripherals is the device plugin, the workflow is like:
 
-- develop a device plugin
-- deploy the device plugin to host
-- register plugin in kubelet plugins dir
+- develop a device plugin for device preparation
+- deploy the device plugin to host or as pod
+  - register plugin in kubelet plugins directory on plugin start
 - develop a device management app
-- deploy the management app with special resource requests for your peripheral
+- deploy the management app with special resource requests so it can get prepared device
 
-we would like to address this and provide a unified way to integrate existing peripherals into Kubernetes with ease.
+We would like to address this and provide a unified way to integrate existing peripherals into Kubernetes with ease.
 
 __TL;DR:__ To get started with your own extension plugin, we recommend you having a look at [this extension template project (golang)](https://github.com/arhat-dev/template-go)
 
 ## Purpose
 
+- Extend arhat with more capabilities
+  - between Kubernetes API and existing solutions
 - Interact with your peripherals via Kubernetes API (e.g. kubectl exec)
 - Collect standard prometheus metrics from your peripherals with simple string key value args
 
@@ -39,7 +41,7 @@ The interaction between the `hub` and `plugin`s:
 
 ## Extensions
 
-### `peripheral`s: Interact with physical world
+### `peripheral`: Interact with physical world
 
 - This kind of extension is designed to support operations and metrics collections for all kinds of physical peripherals
   - e.g.
@@ -51,7 +53,7 @@ The interaction between the `hub` and `plugin`s:
     - Custom robotic process automation based on [robotframework](https://github.com/robotframework/robotframework)
     - Control via proprietary software (e.g. mikrotik winbox)
 
-### `runtime`s: Workload management made easy
+### `runtime`: Workload management made easy
 
 - This extension is designed to support various runtime engine not just oci containers
 - You are free to translate Kubernetes pod specification to any runtime objects

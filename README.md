@@ -10,19 +10,20 @@ The reference `EdgeDevice` agent for `aranya`, serving as the connectivity hub f
 
 ## Features
 
-- Easy deployment for anywhere, [even in browser](./cicd/scripts/wasm) (requires wasm support)
+- Easy deployment for any platform, [even in browser](./cicd/scripts/wasm) (requires wasm support)
+- No external dependencies (`socat`, `tar`) required for `kubectl cp/port-forward/exec/attach`
 - Detailed and customizable node infromation report
-  - Customize Kubernetes `Node` annotations and labels in conjunction with `aranya`
+  - Customize Kubernetes `Node` annotations and labels in conjunction with `aranya` in local configuration
 - Flexible connectivity
   - `MQTT 3.1.1` (including `aws-iot-core`, `azure-iot-hub`, `gcp-iot-core`)
     - supports `tcp`, `tcp/tls`, `websocket`, `websocket/tls`
   - `CoAP`
     - supports `tcp`, `tcp/tls`, `udp`, `udp/dtls`
   - `gRPC`
-- Extensible plugin system with [`libext`](arhat.dev/libext)
+- Extensible plugin system built with [`libext`](arhat.dev/libext)
   - Create your own peripheral controller and integrate all kinds of peripherals into Kubernetes API with ease (e.g. use `kubectl` to turn on/off lights)
 - Unified metrics collection
-  - Efficient prometheus node exporter with no port exposed (on windows and unix-like systems)
+  - Efficient built-in dynamic prometheus `node_exporter`/`windows-exporter` with no port exposed
   - Collect all kinds of metrics with `aranya` and Kubernetes API, including metrics from peripherals
 
 ## Design
@@ -39,6 +40,11 @@ see [docs/Build](./docs/Build.md)
 ## Configuration
 
 see [docs/Configuration](./docs/Configuration.md)
+
+## Run
+
+- As Kubernetes pod for host management, see [cicd/deploy/charts/arhat](./cicd/deploy/charts/arhat)
+- As system daemon, see [cicd/scripts](./cicd/scripts)
 
 ## LICENSE
 
