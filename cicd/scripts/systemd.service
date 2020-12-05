@@ -1,0 +1,25 @@
+[Unit]
+Description=arhat daemon
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+
+# set TERM to xterm to get host exec working for apps require tty
+Environment=TERM=xterm
+# set HOME to get vim working properly
+#Environment=HOME=/home/pi
+# set SHELL as default shell when attach to host terminal
+#Environment=SHELL=/usr/bin/zsh
+
+ExecStart=/usr/local/bin/arhat -c /usr/local/etc/arhat/config.yaml
+ExecStop=/usr/bin/killall arhat
+Restart=always
+RestartSec=30s
+
+# set a user for arhat, leave it commented if root user is fine
+#User=pi
+
+[Install]
+WantedBy=multi-user.target

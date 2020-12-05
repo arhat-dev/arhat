@@ -1,7 +1,7 @@
 #!/sbin/openrc-run
 # shellcheck disable=SC2034
 
-# openrc init script for arhat on alpine ...
+# openrc init script for arhat on gentoo ...
 
 export TERM=xterm
 # export HOME=/home/pi

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>dev.arhat.arhat</string>
+
+    <key>Disabled</key>
+    <false/>
+
+    <key>Program</key>
+    <string>/usr/local/bin/arhat</string>
+    
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/arhat</string>
+        <string>-c</string>
+        <string>/usr/local/etc/arhat/config.yaml</string>
+    </array>
+    
+    <key>KeepAlive</key>
+    <dict>
+        <key>Crashed</key>
+        <true/>
+    </dict>
+    
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>TERM</key>
+        <string>xterm-256color</string>
+    </dict>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>
