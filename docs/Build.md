@@ -1,6 +1,6 @@
 # Build
 
-__TL;DR:__ have a look at the `build-on-{linux,darwin,windows}` jobs in the [build workflow](./.github/workflows/build.yaml)
+__TL;DR:__ have a look at the `build-on-{linux,darwin,windows}` jobs in the [build workflow](../.github/workflows/build.yaml)
 
 ## Binary Targets (`make` targets)
 
@@ -37,15 +37,15 @@ make -qp \
 - `noconfhelper_pprof` (save ~1MB space)
   - Disable `pprof` support (will also drop `http` package)
 - `nosysinfo`
-  - Disable system resource (memory, disk, cpu, etc.) report, not updates will be applied to kubernetes Node object.
+  - Disable system resource (memory, disk, cpu, etc.) report, no updates will be applied to kubernetes Node object.
 - `noexectry` (save ~3MB space)
   - Disable all internal handling of command execution, to disable specific command handling, use following build tags:
     - `noexectry_archive` (save ~3MB space)
       - Disable internal handling of `tar/zip/unzip/unrar`
-      - NOTE: `kubectl cp` uses `tar` command execution to copy file, so this command handling is useful for those busybox based rootfs or windows with no standard GNU `tar` installed
+      - __NOTE:__ `kubectl cp` uses `tar` command execution to copy file, so this command handling is useful for distros like alpine (busybox based rootfs) or windows with no standard GNU `tar` installed
     - `noexectry_test`
       - Disable internal handling of `test`, this command handling is useful for windows without `test` command support for `kubectl cp`
-      - NOTE: `kubectl cp` will invoke `test` command to check whether destination path is a directory
+      - __NOTE:__ `kubectl cp` will invoke `test` command to check whether destination path is a directory
 - `nometrics` (save ~4MB space)
   - Disable metrics collection, no node metrics or peripheral metrics will be collected
 - Build tags from [prometheus/node_exporter](https://github.com/prometheus/node_exporter) for collectors
