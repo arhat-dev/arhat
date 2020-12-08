@@ -27,13 +27,13 @@ import (
 func NewCmdManager() *CmdManager {
 	return &CmdManager{
 		sessionSQ:   make(map[uint64]*queue.SeqQueue),
-		partialCmds: make(map[uint64][]byte),
+		partialCmds: make(map[uint64]*[]byte),
 	}
 }
 
 type CmdManager struct {
 	sessionSQ   map[uint64]*queue.SeqQueue
-	partialCmds map[uint64][]byte
+	partialCmds map[uint64]*[]byte
 
 	_working uint32
 }
@@ -54,38 +54,42 @@ func (m *CmdManager) Process(cmd *aranyagopb.Cmd) (cmdPayload []byte, complete b
 		return cmd.Payload, true
 	}
 
-	sid := cmd.Sid
-
+	var (
+		sid     = cmd.Sid
+		sq      *queue.SeqQueue
+		dataPtr *[]byte
+	)
 	m.doExclusive(func() {
-		sq, ok := m.sessionSQ[sid]
+		var ok bool
+		dataPtr, ok = m.partialCmds[sid]
 		if !ok {
-			sq = queue.NewSeqQueue()
+			data := make([]byte, 0, 32)
+			dataPtr = &data
+			m.partialCmds[sid] = dataPtr
+		}
+
+		sq, ok = m.sessionSQ[sid]
+		if !ok {
+			sq = queue.NewSeqQueue(func(seq uint64, d interface{}) {
+				*dataPtr = append(*dataPtr, d.([]byte)...)
+			})
 			m.sessionSQ[sid] = sq
 		}
-
-		var cmdByteChunks []interface{}
-		cmdByteChunks, complete = sq.Offer(cmd.Seq, cmd.Payload)
-		for _, ck := range cmdByteChunks {
-			if ck == nil {
-				continue
-			}
-
-			m.partialCmds[sid] = append(m.partialCmds[sid], ck.([]byte)...)
-		}
-
-		if cmd.Completed {
-			complete = sq.SetMaxSeq(cmd.Seq)
-		}
-
-		if !complete {
-			return
-		}
-
-		cmdPayload = m.partialCmds[sid]
-
-		delete(m.sessionSQ, sid)
-		delete(m.partialCmds, sid)
 	})
+
+	if cmd.Completed {
+		complete = sq.SetMaxSeq(cmd.Seq)
+	}
+
+	complete = sq.Offer(cmd.Seq, cmd.Payload)
+	if !complete {
+		return
+	}
+
+	cmdPayload = *dataPtr
+
+	delete(m.sessionSQ, sid)
+	delete(m.partialCmds, sid)
 
 	return
 }

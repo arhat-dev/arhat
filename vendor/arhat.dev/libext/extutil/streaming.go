@@ -18,12 +18,10 @@ package extutil
 
 import (
 	"io"
-	"math"
 	"runtime"
 	"sync/atomic"
-	"time"
-	"unsafe"
 
+	"arhat.dev/pkg/queue"
 	"arhat.dev/pkg/wellknownerrors"
 
 	"arhat.dev/libext/types"
@@ -129,54 +127,29 @@ func (m *StreamManager) Resize(sid uint64, cols, rows uint32) {
 }
 
 func newStream(w io.WriteCloser, rF types.ResizeHandleFunc) *stream {
-	s := &stream{
+	return &stream{
 		_w:  w,
 		_rF: rF,
 
-		closed:    make(chan struct{}),
-		seqDataCh: make(chan []byte, 16),
-
-		next: 0,
-		max:  math.MaxUint64,
-
-		dataChunks:      make([]*seqData, 0, 16),
-		currentChunkPtr: nil,
+		_seqQ: queue.NewSeqQueue(func(seq uint64, d interface{}) {
+			_, _ = w.Write(d.([]byte))
+		}),
 	}
-
-	atomic.StorePointer(&s.currentChunkPtr, unsafe.Pointer(&s.dataChunks))
-	go s.handleWrite()
-
-	return s
 }
 
 type stream struct {
-	_w  io.WriteCloser
+	_w  io.Closer
 	_rF types.ResizeHandleFunc
 
-	closed    chan struct{}
-	seqDataCh chan []byte
-
-	// embedded sequence queue
-	next uint64
-	max  uint64
-
-	dataChunks      []*seqData
-	currentChunkPtr unsafe.Pointer
-	_working        uint32
-}
-
-func (s *stream) handleWrite() {
-	for data := range s.seqDataCh {
-		_, _ = s._w.Write(data)
-	}
+	_seqQ *queue.SeqQueue
 }
 
 func (s *stream) write(seq uint64, data []byte) {
 	if len(data) == 0 {
-		_ = s.setMaxSeq(seq)
+		_ = s._seqQ.SetMaxSeq(seq)
 	}
 
-	if s.offer(seq, data) {
+	if s._seqQ.Offer(seq, data) {
 		s.close()
 	}
 }
@@ -186,149 +159,5 @@ func (s *stream) resize(cols, rows uint32) {
 }
 
 func (s *stream) close() {
-	select {
-	case <-s.closed:
-		return
-	default:
-		close(s.closed)
-	}
-
 	_ = s._w.Close()
-
-	// wait until no data remain in data channel
-	for {
-		// close is issued after offer(), so we just need to check
-		// if there is data remaining in the buffered channel
-		if len(s.seqDataCh) == 0 {
-			close(s.seqDataCh)
-			return
-		}
-
-		time.Sleep(time.Second)
-	}
-}
-
-type seqData struct {
-	seq  uint64
-	data []byte
-}
-
-func (s *stream) offer(seq uint64, data []byte) (complete bool) {
-	// take a snapshot of existing values
-	var (
-		currentNext = atomic.LoadUint64(&s.next)
-		currentMax  = atomic.LoadUint64(&s.max)
-	)
-
-	switch {
-	case currentNext > currentMax:
-		// already complete, discard
-		return true
-	case seq > currentMax, seq < currentNext:
-		// exceeded or duplicated, discard
-		return false
-	case seq == currentNext:
-		currentNext++
-
-		if !atomic.CompareAndSwapUint64(&s.next, currentNext-1, currentNext) {
-			// dup, discard
-			return currentNext > currentMax
-		}
-
-		// is expected next chunk, pop it and its following chunks
-
-		select {
-		case <-s.closed:
-			return
-		case s.seqDataCh <- data:
-		}
-
-		currentChunks := *(*[]*seqData)(atomic.LoadPointer(&s.currentChunkPtr))
-		if len(currentChunks) == 0 {
-			return currentNext > currentMax
-		}
-
-		trimStart := -1
-		for i, chunk := range currentChunks {
-			if chunk.seq != currentNext || chunk.seq > currentMax {
-				break
-			}
-
-			if !atomic.CompareAndSwapUint64(&s.next, currentNext, currentNext+1) {
-				// handled in another groutine, should not happen, just in case
-				return
-			}
-
-			select {
-			case <-s.closed:
-			case s.seqDataCh <- chunk.data:
-			}
-
-			currentNext++
-
-			trimStart = i
-		}
-
-		s.doExclusive(func() {
-			// we only take consactive chunks from the start
-			// so it's safe to use index directly
-			s.dataChunks = s.dataChunks[trimStart+1:]
-			atomic.StorePointer(&s.currentChunkPtr, unsafe.Pointer(&s.dataChunks))
-		})
-
-		return currentNext > currentMax
-	}
-
-	// cache unordered data chunk
-
-	currentChunks := *(*[]*seqData)(atomic.LoadPointer(&s.currentChunkPtr))
-	insertAt := 0
-	for i, chunk := range currentChunks {
-		if chunk.seq > seq {
-			insertAt = i
-			break
-		}
-
-		// duplicated
-		if chunk.seq == seq {
-			return false
-		}
-
-		insertAt = i + 1
-	}
-
-	s.doExclusive(func() {
-		s.dataChunks = append(
-			s.dataChunks[:insertAt],
-			append(
-				[]*seqData{{seq: seq, data: data}},
-				s.dataChunks[insertAt:]...,
-			)...,
-		)
-
-		atomic.StorePointer(&s.currentChunkPtr, unsafe.Pointer(&s.dataChunks))
-	})
-
-	return false
-}
-
-func (s *stream) setMaxSeq(maxSeq uint64) (completed bool) {
-	if currentNext := atomic.LoadUint64(&s.next); currentNext > maxSeq {
-		// existing seq data already exceeds maxSeq
-		atomic.StoreUint64(&s.max, currentNext)
-		return true
-	}
-
-	atomic.StoreUint64(&s.max, maxSeq)
-	return false
-}
-
-func (s *stream) doExclusive(f func()) {
-	for !atomic.CompareAndSwapUint32(&s._working, 0, 1) {
-		runtime.Gosched()
-	}
-
-	f()
-
-	atomic.StoreUint32(&s._working, 0)
 }
