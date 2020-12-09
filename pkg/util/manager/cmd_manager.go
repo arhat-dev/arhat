@@ -78,7 +78,7 @@ func (m *CmdManager) Process(cmd *aranyagopb.Cmd) (cmdPayload []byte, complete b
 	})
 
 	if cmd.Complete {
-		complete = sq.SetMaxSeq(cmd.Seq)
+		_ = sq.SetMaxSeq(cmd.Seq)
 	}
 
 	complete = sq.Offer(cmd.Seq, cmd.Payload)
