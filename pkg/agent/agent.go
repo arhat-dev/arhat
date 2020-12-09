@@ -207,11 +207,11 @@ func (b *Agent) PostData(sid uint64, kind aranyagopb.MsgType, seq uint64, comple
 	for len(data) > n {
 		buf := data
 		err := c.PostMsg(&aranyagopb.Msg{
-			Kind:      kind,
-			Sid:       sid,
-			Seq:       seq,
-			Completed: false,
-			Payload:   buf[:n],
+			Kind:     kind,
+			Sid:      sid,
+			Seq:      seq,
+			Complete: false,
+			Payload:  buf[:n],
 		})
 		if err != nil {
 			return seq, fmt.Errorf("failed to post msg chunk: %w", err)
@@ -222,11 +222,11 @@ func (b *Agent) PostData(sid uint64, kind aranyagopb.MsgType, seq uint64, comple
 	}
 
 	err := c.PostMsg(&aranyagopb.Msg{
-		Kind:      kind,
-		Sid:       sid,
-		Seq:       seq,
-		Completed: completed,
-		Payload:   data,
+		Kind:     kind,
+		Sid:      sid,
+		Seq:      seq,
+		Complete: completed,
+		Payload:  data,
 	})
 	if err != nil {
 		return seq, fmt.Errorf("failed to post msg chunk: %w", err)
@@ -272,7 +272,7 @@ func (b *Agent) HandleCmd(cmdBytes []byte) {
 	if cmd.Kind == aranyagopb.CMD_DATA_UPSTREAM {
 		if b.streams.Write(sid, cmd.Seq, cmd.Payload) {
 			// is data for agent
-			if cmd.Completed {
+			if cmd.Complete {
 				// write nil to mark max seq
 				b.streams.Write(sid, cmd.Seq, nil)
 			}

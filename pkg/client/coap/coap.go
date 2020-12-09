@@ -425,11 +425,11 @@ func (c *Client) Start(ctx context.Context) error {
 		DeviceId: c.clientID,
 	}).Marshal()
 	msg := &aranyagopb.Msg{
-		Kind:      aranyagopb.MSG_STATE,
-		Sid:       0,
-		Seq:       0,
-		Completed: true,
-		Payload:   payload,
+		Kind:     aranyagopb.MSG_STATE,
+		Sid:      0,
+		Seq:      0,
+		Complete: true,
+		Payload:  payload,
 	}
 	err = c.doPostMsg(c.Context(), msg, c.willMsgOpts)
 	if err != nil {
@@ -499,11 +499,11 @@ func (c *Client) Close() error {
 				DeviceId: c.clientID,
 			}).Marshal()
 			msg := &aranyagopb.Msg{
-				Kind:      aranyagopb.MSG_STATE,
-				Sid:       0,
-				Seq:       0,
-				Completed: true,
-				Payload:   payload,
+				Kind:     aranyagopb.MSG_STATE,
+				Sid:      0,
+				Seq:      0,
+				Complete: true,
+				Payload:  payload,
 			}
 			_ = c.doPostMsg(context.Background(), msg, c.willMsgOpts)
 

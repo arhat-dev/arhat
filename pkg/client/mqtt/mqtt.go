@@ -93,30 +93,6 @@ func NewMQTTClient(
 		return nil, fmt.Errorf("invalid config options for mqtt connect: %w", err)
 	}
 
-	onlineMsgBytes, _ := (&aranyagopb.StateMsg{
-		Kind:     aranyagopb.STATE_ONLINE,
-		DeviceId: connInfo.ClientID,
-	}).Marshal()
-	onlineMsgBytes, _ = (&aranyagopb.Msg{
-		Kind:      aranyagopb.MSG_STATE,
-		Sid:       0,
-		Seq:       0,
-		Completed: true,
-		Payload:   onlineMsgBytes,
-	}).Marshal()
-
-	willMsgBytes, _ := (&aranyagopb.StateMsg{
-		Kind:     aranyagopb.STATE_OFFLINE,
-		DeviceId: connInfo.ClientID,
-	}).Marshal()
-	willMsgBytes, _ = (&aranyagopb.Msg{
-		Kind:      aranyagopb.MSG_STATE,
-		Sid:       0,
-		Seq:       0,
-		Completed: true,
-		Payload:   willMsgBytes,
-	}).Marshal()
-
 	if connInfo.TLSConfig != nil {
 		options = append(options, libmqtt.WithCustomTLS(connInfo.TLSConfig))
 	}
@@ -132,6 +108,8 @@ func NewMQTTClient(
 		keepalive = 1
 	}
 
+	onlineMsgBytes, offlineMsgBytes := clientutil.CreateOnlineOfflineMessage(config.ClientID)
+
 	options = append(options, libmqtt.WithRouter(connInfo.TopicRouter))
 	options = append(options, libmqtt.WithConnPacket(libmqtt.ConnPacket{
 		Username:     connInfo.Username,
@@ -143,7 +121,7 @@ func NewMQTTClient(
 		WillTopic:    connInfo.WillPubTopic,
 		WillQos:      libmqtt.Qos1,
 		WillRetain:   connInfo.SupportRetain,
-		WillMessage:  willMsgBytes,
+		WillMessage:  offlineMsgBytes,
 	}))
 
 	options = append(options, libmqtt.WithKeepalive(uint16(keepalive), 1.2))

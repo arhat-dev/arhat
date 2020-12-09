@@ -50,7 +50,7 @@ func (m *CmdManager) doExclusive(f func()) {
 
 func (m *CmdManager) Process(cmd *aranyagopb.Cmd) (cmdPayload []byte, complete bool) {
 	// all in one cmd packet
-	if cmd.Seq == 0 && cmd.Completed {
+	if cmd.Seq == 0 && cmd.Complete {
 		return cmd.Payload, true
 	}
 
@@ -77,7 +77,7 @@ func (m *CmdManager) Process(cmd *aranyagopb.Cmd) (cmdPayload []byte, complete b
 		}
 	})
 
-	if cmd.Completed {
+	if cmd.Complete {
 		complete = sq.SetMaxSeq(cmd.Seq)
 	}
 

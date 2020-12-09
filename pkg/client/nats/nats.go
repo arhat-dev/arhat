@@ -72,42 +72,6 @@ func NewClient(
 		return nil, fmt.Errorf("invalid empty subject namespace: %w", err)
 	}
 
-	onlineMsgBytes, err := (&aranyagopb.StateMsg{
-		Kind:     aranyagopb.STATE_ONLINE,
-		DeviceId: config.ClientID,
-	}).Marshal()
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal online state message: %w", err)
-	}
-	onlineMsgBytes, err = (&aranyagopb.Msg{
-		Kind:      aranyagopb.MSG_STATE,
-		Sid:       0,
-		Seq:       0,
-		Completed: true,
-		Payload:   onlineMsgBytes,
-	}).Marshal()
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal online message: %w", err)
-	}
-
-	offlineMsgBytes, err := (&aranyagopb.StateMsg{
-		Kind:     aranyagopb.STATE_OFFLINE,
-		DeviceId: config.ClientID,
-	}).Marshal()
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal offline state message: %w", err)
-	}
-	offlineMsgBytes, err = (&aranyagopb.Msg{
-		Kind:      aranyagopb.MSG_STATE,
-		Sid:       0,
-		Seq:       0,
-		Completed: true,
-		Payload:   offlineMsgBytes,
-	}).Marshal()
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal offline message: %w", err)
-	}
-
 	baseClient, err := clientutil.NewBaseClient(ctx, handleCmd, config.MaxPayloadSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create base client: %w", err)
@@ -234,8 +198,8 @@ func NewClient(
 
 		BaseClient: baseClient,
 
-		onlineMsgBytes:  onlineMsgBytes,
-		offlineMsgBytes: offlineMsgBytes,
+		onlineMsgBytes:  nil,
+		offlineMsgBytes: nil,
 
 		ackWait:          ackWait,
 		maxPendingPubAck: maxPendingPubAck,
@@ -245,6 +209,8 @@ func NewClient(
 
 		disconnSig: disconnSig,
 	}
+
+	client.onlineMsgBytes, client.offlineMsgBytes = clientutil.CreateOnlineOfflineMessage(config.ClientID)
 
 	client.cmdSubTopic, client.msgPubTopic, client.statePubTopic = aranyagoconst.NatsTopics(config.SubjectNamespace)
 

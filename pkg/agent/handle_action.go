@@ -461,7 +461,7 @@ func (b *Agent) handlePortForward(sid uint64, data []byte) {
 		}()
 
 		err = b.streams.Add(sid, func() (io.WriteCloser, types.ResizeHandleFunc, error) {
-			address := opts.Host
+			address := opts.Address
 
 			if opts.Port > 0 {
 				// ip based network protocols with port option
