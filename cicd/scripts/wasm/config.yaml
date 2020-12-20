@@ -11,7 +11,7 @@ arhat:
     - valueFrom:
         text: "1"
       operator: +=
-      valueType: int
+      valueType: number
       applyTo: metadata.annotations['example.com/key']
 
 connectivity:

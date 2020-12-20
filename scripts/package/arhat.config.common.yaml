@@ -19,7 +19,7 @@ arhat:
     extInfo:
       value: "1"
       operator: +=
-      valueType: int
+      valueType: number
       applyTo: metadata.annotations['example.com/key']
 
   optimization:

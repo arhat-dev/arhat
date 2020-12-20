@@ -121,8 +121,8 @@ arhat:
 
       # operator available: [=, +=, -=]
       operator: +=
-      # valueType available: [string, int, float]
-      valueType: int
+      # valueType available: [string, number]
+      valueType: number
       # applyTo which node object field
       # value available: [metadata.annotations[''], metadata.labels['']]
       applyTo: metadata.annotations['example.com/key']

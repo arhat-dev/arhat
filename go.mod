@@ -3,7 +3,7 @@ module arhat.dev/arhat
 go 1.15
 
 require (
-	arhat.dev/aranya-proto v0.3.4-0.20201208110348-80e0beff3693
+	arhat.dev/aranya-proto v0.3.4
 	arhat.dev/arhat-proto v0.4.3
 	arhat.dev/libext v0.5.2-0.20201208233443-d57bd3078361
 	arhat.dev/pkg v0.5.4-0.20201208233302-107b8822e93b

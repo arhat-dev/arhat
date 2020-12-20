@@ -29,8 +29,7 @@ func convertNodeExtInfo(extInfo []conf.NodeExtInfo) ([]*aranyagopb.NodeExtInfo, 
 	extInfoValueTypeMap := map[string]aranyagopb.NodeExtInfo_ValueType{
 		"":       aranyagopb.NODE_EXT_INFO_TYPE_STRING,
 		"string": aranyagopb.NODE_EXT_INFO_TYPE_STRING,
-		"int":    aranyagopb.NODE_EXT_INFO_TYPE_INTEGER,
-		"float":  aranyagopb.NODE_EXT_INFO_TYPE_FLOAT,
+		"number": aranyagopb.NODE_EXT_INFO_TYPE_NUMBER,
 	}
 	extInfoOperatorMap := map[string]aranyagopb.NodeExtInfo_Operator{
 		"":   aranyagopb.NODE_EXT_INFO_OPERATOR_SET,
@@ -59,7 +58,7 @@ func convertNodeExtInfo(extInfo []conf.NodeExtInfo) ([]*aranyagopb.NodeExtInfo, 
 			default:
 				return nil, fmt.Errorf("valueType string do not support operator %q", info.Operator)
 			}
-		case aranyagopb.NODE_EXT_INFO_TYPE_INTEGER, aranyagopb.NODE_EXT_INFO_TYPE_FLOAT:
+		case aranyagopb.NODE_EXT_INFO_TYPE_NUMBER:
 			switch operator {
 			case aranyagopb.NODE_EXT_INFO_OPERATOR_SET,
 				aranyagopb.NODE_EXT_INFO_OPERATOR_ADD,

@@ -79,8 +79,8 @@ config:
       #     #text: ""
       #   # operator available: [=, +=, -=]
       #   operator: +=
-      #   # valueType available: [string, int, float]
-      #   valueType: int
+      #   # valueType available: [string, number]
+      #   valueType: number
       #   # value available: [metadata.annotations[''], metadata.labels['']]
       #   applyTo: metadata.annotations['example.com/key']
 
