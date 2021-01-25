@@ -8,6 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	atomicTypes "go.uber.org/atomic"
+
+	"github.com/patrickmn/go-cache"
 	"github.com/plgd-dev/go-coap/v2/message"
 	"github.com/plgd-dev/go-coap/v2/net/blockwise"
 
@@ -34,26 +37,54 @@ type Session interface {
 	SetContextValue(key interface{}, val interface{})
 }
 
+type Notifier interface {
+	Notify()
+}
+
 // ClientConn represents a virtual connection to a conceptual endpoint, to perform COAPs commands.
 type ClientConn struct {
 	// This field needs to be the first in the struct to ensure proper word alignment on 32-bit platforms.
 	// See: https://golang.org/pkg/sync/atomic/#pkg-note-BUG
-	sequence              uint64
-	session                        Session
-	handler                        HandlerFunc
-	observationTokenHandler        *HandlerContainer
-	observationRequests            *kitSync.Map
-	transmissionNStart             time.Duration
-	transmissionAcknowledgeTimeout time.Duration
-	transmissionMaxRetransmit      int
-	blockwiseSZX                   blockwise.SZX
-	blockWise                      *blockwise.BlockWise
-	goPool                         GoPoolFunc
-	errors                         ErrorFunc
-	getMID                         GetMIDFunc
+	sequence                uint64
+	session                 Session
+	handler                 HandlerFunc
+	observationTokenHandler *HandlerContainer
+	observationRequests     *kitSync.Map
+	transmission            *Transmission
+	blockwiseSZX            blockwise.SZX
+	blockWise               *blockwise.BlockWise
+	goPool                  GoPoolFunc
+	errors                  ErrorFunc
+	getMID                  GetMIDFunc
+	responseMsgCache        *cache.Cache
+	msgIdMutex              *MutexMap
+	activityMonitor         Notifier
 
 	tokenHandlerContainer *HandlerContainer
 	midHandlerContainer   *HandlerContainer
+}
+
+// Transmission is a threadsafe container for transmission related parameters
+type Transmission struct {
+	nStart             *atomicTypes.Duration
+	acknowledgeTimeout *atomicTypes.Duration
+	maxRetransmit      *atomicTypes.Int32
+}
+
+func (t *Transmission) SetTransmissionNStart(d time.Duration) {
+	t.nStart.Store(d)
+}
+
+func (t *Transmission) SetTransmissionAcknowledgeTimeout(d time.Duration) {
+	t.acknowledgeTimeout.Store(d)
+}
+
+func (t *Transmission) SetTransmissionMaxRetransmit(d int32) {
+	t.maxRetransmit.Store(d)
+}
+
+func (cc *ClientConn) Transmission() *Transmission {
+	return cc.transmission
 }
 
 // NewClientConn creates connection over session and observation.
@@ -70,6 +101,7 @@ func NewClientConn(
 	goPool GoPoolFunc,
 	errors ErrorFunc,
 	getMID GetMIDFunc,
+	activityMonitor Notifier,
 ) *ClientConn {
 	if errors == nil {
 		errors = func(error) {}
@@ -77,22 +109,32 @@ func NewClientConn(
 	if getMID == nil {
 		getMID = udpMessage.GetMID
 	}
+	if activityMonitor == nil {
+		activityMonitor = &nilNotifier{}
+	}
+
 	return &ClientConn{
-		session:                        session,
-		observationTokenHandler:        observationTokenHandler,
-		observationRequests:            observationRequests,
-		transmissionNStart:             transmissionNStart,
-		transmissionAcknowledgeTimeout: transmissionAcknowledgeTimeout,
-		transmissionMaxRetransmit:      transmissionMaxRetransmit,
-		handler:                        handler,
-		blockwiseSZX:                   blockwiseSZX,
-		blockWise:                      blockWise,
+		session:                 session,
+		observationTokenHandler: observationTokenHandler,
+		observationRequests:     observationRequests,
+		transmission: &Transmission{
+			atomicTypes.NewDuration(transmissionNStart),
+			atomicTypes.NewDuration(transmissionAcknowledgeTimeout),
+			atomicTypes.NewInt32(int32(transmissionMaxRetransmit)),
+		},
+		handler:      handler,
+		blockwiseSZX: blockwiseSZX,
+		blockWise:    blockWise,
 
 		tokenHandlerContainer: NewHandlerContainer(),
 		midHandlerContainer:   NewHandlerContainer(),
 		goPool:                goPool,
 		errors:                errors,
 		getMID:                getMID,
+		// EXCHANGE_LIFETIME = 247
+		responseMsgCache: cache.New(247*time.Second, 60*time.Second),
+		msgIdMutex:       NewMutexMap(),
+		activityMonitor:  activityMonitor,
 	}
 }
 
@@ -110,9 +152,6 @@ func (cc *ClientConn) do(req *pool.Message) (*pool.Message, error) {
 	if token == nil {
 		return nil, fmt.Errorf("invalid token")
 	}
-
-	req.SetMessageID(cc.getMID())
-	req.SetType(udpMessage.Confirmable)
 
 	respChan := make(chan *pool.Message, 1)
 	err := cc.tokenHandlerContainer.Insert(token, func(w *ResponseWriter, r *pool.Message) {
@@ -158,26 +197,36 @@ func (cc *ClientConn) Do(req *pool.Message) (*pool.Message, error) {
 
 func (cc *ClientConn) writeMessage(req *pool.Message) error {
 	req.SetMessageID(cc.getMID())
-	req.SetType(udpMessage.Confirmable)
 	respChan := make(chan struct{})
-	err := cc.midHandlerContainer.Insert(req.MessageID(), func(w *ResponseWriter, r *pool.Message) {
-		close(respChan)
-		if r.IsSeparate() {
-			// separate message - just accept
-			return
-		}
-		cc.handleBW(w, r)
-	})
-	if err != nil {
-		return fmt.Errorf("cannot insert mid handler: %w", err)
-	}
-	defer cc.midHandlerContainer.Pop(req.MessageID())
 
-	err = cc.session.WriteMessage(req)
+	// Only confirmable messages ever match an message ID
+	if req.Type() == udpMessage.Confirmable {
+		err := cc.midHandlerContainer.Insert(req.MessageID(), func(w *ResponseWriter, r *pool.Message) {
+			close(respChan)
+			if r.IsSeparate() {
+				// separate message - just accept
+				return
+			}
+			cc.handleBW(w, r)
+		})
+		if err != nil {
+			return fmt.Errorf("cannot insert mid handler: %w", err)
+		}
+		defer cc.midHandlerContainer.Pop(req.MessageID())
+	}
+
+	err := cc.session.WriteMessage(req)
 	if err != nil {
 		return fmt.Errorf("cannot write request: %w", err)
 	}
-	for i := 0; i < cc.transmissionMaxRetransmit; i++ {
+	if req.Type() != udpMessage.Confirmable {
+		// If the request is not confirmable, we do not need to wait for a response
+		// and skip retransmissions
+		close(respChan)
+	}
+
+	maxRetransmit := cc.transmission.maxRetransmit.Load()
+	for i := int32(0); i < maxRetransmit; i++ {
 		select {
 		case <-respChan:
 			return nil
@@ -185,13 +234,13 @@ func (cc *ClientConn) writeMessage(req *pool.Message) error {
 			return req.Context().Err()
 		case <-cc.Context().Done():
 			return fmt.Errorf("connection was closed: %w", cc.Context().Err())
-		case <-time.After(cc.transmissionAcknowledgeTimeout):
+		case <-time.After(cc.transmission.acknowledgeTimeout.Load()):
 			select {
 			case <-req.Context().Done():
 				return req.Context().Err()
 			case <-cc.session.Context().Done():
 				return fmt.Errorf("connection was closed: %w", cc.Context().Err())
-			case <-time.After(cc.transmissionNStart):
+			case <-time.After(cc.transmission.nStart.Load()):
 				err = cc.session.WriteMessage(req)
 				if err != nil {
 					return fmt.Errorf("cannot write request: %w", err)
@@ -199,7 +248,7 @@ func (cc *ClientConn) writeMessage(req *pool.Message) error {
 			}
 		}
 	}
-	return fmt.Errorf("timeout: retransmision(%v) was exhausted", cc.transmissionMaxRetransmit)
+	return fmt.Errorf("timeout: retransmision(%v) was exhausted", cc.transmission.maxRetransmit.Load())
 }
 
 // WriteMessage sends an coap message.
@@ -247,7 +296,7 @@ func newCommonRequest(ctx context.Context, code codes.Code, path string, opts ..
 	req.SetToken(token)
 	req.ResetOptionsTo(opts)
 	req.SetPath(path)
-	req.SetType(udpMessage.NonConfirmable)
+	req.SetType(udpMessage.Confirmable)
 	return req, nil
 }
 
@@ -390,7 +439,7 @@ func (cc *ClientConn) Ping(ctx context.Context) error {
 	return fmt.Errorf("unexpected response(%v)", resp)
 }
 
-// Run reads and process requests from a connection, until the connection is not closed.
+// Run reads and process requests from a connection, until the connection is closed.
 func (cc *ClientConn) Run() error {
 	return cc.session.Run(cc)
 }
@@ -468,7 +517,31 @@ func (cc *ClientConn) Sequence() uint64 {
 	return atomic.AddUint64(&cc.sequence, 1)
 }
 
+func (cc *ClientConn) addResponseToCache(resp *pool.Message) error {
+	marshaledResp, err := resp.Marshal()
+	if err != nil {
+		return err
+	}
+	cacheMsg := make([]byte, len(marshaledResp))
+	copy(cacheMsg, marshaledResp)
+	cc.responseMsgCache.SetDefault(fmt.Sprintf("%d", resp.MessageID()), cacheMsg)
+	return nil
+}
+
+func (cc *ClientConn) getResponseFromCache(mid uint16, resp *pool.Message) (bool, error) {
+	cachedResp, _ := cc.responseMsgCache.Get(fmt.Sprintf("%d", mid))
+	if rawMsg, ok := cachedResp.([]byte); ok {
+		_, err := resp.Unmarshal(rawMsg)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
 func (cc *ClientConn) Process(datagram []byte) error {
+	cc.activityMonitor.Notify()
 	if cc.session.MaxMessageSize() >= 0 && len(datagram) > cc.session.MaxMessageSize() {
 		return fmt.Errorf("max message size(%v) was exceeded %v", cc.session.MaxMessageSize(), len(datagram))
 	}
@@ -479,13 +552,46 @@ func (cc *ClientConn) Process(datagram []byte) error {
 		return err
 	}
 	req.SetSequence(cc.Sequence())
+
 	cc.goPool(func() {
+		defer cc.activityMonitor.Notify()
+		reqMid := req.MessageID()
+
+		// The same message ID can not be handled concurrently
+		// for deduplication to work
+		l := cc.msgIdMutex.Lock(reqMid)
+		defer l.Unlock()
+
 		origResp := pool.AcquireMessage(cc.Context())
 		origResp.SetToken(req.Token())
+		// If a request is sent in a Non-confirmable message, then the response
+		// is sent using a new Non-confirmable message, although the server may
+		// instead send a Confirmable message.
+		origResp.SetType(req.Type())
 		w := NewResponseWriter(origResp, cc, req.Options())
-		typ := req.Type()
-		mid := req.MessageID()
+
+		if ok, err := cc.getResponseFromCache(req.MessageID(), w.response); ok {
+			defer pool.ReleaseMessage(w.response)
+			if !req.IsHijacked() {
+				pool.ReleaseMessage(req)
+			}
+			err = cc.session.WriteMessage(w.response)
+			if err != nil {
+				cc.Close()
+				cc.errors(fmt.Errorf("cannot write response: %w", err))
+				return
+			}
+			return
+		} else if err != nil {
+			cc.Close()
+			cc.errors(fmt.Errorf("cannot unmarshal response from cache: %w", err))
+			return
+		}
+
+		reqType := req.Type()
+		origResp.SetModified(false)
 		cc.handle(w, req)
+
 		defer pool.ReleaseMessage(w.response)
 		if !req.IsHijacked() {
 			pool.ReleaseMessage(req)
@@ -493,10 +599,10 @@ func (cc *ClientConn) Process(datagram []byte) error {
 		if w.response.IsModified() {
 			switch {
 			case w.response.Type() == udpMessage.Reset:
-				w.response.SetMessageID(mid)
-			case typ == udpMessage.Confirmable:
+				w.response.SetMessageID(reqMid)
+			case reqType == udpMessage.Confirmable:
 				w.response.SetType(udpMessage.Acknowledgement)
-				w.response.SetMessageID(mid)
+				w.response.SetMessageID(reqMid)
 			default:
 				w.response.SetType(udpMessage.NonConfirmable)
 				w.response.SetMessageID(cc.getMID())
@@ -507,17 +613,24 @@ func (cc *ClientConn) Process(datagram []byte) error {
 				cc.errors(fmt.Errorf("cannot write response: %w", err))
 				return
 			}
-		} else if typ == udpMessage.Confirmable {
+		} else if reqType == udpMessage.Confirmable {
 			w.response.Reset()
 			w.response.SetCode(codes.Empty)
 			w.response.SetType(udpMessage.Acknowledgement)
-			w.response.SetMessageID(mid)
+			w.response.SetMessageID(reqMid)
 			err := cc.session.WriteMessage(w.response)
 			if err != nil {
 				cc.Close()
 				cc.errors(fmt.Errorf("cannot write ack reponse: %w", err))
 				return
 			}
+		}
+
+		err = cc.addResponseToCache(w.response)
+		if err != nil {
+			cc.Close()
+			cc.errors(fmt.Errorf("cannot cache response: %w", err))
+			return
 		}
 	})
 	return nil

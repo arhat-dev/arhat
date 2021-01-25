@@ -2,10 +2,12 @@ package dtls
 
 import (
 	"context"
+	"net"
 	"time"
 
 	"github.com/plgd-dev/go-coap/v2/net/blockwise"
 	"github.com/plgd-dev/go-coap/v2/net/keepalive"
+	"github.com/plgd-dev/go-coap/v2/net/monitor/inactivity"
 )
 
 // HandlerFuncOpt handler function option.
@@ -116,6 +118,22 @@ func (o KeepAliveOpt) applyDial(opts *dialOptions) {
 // WithKeepAlive monitoring's client connection's. nil means disable keepalive.
 func WithKeepAlive(keepalive *keepalive.KeepAlive) KeepAliveOpt {
 	return KeepAliveOpt{keepalive: keepalive}
+}
+
+// InactivityMonitorOpt notifies when a connection was inactive for a given duration.
+type InactivityMonitorOpt struct {
+	inactivityMonitor inactivity.Monitor
+}
+
+func (o InactivityMonitorOpt) apply(opts *serverOptions) {
+	opts.inactivityMonitor = o.inactivityMonitor
+}
+
+// WithInactivityMonitor set deadline's for read/write operations over client connection.
+func WithInactivityMonitor(interval time.Duration, onInactive inactivity.OnInactiveFunc) InactivityMonitorOpt {
+	return InactivityMonitorOpt{
+		inactivityMonitor: inactivity.NewInactivityMonitor(interval, onInactive),
+	}
 }
 
 // NetOpt network option.
@@ -256,4 +274,22 @@ func (o CloseSocketOpt) applyDial(opts *dialOptions) {
 // WithCloseSocket closes socket at the close connection.
 func WithCloseSocket() CloseSocketOpt {
 	return CloseSocketOpt{}
+}
+
+// DialerOpt dialer option.
+type DialerOpt struct {
+	dialer *net.Dialer
+}
+
+func (o DialerOpt) applyDial(opts *dialOptions) {
+	if o.dialer != nil {
+		opts.dialer = o.dialer
+	}
+}
+
+// WithDialer set dialer for dial.
+func WithDialer(dialer *net.Dialer) DialerOpt {
+	return DialerOpt{
+		dialer: dialer,
+	}
 }

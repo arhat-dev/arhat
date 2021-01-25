@@ -14,6 +14,7 @@ import (
 	"github.com/patrickmn/go-cache"
 	"github.com/plgd-dev/go-coap/v2/message"
 	"github.com/plgd-dev/go-coap/v2/message/codes"
+	udpMessage "github.com/plgd-dev/go-coap/v2/udp/message"
 )
 
 // Block Opion value is represented: https://tools.ietf.org/html/rfc7959#section-2.2
@@ -115,6 +116,13 @@ type Message interface {
 	String() string
 }
 
+// hasType enables access to message.Type for supported messages
+// Since only UDP messages have a type
+type hasType interface {
+	Type() udpMessage.Type
+	SetType(t udpMessage.Type)
+}
+
 // EncodeBlockOption encodes block values to coap option.
 func EncodeBlockOption(szx SZX, blockNumber int64, moreBlocksFollowing bool) (uint32, error) {
 	if szx > SZXBERT {
@@ -214,11 +222,21 @@ func bufferSize(szx SZX, maxMessageSize int) int64 {
 	return (int64(maxMessageSize) / szx.Size()) * szx.Size()
 }
 
+func setTypeFrom(to Message, from Message) {
+	if udpTo, ok := to.(hasType); ok {
+		if udpFrom, ok := from.(hasType); ok {
+			udpTo.SetType(udpFrom.Type())
+		}
+	}
+}
+
 func (b *BlockWise) newSendRequestMessage(r Message) Message {
 	req := b.acquireMessage(r.Context())
 	req.SetCode(r.Code())
 	req.SetToken(r.Token())
 	req.ResetOptionsTo(r.Options())
+	setTypeFrom(req, r)
+
 	return req
 }
 
@@ -757,6 +775,7 @@ func (b *BlockWise) processReceivedMessage(w ResponseWriter, r Message, maxSzx S
 		cachedReceivedMessage.Remove(blockType)
 		cachedReceivedMessage.Remove(sizeType)
 		cachedReceivedMessage.SetCode(r.Code())
+		setTypeFrom(cachedReceivedMessage, r)
 		if !bytes.Equal(cachedReceivedMessage.Token(), token) {
 			b.bwSendedRequest.Delete(tokenStr)
 		}

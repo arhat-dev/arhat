@@ -8,16 +8,14 @@ import (
 	"time"
 
 	"github.com/plgd-dev/go-coap/v2/message"
-	"github.com/plgd-dev/go-coap/v2/net/blockwise"
-
-	"github.com/plgd-dev/go-coap/v2/net/keepalive"
-
 	"github.com/plgd-dev/go-coap/v2/message/codes"
+	coapNet "github.com/plgd-dev/go-coap/v2/net"
+	"github.com/plgd-dev/go-coap/v2/net/blockwise"
+	"github.com/plgd-dev/go-coap/v2/net/keepalive"
+	"github.com/plgd-dev/go-coap/v2/net/monitor/inactivity"
 	"github.com/plgd-dev/go-coap/v2/udp/client"
 	udpMessage "github.com/plgd-dev/go-coap/v2/udp/message"
 	"github.com/plgd-dev/go-coap/v2/udp/message/pool"
-
-	coapNet "github.com/plgd-dev/go-coap/v2/net"
 	kitSync "github.com/plgd-dev/kit/sync"
 )
 
@@ -56,6 +54,7 @@ var defaultServerOptions = serverOptions{
 		return nil
 	},
 	keepalive:                      keepalive.New(),
+	inactivityMonitor:              inactivity.NewInactivityMonitor(10*time.Minute, inactivity.CloseClientConn),
 	blockwiseEnable:                true,
 	blockwiseSZX:                   blockwise.SZX1024,
 	blockwiseTransferTimeout:       time.Second * 3,
@@ -73,6 +72,7 @@ type serverOptions struct {
 	errors                         ErrorFunc
 	goPool                         GoPoolFunc
 	keepalive                      *keepalive.KeepAlive
+	inactivityMonitor              inactivity.Monitor
 	net                            string
 	blockwiseSZX                   blockwise.SZX
 	blockwiseEnable                bool
@@ -90,6 +90,7 @@ type Server struct {
 	errors                         ErrorFunc
 	goPool                         GoPoolFunc
 	keepalive                      *keepalive.KeepAlive
+	inactivityMonitor              inactivity.Monitor
 	blockwiseSZX                   blockwise.SZX
 	blockwiseEnable                bool
 	blockwiseTransferTimeout       time.Duration
@@ -137,6 +138,7 @@ func NewServer(opt ...ServerOption) *Server {
 		errors:                         opts.errors,
 		goPool:                         opts.goPool,
 		keepalive:                      opts.keepalive,
+		inactivityMonitor:              opts.inactivityMonitor,
 		blockwiseSZX:                   opts.blockwiseSZX,
 		blockwiseEnable:                opts.blockwiseEnable,
 		blockwiseTransferTimeout:       opts.blockwiseTransferTimeout,
@@ -212,6 +214,18 @@ func (s *Server) Serve(l *coapNet.UDPConn) error {
 					}
 				}()
 			}
+
+			if s.inactivityMonitor != nil {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					err := s.inactivityMonitor.Run(cc)
+					if err != nil {
+						s.errors(err)
+					}
+				}()
+			}
+
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
@@ -305,6 +319,7 @@ func (s *Server) getOrCreateClientConn(UDPConn *coapNet.UDPConn, raddr *net.UDPA
 			s.goPool,
 			s.errors,
 			s.getMID,
+			s.inactivityMonitor,
 		)
 		cc.AddOnClose(func() {
 			s.connsMutex.Lock()

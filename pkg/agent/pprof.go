@@ -31,7 +31,7 @@ import (
 type agentComponentPProf struct{}
 
 func (c *agentComponentPProf) init(ctx context.Context, config *perfhelper.PProfConfig) error {
-	handlers := config.CreateHTTPHandlersIfEnabled(true)
+	handlers := config.CreateHTTPHandlersIfEnabled()
 	if handlers == nil {
 		// no enabled
 		return nil
