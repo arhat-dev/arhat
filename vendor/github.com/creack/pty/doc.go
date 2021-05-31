@@ -10,7 +10,7 @@ import (
 // available on the current platform.
 var ErrUnsupported = errors.New("unsupported")
 
-// Opens a pty and its corresponding tty.
+// Open a pty and its corresponding tty.
 func Open() (Pty, Tty, error) {
 	return open()
 }

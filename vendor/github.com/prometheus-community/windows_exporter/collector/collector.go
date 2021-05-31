@@ -2,12 +2,13 @@ package collector
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/leoluk/perflib_exporter/perflib"
+	"github.com/prometheus-community/windows_exporter/log"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/log"
 	"golang.org/x/sys/windows/registry"
 )
 
@@ -127,4 +128,23 @@ func find(slice []string, val string) bool {
 		}
 	}
 	return false
+}
+
+// Used by more complex collectors where user input specifies enabled child collectors.
+// Splits provided child collectors and deduplicate.
+func expandEnabledChildCollectors(enabled string) []string {
+	separated := strings.Split(enabled, ",")
+	unique := map[string]bool{}
+	for _, s := range separated {
+		if s != "" {
+			unique[s] = true
+		}
+	}
+	result := make([]string, 0, len(unique))
+	for s := range unique {
+		result = append(result, s)
+	}
+	// Ensure result is ordered, to prevent test failure
+	sort.Strings(result)
+	return result
 }

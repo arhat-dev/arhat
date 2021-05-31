@@ -1,3 +1,6 @@
+//go:build windows
+//+build windows
+
 package pty
 
 import (
@@ -10,15 +13,6 @@ import (
 
 var (
 	kernel32DLL *syscall.DLL
-
-	createPseudoConsole        *syscall.Proc
-	resizePseudoConsole        *syscall.Proc
-	closePseudoConsole         *syscall.Proc
-	getConsoleScreenBufferInfo *syscall.Proc
-
-	initializeProcThreadAttributeList *syscall.Proc
-	updateProcThreadAttribute         *syscall.Proc
-	deleteProcThreadAttributeList     *syscall.Proc
 )
 
 func init() {
@@ -27,15 +21,6 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-
-	createPseudoConsole = kernel32DLL.MustFindProc("CreatePseudoConsole")
-	resizePseudoConsole = kernel32DLL.MustFindProc("ResizePseudoConsole")
-	closePseudoConsole = kernel32DLL.MustFindProc("ClosePseudoConsole")
-	getConsoleScreenBufferInfo = kernel32DLL.MustFindProc("GetConsoleScreenBufferInfo")
-
-	initializeProcThreadAttributeList = kernel32DLL.MustFindProc("InitializeProcThreadAttributeList")
-	updateProcThreadAttribute = kernel32DLL.MustFindProc("UpdateProcThreadAttribute")
-	deleteProcThreadAttributeList = kernel32DLL.MustFindProc("DeleteProcThreadAttributeList")
 }
 
 func open() (_ Pty, _ Tty, err error) {
@@ -65,7 +50,14 @@ func open() (_ Pty, _ Tty, err error) {
 		consoleHandle syscall.Handle
 		defaultSize   = &windows.Coord{X: 80, Y: 30}
 	)
+
 	// https://docs.microsoft.com/en-us/windows/console/createpseudoconsole
+
+	createPseudoConsole, err := kernel32DLL.FindProc("CreatePseudoConsole")
+	if err != nil {
+		return nil, nil, os.NewSyscallError("CreatePseudoConsole", err)
+	}
+
 	r1, _, err := createPseudoConsole.Call(
 		uintptr(unsafe.Pointer(defaultSize)),    // size: default 80x30 window
 		consoleR.Fd(),                           // console input
@@ -131,7 +123,12 @@ func (p *WindowsPty) Close() error {
 	_ = p._consoleR.Close()
 	_ = p._consoleW.Close()
 
-	_, _, err := closePseudoConsole.Call(p.handle)
+	closePseudoConsole, err := kernel32DLL.FindProc("ClosePseudoConsole")
+	if err != nil {
+		return os.NewSyscallError("ClosePseudoConsole", err)
+	}
+
+	_, _, err = closePseudoConsole.Call(p.handle)
 	return err
 }
 

@@ -41,7 +41,6 @@ import (
 	coapmsgcodes "github.com/plgd-dev/go-coap/v2/message/codes"
 	coapmux "github.com/plgd-dev/go-coap/v2/mux"
 	coapnet "github.com/plgd-dev/go-coap/v2/net"
-	"github.com/plgd-dev/go-coap/v2/net/keepalive"
 	coaptcp "github.com/plgd-dev/go-coap/v2/tcp"
 	coapudp "github.com/plgd-dev/go-coap/v2/udp"
 	coapudpclient "github.com/plgd-dev/go-coap/v2/udp/client"
@@ -155,33 +154,33 @@ func NewCoAPClient(
 
 	brokerAddr := config.Endpoint
 
-	keepaliveInterval := config.KeepaliveInterval
-	if keepaliveInterval <= 0 {
-		keepaliveInterval = 60 * time.Second
-	}
+	// keepaliveInterval := config.KeepaliveInterval
+	// if keepaliveInterval <= 0 {
+	// 	keepaliveInterval = 60 * time.Second
+	// }
 
-	if keepaliveInterval < time.Second {
-		keepaliveInterval = time.Second
-	}
+	// if keepaliveInterval < time.Second {
+	// 	keepaliveInterval = time.Second
+	// }
 
-	keepaliveOpt := keepalive.New(keepalive.WithConfig(keepalive.Config{
-		Interval:    keepaliveInterval,
-		WaitForPong: time.Duration(float64(keepaliveInterval) * 1.2),
-		NewRetryPolicy: func() keepalive.RetryFunc {
-			// The first failure is detected after 2*duration:
-			// 1 since the previous ping, plus 1 for the next ping-pong to timeout
-			start := time.Now()
-			attempt := time.Duration(1)
-			return func() (time.Time, error) {
-				attempt++
-				// Try to send ping and wait for pong 2 more times
-				if time.Since(start) <= 2*2*keepaliveInterval {
-					return start.Add(attempt * keepaliveInterval), nil
-				}
-				return time.Time{}, keepalive.ErrKeepAliveDeadlineExceeded
-			}
-		},
-	}))
+	// keepaliveOpt := keepalive.New(keepalive.WithConfig(keepalive.Config{
+	// 	Interval:    keepaliveInterval,
+	// 	WaitForPong: time.Duration(float64(keepaliveInterval) * 1.2),
+	// 	NewRetryPolicy: func() keepalive.RetryFunc {
+	// 		// The first failure is detected after 2*duration:
+	// 		// 1 since the previous ping, plus 1 for the next ping-pong to timeout
+	// 		start := time.Now()
+	// 		attempt := time.Duration(1)
+	// 		return func() (time.Time, error) {
+	// 			attempt++
+	// 			// Try to send ping and wait for pong 2 more times
+	// 			if time.Since(start) <= 2*2*keepaliveInterval {
+	// 				return start.Add(attempt * keepaliveInterval), nil
+	// 			}
+	// 			return time.Time{}, keepalive.ErrKeepAliveDeadlineExceeded
+	// 		}
+	// 	},
+	// }))
 
 	// no server provided, run in multicast mode
 	if brokerAddr == "" {
@@ -223,7 +222,7 @@ func NewCoAPClient(
 	case "tcp", "tcp4", "tcp6":
 		dialOpts := []coaptcp.DialOption{
 			coaptcp.WithMaxMessageSize(aranyagoconst.MaxCoAPDataSize),
-			coaptcp.WithKeepAlive(keepaliveOpt),
+			// coaptcp.WithKeepAlive(keepaliveOpt),
 			coaptcp.WithErrors(func(err error) {
 				coapClient.Log.I("internal coap client error", log.Error(err))
 			}),
@@ -251,7 +250,7 @@ func NewCoAPClient(
 				dialOpts := []coapudp.DialOption{
 					coapudp.WithMaxMessageSize(aranyagoconst.MaxCoAPDataSize),
 					coapudp.WithContext(dialCtx),
-					coapudp.WithKeepAlive(keepaliveOpt),
+					// coapudp.WithKeepAlive(keepaliveOpt),
 					coapudp.WithErrors(func(err error) {
 						coapClient.Log.I("internal coap client error", log.Error(err))
 					}),
@@ -338,7 +337,7 @@ func NewCoAPClient(
 				dialOpts := []coapdtls.DialOption{
 					coapdtls.WithMaxMessageSize(aranyagoconst.MaxCoAPDataSize),
 					coapdtls.WithContext(dialCtx),
-					coapdtls.WithKeepAlive(keepaliveOpt),
+					// coapdtls.WithKeepAlive(keepaliveOpt),
 					coapdtls.WithErrors(func(err error) {
 						coapClient.Log.I("internal coap client error", log.Error(err))
 					}),

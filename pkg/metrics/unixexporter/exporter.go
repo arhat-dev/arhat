@@ -90,8 +90,8 @@ func CreateGatherer(config *aranyagopb.MetricsConfigCmd) (prometheus.Gatherer, e
 					"node_exporter",
 				),
 				ConstLabels: prometheus.Labels{
-					"version":   "v1.0.1",
-					"revision":  "3715be6ae899f2a9b9dbfd9c39f3e09a7bd4559f",
+					"version":   "v1.1.2",
+					"revision":  "b597c1244d7bef49e6f3359c87a56dd7707f6719",
 					"branch":    "HEAD",
 					"goversion": runtime.Version(),
 				},

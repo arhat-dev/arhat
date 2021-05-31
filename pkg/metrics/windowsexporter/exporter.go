@@ -84,8 +84,8 @@ func CreateGatherer(config *aranyagopb.MetricsConfigCmd) (prometheus.Gatherer, e
 				"windows_exporter",
 			),
 			ConstLabels: prometheus.Labels{
-				"version":   "v0.15.0",
-				"revision":  "cdbb27d0b4ea9810dc35035fad281fe6468b7dd1",
+				"version":   "v0.16.0",
+				"revision":  "f316d81d50738eb0410b0748c5dcdc6874afe95a",
 				"branch":    "HEAD",
 				"goversion": runtime.Version(),
 			},
