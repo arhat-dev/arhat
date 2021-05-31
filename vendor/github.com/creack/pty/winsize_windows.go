@@ -3,24 +3,33 @@ package pty
 import (
 	"os"
 	"unsafe"
-
-	"golang.org/x/sys/windows"
 )
 
-// InheritSize applies the terminal size of pty to tty. This should be run
-// in a signal handler for syscall.SIGWINCH to automatically resize the tty when
-// the pty receives a window size change notification.
-func InheritSize(pty Pty, tty Tty) error {
-	size, err := GetsizeFull(pty)
-	if err != nil {
-		return err
+// types from golang.org/x/sys/windows
+type (
+	// copy of https://pkg.go.dev/golang.org/x/sys/windows#Coord
+	windowsCoord struct {
+		X int16
+		Y int16
 	}
-	err = Setsize(tty, size)
-	if err != nil {
-		return err
+
+	// copy of https://pkg.go.dev/golang.org/x/sys/windows#SmallRect
+	windowsSmallRect struct {
+		Left   int16
+		Top    int16
+		Right  int16
+		Bottom int16
 	}
-	return nil
-}
+
+	// copy of https://pkg.go.dev/golang.org/x/sys/windows#ConsoleScreenBufferInfo
+	windowsConsoleScreenBufferInfo struct {
+		Size              windowsCoord
+		CursorPosition    windowsCoord
+		Attributes        uint16
+		Window            windowsSmallRect
+		MaximumWindowSize windowsCoord
+	}
+)
 
 // Setsize resizes t to s.
 func Setsize(t FdHolder, ws *Winsize) error {
@@ -31,7 +40,7 @@ func Setsize(t FdHolder, ws *Winsize) error {
 
 	_, _, err = resizePseudoConsole.Call(
 		t.Fd(),
-		uintptr(unsafe.Pointer(&windows.Coord{X: int16(ws.Cols), Y: int16(ws.Rows)})),
+		uintptr(unsafe.Pointer(&windowsCoord{X: int16(ws.Cols), Y: int16(ws.Rows)})),
 	)
 	return err
 }
@@ -43,24 +52,10 @@ func GetsizeFull(t FdHolder) (size *Winsize, err error) {
 		return nil, os.NewSyscallError("GetConsoleScreenBufferInfo", err)
 	}
 
-	var info windows.ConsoleScreenBufferInfo
+	var info windowsConsoleScreenBufferInfo
 	_, _, err = getConsoleScreenBufferInfo.Call(t.Fd(), uintptr(unsafe.Pointer(&info)))
 	return &Winsize{
 		Rows: uint16(info.Window.Bottom - info.Window.Top + 1),
 		Cols: uint16(info.Window.Right - info.Window.Left + 1),
 	}, err
-}
-
-// Getsize returns the number of rows (lines) and cols (positions
-// in each line) in terminal t.
-func Getsize(t FdHolder) (rows, cols int, err error) {
-	ws, err := GetsizeFull(t)
-	return int(ws.Rows), int(ws.Cols), err
-}
-
-type Winsize struct {
-	Rows uint16 // ws_row: Number of rows (in cells)
-	Cols uint16 // ws_col: Number of columns (in cells)
-	X    uint16 // ws_xpixel: Width in pixels (not supported)
-	Y    uint16 // ws_ypixel: Height in pixels (not supported)
 }

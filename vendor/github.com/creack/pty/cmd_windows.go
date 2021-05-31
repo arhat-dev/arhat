@@ -3,6 +3,15 @@
 
 package pty
 
+import (
+	"context"
+	"io"
+	"os"
+	"syscall"
+
+	_ "unsafe" // for go:linkname
+)
+
 // copied from os/exec.Cmd for platform compatibility
 // we need to use startupInfoEx for pty support, but os/exec.Cmd only have
 // support for startupInfo on windows, so we have to rewrite some internal

@@ -1,6 +1,6 @@
 module arhat.dev/arhat
 
-go 1.15
+go 1.16
 
 require (
 	arhat.dev/aranya-proto v0.3.5
@@ -15,12 +15,12 @@ require (
 	github.com/goiiot/libmqtt v0.9.6
 	github.com/klauspost/compress v1.12.3
 	github.com/mholt/archiver/v3 v3.5.0
-	github.com/mssola/user_agent v0.5.2
-	github.com/nats-io/jwt v1.2.2
+	github.com/mssola/user_agent v0.5.3
+	github.com/nats-io/jwt/v2 v2.0.2
 	github.com/nats-io/nats-streaming-server v0.19.0 // indirect
-	github.com/nats-io/nats.go v1.10.0
-	github.com/nats-io/nkeys v0.2.0
-	github.com/nats-io/stan.go v0.8.2
+	github.com/nats-io/nats.go v1.11.0
+	github.com/nats-io/nkeys v0.3.0
+	github.com/nats-io/stan.go v0.9.0
 	github.com/pbnjay/memory v0.0.0-20201129165224-b12e5d931931
 	github.com/pion/dtls/v2 v2.0.9
 	github.com/pion/logging v0.2.2
@@ -31,14 +31,14 @@ require (
 	github.com/prometheus/common v0.25.0
 	github.com/prometheus/node_exporter v1.1.2
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/sys v0.0.0-20210525143221-35b2ab0089ea
+	golang.org/x/sys v0.0.0-20210531080801-fdfd190a6549
 	google.golang.org/grpc v1.35.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 )
 
 replace (
-	github.com/creack/pty => github.com/jeffreystoke/pty v1.1.12-0.20210531072317-7306c72011c4
+	github.com/creack/pty => github.com/jeffreystoke/pty v1.1.12-0.20210531091229-b834701fbcc6
 	github.com/dsnet/golib => github.com/dsnet/golib v0.0.0-20200723050859-c110804dfa93
 	github.com/fsnotify/fsnotify => github.com/fsnotify/fsnotify v1.4.9
 	github.com/klauspost/compress => github.com/klauspost/compress v1.12.3
@@ -73,7 +73,7 @@ replace (
 	golang.org/x/lint => github.com/golang/lint v0.0.0-20210508222113-6edffad5e616
 	golang.org/x/net => github.com/golang/net v0.0.0-20210525063256-abc453219eb5
 	golang.org/x/sync => github.com/golang/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys => github.com/golang/sys v0.0.0-20210525143221-35b2ab0089ea
+	golang.org/x/sys => github.com/golang/sys v0.0.0-20210531080801-fdfd190a6549
 	golang.org/x/text => github.com/golang/text v0.3.6
 	golang.org/x/tools => github.com/golang/tools v0.1.2
 	golang.org/x/xerrors => github.com/golang/xerrors v0.0.0-20200804184101-5ec99f83aff1
@@ -91,8 +91,8 @@ replace (
 	k8s.io/cluster-bootstrap => github.com/kubernetes/cluster-bootstrap v0.20.7
 	k8s.io/code-generator => github.com/kubernetes/code-generator v0.20.7
 	k8s.io/component-base => github.com/kubernetes/component-base v0.20.7
-	k8s.io/component-helpers => k8s.io/component-helpers v0.20.7
-	k8s.io/controller-manager => k8s.io/controller-manager v0.20.7
+	k8s.io/component-helpers => github.com/kubernetes/component-helpers v0.20.7
+	k8s.io/controller-manager => github.com/kubernetes/controller-manager v0.20.7
 	k8s.io/cri-api => github.com/kubernetes/cri-api v0.20.7
 	k8s.io/csi-translation-lib => github.com/kubernetes/csi-translation-lib v0.20.7
 	k8s.io/klog => github.com/kubernetes/klog v1.0.0
@@ -106,9 +106,9 @@ replace (
 	k8s.io/kubernetes => github.com/kubernetes/kubernetes v1.20.7
 	k8s.io/legacy-cloud-providers => github.com/kubernetes/legacy-cloud-providers v0.20.7
 	k8s.io/metrics => github.com/kubernetes/metrics v0.20.7
-	k8s.io/mount-utils => k8s.io/mount-utils v0.20.7
+	k8s.io/mount-utils => github.com/kubernetes/mount-utils v0.20.7
 	k8s.io/sample-apiserver => github.com/kubernetes/sample-apiserver v0.20.7
-	k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.20.7
-	k8s.io/sample-controller => k8s.io/sample-controller v0.20.7
+	k8s.io/sample-cli-plugin => github.com/kubernetes/sample-cli-plugin v0.20.7
+	k8s.io/sample-controller => github.com/kubernetes/sample-controller v0.20.7
 	k8s.io/utils => github.com/kubernetes/utils v0.0.0-20210527160623-6fdb442a123b
 )

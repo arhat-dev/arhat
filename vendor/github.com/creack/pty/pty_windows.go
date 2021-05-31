@@ -7,8 +7,6 @@ import (
 	"os"
 	"syscall"
 	"unsafe"
-
-	"golang.org/x/sys/windows"
 )
 
 var (
@@ -48,7 +46,7 @@ func open() (_ Pty, _ Tty, err error) {
 
 	var (
 		consoleHandle syscall.Handle
-		defaultSize   = &windows.Coord{X: 80, Y: 30}
+		defaultSize   = &windowsCoord{X: 80, Y: 30}
 	)
 
 	// https://docs.microsoft.com/en-us/windows/console/createpseudoconsole
@@ -74,8 +72,8 @@ func open() (_ Pty, _ Tty, err error) {
 			handle:    uintptr(consoleHandle),
 			r:         pr,
 			w:         pw,
-			_consoleR: consoleR,
-			_consoleW: consoleW,
+			consoleR:  consoleR,
+			consoleW: consoleW,
 		}, &WindowsTty{
 			handle: uintptr(consoleHandle),
 			r:      consoleR,
@@ -89,7 +87,7 @@ type WindowsPty struct {
 	handle uintptr
 	r, w   *os.File
 
-	_consoleR, _consoleW *os.File
+	consoleR, consoleW *os.File
 }
 
 func (p *WindowsPty) Fd() uintptr {
@@ -120,8 +118,8 @@ func (p *WindowsPty) Close() error {
 	_ = p.r.Close()
 	_ = p.w.Close()
 
-	_ = p._consoleR.Close()
-	_ = p._consoleW.Close()
+	_ = p.consoleR.Close()
+	_ = p.consoleW.Close()
 
 	closePseudoConsole, err := kernel32DLL.FindProc("ClosePseudoConsole")
 	if err != nil {

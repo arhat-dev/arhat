@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,13 +15,6 @@
 
 package jwt
 
-import (
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"time"
-)
-
 // Import describes a mapping from another account into this one
 type Import struct {
 	Name string `json:"name,omitempty"`
@@ -32,13 +25,21 @@ type Import struct {
 	Subject Subject `json:"subject,omitempty"`
 	Account string  `json:"account,omitempty"`
 	Token   string  `json:"token,omitempty"`
+	// Deprecated: use LocalSubject instead
 	// To field in an import is always from the perspective of the subscriber
 	// in the case of a stream it is the client of the stream (the importer),
 	// from the perspective of a service, it is the subscription waiting for
 	// requests (the exporter). If the field is empty, it will default to the
 	// value in the Subject field.
-	To   Subject    `json:"to,omitempty"`
-	Type ExportType `json:"type,omitempty"`
+	To Subject `json:"to,omitempty"`
+	// Local subject used to subscribe (for streams) and publish (for services) to.
+	// This value only needs setting if you want to change the value of Subject.
+	// If the value of Subject ends in > then LocalSubject needs to end in > as well.
+	// LocalSubject can contain $<number> wildcard references where number references the nth wildcard in Subject.
+	// The sum of wildcard reference and * tokens needs to match the number of * token in Subject.
+	LocalSubject RenamingSubject `json:"local_subject,omitempty"`
+	Type         ExportType      `json:"type,omitempty"`
+	Share        bool            `json:"share,omitempty"`
 }
 
 // IsService returns true if the import is of type service
@@ -49,6 +50,11 @@ func (i *Import) IsService() bool {
 // IsStream returns true if the import is of type stream
 func (i *Import) IsStream() bool {
 	return i.Type == Stream
+}
+
+// Returns the value of To without triggering the deprecation warning for a read
+func (i *Import) GetTo() string {
+	return string(i.To)
 }
 
 // Validate checks if an import is valid for the wrapping account
@@ -62,62 +68,53 @@ func (i *Import) Validate(actPubKey string, vr *ValidationResults) {
 	}
 
 	if i.Account == "" {
-		vr.AddWarning("account to import from is not specified")
+		vr.AddError("account to import from is not specified")
+	}
+
+	if i.GetTo() != "" {
+		vr.AddWarning("the field to has been deprecated (use LocalSubject instead)")
 	}
 
 	i.Subject.Validate(vr)
-
-	if i.IsService() && i.Subject.HasWildCards() {
-		vr.AddError("services cannot have wildcard subject: %q", i.Subject)
+	if i.LocalSubject != "" {
+		i.LocalSubject.Validate(i.Subject, vr)
+		if i.To != "" {
+			vr.AddError("Local Subject replaces To")
+		}
 	}
-	if i.IsStream() && i.To.HasWildCards() {
-		vr.AddError("streams cannot have wildcard to subject: %q", i.Subject)
-	}
 
+	if i.Share && !i.IsService() {
+		vr.AddError("sharing information (for latency tracking) is only valid for services: %q", i.Subject)
+	}
 	var act *ActivationClaims
 
 	if i.Token != "" {
-		// Check to see if its an embedded JWT or a URL.
-		if url, err := url.Parse(i.Token); err == nil && url.Scheme != "" {
-			c := &http.Client{Timeout: 5 * time.Second}
-			resp, err := c.Get(url.String())
-			if err != nil {
-				vr.AddWarning("import %s contains an unreachable token URL %q", i.Subject, i.Token)
-			}
-
-			if resp != nil {
-				defer resp.Body.Close()
-				body, err := ioutil.ReadAll(resp.Body)
-				if err != nil {
-					vr.AddWarning("import %s contains an unreadable token URL %q", i.Subject, i.Token)
-				} else {
-					act, err = DecodeActivationClaims(string(body))
-					if err != nil {
-						vr.AddWarning("import %s contains a url %q with an invalid activation token", i.Subject, i.Token)
-					}
-				}
-			}
-		} else {
-			var err error
-			act, err = DecodeActivationClaims(i.Token)
-			if err != nil {
-				vr.AddWarning("import %q contains an invalid activation token", i.Subject)
-			}
+		var err error
+		act, err = DecodeActivationClaims(i.Token)
+		if err != nil {
+			vr.AddError("import %q contains an invalid activation token", i.Subject)
 		}
 	}
 
 	if act != nil {
-		if act.Issuer != i.Account {
-			vr.AddWarning("activation token doesn't match account for import %q", i.Subject)
+		if !(act.Issuer == i.Account || act.IssuerAccount == i.Account) {
+			vr.AddError("activation token doesn't match account for import %q", i.Subject)
 		}
-
 		if act.ClaimsData.Subject != actPubKey {
-			vr.AddWarning("activation token doesn't match account it is being included in, %q", i.Subject)
+			vr.AddError("activation token doesn't match account it is being included in, %q", i.Subject)
 		}
-	} else {
-		vr.AddWarning("no activation provided for import %s", i.Subject)
+		if act.ImportType != i.Type {
+			vr.AddError("mismatch between token import type %s and type of import %s", act.ImportType, i.Type)
+		}
+		act.validateWithTimeChecks(vr, false)
+		subj := i.Subject
+		if i.IsService() && i.To != "" {
+			subj = i.To
+		}
+		if !subj.IsContainedIn(act.ImportSubject) {
+			vr.AddError("activation token import subject %q doesn't match import %q", act.ImportSubject, i.Subject)
+		}
 	}
-
 }
 
 // Imports is a list of import structs
@@ -125,17 +122,29 @@ type Imports []*Import
 
 // Validate checks if an import is valid for the wrapping account
 func (i *Imports) Validate(acctPubKey string, vr *ValidationResults) {
-	toSet := make(map[Subject]bool, len(*i))
+	toSet := make(map[Subject]struct{}, len(*i))
 	for _, v := range *i {
 		if v == nil {
 			vr.AddError("null import is not allowed")
 			continue
 		}
 		if v.Type == Service {
-			if _, ok := toSet[v.To]; ok {
-				vr.AddError("Duplicate To subjects for %q", v.To)
+			sub := v.To
+			if sub == "" {
+				sub = v.LocalSubject.ToSubject()
 			}
-			toSet[v.To] = true
+			if sub == "" {
+				sub = v.Subject
+			}
+			for k := range toSet {
+				if sub.IsContainedIn(k) || k.IsContainedIn(sub) {
+					vr.AddError("overlapping subject namespace for %q and %q", sub, k)
+				}
+			}
+			if _, ok := toSet[sub]; ok {
+				vr.AddError("overlapping subject namespace for %q", v.To)
+			}
+			toSet[sub] = struct{}{}
 		}
 		v.Validate(acctPubKey, vr)
 	}

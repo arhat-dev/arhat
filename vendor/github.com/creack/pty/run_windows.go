@@ -4,16 +4,12 @@
 package pty
 
 import (
-	"context"
 	"errors"
-	"io"
 	"os"
 	"os/exec"
 	"runtime"
 	"syscall"
 	"unsafe"
-
-	"golang.org/x/sys/windows"
 )
 
 type startupInfoEx struct {
@@ -22,6 +18,8 @@ type startupInfoEx struct {
 }
 
 const (
+	_EXTENDED_STARTUPINFO_PRESENT = 0x00080000
+
 	_PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE = 0x00020016
 )
 
@@ -404,7 +402,7 @@ func syscallStartProcess(argv0 string, argv []string, attr *syscall.ProcAttr, co
 	flags := sys.CreationFlags | syscall.CREATE_UNICODE_ENVIRONMENT
 
 	// add startupInfoEx flag
-	flags = flags | windows.EXTENDED_STARTUPINFO_PRESENT
+	flags = flags | _EXTENDED_STARTUPINFO_PRESENT
 
 	// ignore security attrs since both Process and Thread handles are not inheritable for conPty
 	if sys.Token != 0 {

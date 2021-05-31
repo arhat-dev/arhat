@@ -16,7 +16,9 @@
 package jwt
 
 import (
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -55,13 +57,49 @@ const (
 // }
 //
 type ServiceLatency struct {
-	Sampling int     `json:"sampling,omitempty"`
-	Results  Subject `json:"results"`
+	Sampling SamplingRate `json:"sampling"`
+	Results  Subject      `json:"results"`
+}
+
+type SamplingRate int
+
+const Headers = SamplingRate(0)
+
+// MarshalJSON marshals the field as "headers" or percentages
+func (r *SamplingRate) MarshalJSON() ([]byte, error) {
+	sr := *r
+	if sr == 0 {
+		return []byte(`"headers"`), nil
+	}
+	if sr >= 1 && sr <= 100 {
+		return []byte(fmt.Sprintf("%d", sr)), nil
+	}
+	return nil, fmt.Errorf("unknown sampling rate")
+}
+
+// UnmarshalJSON unmashals numbers as percentages or "headers"
+func (t *SamplingRate) UnmarshalJSON(b []byte) error {
+	if len(b) == 0 {
+		return fmt.Errorf("empty sampling rate")
+	}
+	if strings.ToLower(string(b)) == `"headers"` {
+		*t = Headers
+		return nil
+	}
+	var j int
+	err := json.Unmarshal(b, &j)
+	if err != nil {
+		return err
+	}
+	*t = SamplingRate(j)
+	return nil
 }
 
 func (sl *ServiceLatency) Validate(vr *ValidationResults) {
-	if sl.Sampling < 1 || sl.Sampling > 100 {
-		vr.AddError("sampling percentage needs to be between 1-100")
+	if sl.Sampling != 0 {
+		if sl.Sampling < 1 || sl.Sampling > 100 {
+			vr.AddError("sampling percentage needs to be between 1-100")
+		}
 	}
 	sl.Results.Validate(vr)
 	if sl.Results.HasWildCards() {
@@ -77,8 +115,11 @@ type Export struct {
 	TokenReq             bool            `json:"token_req,omitempty"`
 	Revocations          RevocationList  `json:"revocations,omitempty"`
 	ResponseType         ResponseType    `json:"response_type,omitempty"`
+	ResponseThreshold    time.Duration   `json:"response_threshold,omitempty"`
 	Latency              *ServiceLatency `json:"service_latency,omitempty"`
 	AccountTokenPosition uint            `json:"account_token_position,omitempty"`
+	Advertise            bool            `json:"advertise,omitempty"`
+	Info
 }
 
 // IsService returns true if an export is for a service
@@ -92,7 +133,7 @@ func (e *Export) IsStream() bool {
 }
 
 // IsSingleResponse returns true if an export has a single response
-// or no resopnse type is set, also checks that the type is service
+// or no response type is set, also checks that the type is service
 func (e *Export) IsSingleResponse() bool {
 	return e.Type == Service && (e.ResponseType == ResponseTypeSingleton || e.ResponseType == "")
 }
@@ -128,7 +169,30 @@ func (e *Export) Validate(vr *ValidationResults) {
 		}
 		e.Latency.Validate(vr)
 	}
+	if e.ResponseThreshold.Nanoseconds() < 0 {
+		vr.AddError("negative response threshold is invalid")
+	}
+	if e.ResponseThreshold.Nanoseconds() > 0 && !e.IsService() {
+		vr.AddError("response threshold only valid for services")
+	}
 	e.Subject.Validate(vr)
+	if e.AccountTokenPosition > 0 {
+		if !e.Subject.HasWildCards() {
+			vr.AddError("Account Token Position can only be used with wildcard subjects: %s", e.Subject)
+		} else {
+			subj := string(e.Subject)
+			token := strings.Split(subj, ".")
+			tkCnt := uint(len(token))
+			if e.AccountTokenPosition > tkCnt {
+				vr.AddError("Account Token Position %d exceeds length of subject '%s'",
+					e.AccountTokenPosition, e.Subject)
+			} else if tk := token[e.AccountTokenPosition-1]; tk != "*" {
+				vr.AddError("Account Token Position %d matches '%s' but must match a * in: %s",
+					e.AccountTokenPosition, tk, e.Subject)
+			}
+		}
+	}
+	e.Info.Validate(vr)
 }
 
 // Revoke enters a revocation by publickey using time.Now().
@@ -151,16 +215,20 @@ func (e *Export) ClearRevocation(pubKey string) {
 	e.Revocations.ClearRevocation(pubKey)
 }
 
-// IsRevokedAt checks if the public key is in the revoked list with a timestamp later than the one passed in.
+// isRevoked checks if the public key is in the revoked list with a timestamp later than the one passed in.
 // Generally this method is called with the subject and issue time of the jwt to be tested.
 // DO NOT pass time.Now(), it will not produce a stable/expected response.
-func (e *Export) IsRevokedAt(pubKey string, timestamp time.Time) bool {
-	return e.Revocations.IsRevoked(pubKey, timestamp)
+func (e *Export) isRevoked(pubKey string, claimIssuedAt time.Time) bool {
+	return e.Revocations.IsRevoked(pubKey, claimIssuedAt)
 }
 
-// IsRevoked does not perform a valid check. Use IsRevokedAt instead.
-func (e *Export) IsRevoked(_ string) bool {
-	return true
+// IsClaimRevoked checks if the activation revoked the claim passed in.
+// Invalid claims (nil, no Subject or IssuedAt) will return true.
+func (e *Export) IsClaimRevoked(claim *ActivationClaims) bool {
+	if claim == nil || claim.IssuedAt == 0 || claim.Subject == "" {
+		return true
+	}
+	return e.isRevoked(claim.Subject, time.Unix(claim.IssuedAt, 0))
 }
 
 // Exports is a slice of exports

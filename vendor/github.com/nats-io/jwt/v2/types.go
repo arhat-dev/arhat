@@ -19,9 +19,37 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/url"
+	"reflect"
+	"strconv"
 	"strings"
 	"time"
 )
+
+const MaxInfoLength = 8 * 1024
+
+type Info struct {
+	Description string `json:"description,omitempty"`
+	InfoURL     string `json:"info_url,omitempty"`
+}
+
+func (s Info) Validate(vr *ValidationResults) {
+	if len(s.Description) > MaxInfoLength {
+		vr.AddError("Description is too long")
+	}
+	if s.InfoURL != "" {
+		if len(s.InfoURL) > MaxInfoLength {
+			vr.AddError("Info URL is too long")
+		}
+		u, err := url.Parse(s.InfoURL)
+		if err == nil && (u.Hostname() == "" || u.Scheme == "") {
+			err = fmt.Errorf("no hostname or scheme")
+		}
+		if err != nil {
+			vr.AddError("error parsing info url: %v", err)
+		}
+	}
+}
 
 // ExportType defines the type of import/export.
 type ExportType int
@@ -71,7 +99,74 @@ func (t *ExportType) UnmarshalJSON(b []byte) error {
 		*t = Service
 		return nil
 	}
-	return fmt.Errorf("unknown export type")
+	return fmt.Errorf("unknown export type %q", j)
+}
+
+type RenamingSubject Subject
+
+func (s RenamingSubject) Validate(from Subject, vr *ValidationResults) {
+	v := Subject(s)
+	v.Validate(vr)
+	if from == "" {
+		vr.AddError("subject cannot be empty")
+	}
+	if strings.Contains(string(s), " ") {
+		vr.AddError("subject %q cannot have spaces", v)
+	}
+	matchesSuffix := func(s Subject) bool {
+		return s == ">" || strings.HasSuffix(string(s), ".>")
+	}
+	if matchesSuffix(v) != matchesSuffix(from) {
+		vr.AddError("both, renaming subject and subject, need to end or not end in >")
+	}
+	fromCnt := from.countTokenWildcards()
+	refCnt := 0
+	for _, tk := range strings.Split(string(v), ".") {
+		if tk == "*" {
+			refCnt++
+		}
+		if len(tk) < 2 {
+			continue
+		}
+		if tk[0] == '$' {
+			if idx, err := strconv.Atoi(tk[1:]); err == nil {
+				if idx > fromCnt {
+					vr.AddError("Reference $%d in %q reference * in %q that do not exist", idx, s, from)
+				} else {
+					refCnt++
+				}
+			}
+		}
+	}
+	if refCnt != fromCnt {
+		vr.AddError("subject does not contain enough * or reference wildcards $[0-9]")
+	}
+}
+
+// Replaces reference tokens with *
+func (s RenamingSubject) ToSubject() Subject {
+	if !strings.Contains(string(s), "$") {
+		return Subject(s)
+	}
+	bldr := strings.Builder{}
+	tokens := strings.Split(string(s), ".")
+	for i, tk := range tokens {
+		convert := false
+		if len(tk) > 1 && tk[0] == '$' {
+			if _, err := strconv.Atoi(tk[1:]); err == nil {
+				convert = true
+			}
+		}
+		if convert {
+			bldr.WriteString("*")
+		} else {
+			bldr.WriteString(tk)
+		}
+		if i != len(tokens)-1 {
+			bldr.WriteString(".")
+		}
+	}
+	return Subject(bldr.String())
 }
 
 // Subject is a string that represents a NATS subject
@@ -86,6 +181,21 @@ func (s Subject) Validate(vr *ValidationResults) {
 	if strings.Contains(v, " ") {
 		vr.AddError("subject %q cannot have spaces", v)
 	}
+}
+
+func (s Subject) countTokenWildcards() int {
+	v := string(s)
+	if v == "*" {
+		return 1
+	}
+	cnt := strings.Count(v, ".*.")
+	if strings.HasSuffix(v, ".*") {
+		cnt++
+	}
+	if strings.HasPrefix(v, "*.") {
+		cnt++
+	}
+	return cnt
 }
 
 // HasWildCards is used to check if a subject contains a > or *
@@ -127,17 +237,6 @@ func (s Subject) IsContainedIn(other Subject) bool {
 	return true
 }
 
-// NamedSubject is the combination of a subject and a name for it
-type NamedSubject struct {
-	Name    string  `json:"name,omitempty"`
-	Subject Subject `json:"subject,omitempty"`
-}
-
-// Validate checks the subject
-func (ns *NamedSubject) Validate(vr *ValidationResults) {
-	ns.Subject.Validate(vr)
-}
-
 // TimeRange is used to represent a start and end time
 type TimeRange struct {
 	Start string `json:"start,omitempty"`
@@ -167,29 +266,35 @@ func (tr *TimeRange) Validate(vr *ValidationResults) {
 	}
 }
 
-// Limits are used to control acccess for users and importing accounts
 // Src is a comma separated list of CIDR specifications
+type UserLimits struct {
+	Src    CIDRList    `json:"src,omitempty"`
+	Times  []TimeRange `json:"times,omitempty"`
+	Locale string      `json:"times_location,omitempty"`
+}
+
+func (u *UserLimits) Empty() bool {
+	return reflect.DeepEqual(*u, UserLimits{})
+}
+
+func (u *UserLimits) IsUnlimited() bool {
+	return len(u.Src) == 0 && len(u.Times) == 0
+}
+
+// Limits are used to control acccess for users and importing accounts
 type Limits struct {
-	Max     int64       `json:"max,omitempty"`
-	Payload int64       `json:"payload,omitempty"`
-	Src     string      `json:"src,omitempty"`
-	Times   []TimeRange `json:"times,omitempty"`
+	UserLimits
+	NatsLimits
+}
+
+func (l *Limits) IsUnlimited() bool {
+	return l.UserLimits.IsUnlimited() && l.NatsLimits.IsUnlimited()
 }
 
 // Validate checks the values in a limit struct
 func (l *Limits) Validate(vr *ValidationResults) {
-	if l.Max < 0 {
-		vr.AddError("limits cannot contain a negative maximum, %d", l.Max)
-	}
-	if l.Payload < 0 {
-		vr.AddError("limits cannot contain a negative payload, %d", l.Payload)
-	}
-
-	if l.Src != "" {
-		elements := strings.Split(l.Src, ",")
-
-		for _, cidr := range elements {
-			cidr = strings.TrimSpace(cidr)
+	if len(l.Src) != 0 {
+		for _, cidr := range l.Src {
 			_, ipNet, err := net.ParseCIDR(cidr)
 			if err != nil || ipNet == nil {
 				vr.AddError("invalid cidr %q in user src limits", cidr)
@@ -202,6 +307,12 @@ func (l *Limits) Validate(vr *ValidationResults) {
 			t.Validate(vr)
 		}
 	}
+
+	if l.Locale != "" {
+		if _, err := time.LoadLocation(l.Locale); err != nil {
+			vr.AddError("could not parse iana time zone by name: %v", err)
+		}
+	}
 }
 
 // Permission defines allow/deny subjects
@@ -210,13 +321,33 @@ type Permission struct {
 	Deny  StringList `json:"deny,omitempty"`
 }
 
+func (p *Permission) Empty() bool {
+	return len(p.Allow) == 0 && len(p.Deny) == 0
+}
+
+func checkPermission(vr *ValidationResults, subj string, permitQueue bool) {
+	tk := strings.Split(subj, " ")
+	switch len(tk) {
+	case 1:
+		Subject(tk[0]).Validate(vr)
+	case 2:
+		Subject(tk[0]).Validate(vr)
+		Subject(tk[1]).Validate(vr)
+		if !permitQueue {
+			vr.AddError(`Permission Subject "%s" is not allowed to contain queue`, subj)
+		}
+	default:
+		vr.AddError(`Permission Subject "%s" contains too many spaces`, subj)
+	}
+}
+
 // Validate the allow, deny elements of a permission
-func (p *Permission) Validate(vr *ValidationResults) {
+func (p *Permission) Validate(vr *ValidationResults, permitQueue bool) {
 	for _, subj := range p.Allow {
-		Subject(subj).Validate(vr)
+		checkPermission(vr, subj, permitQueue)
 	}
 	for _, subj := range p.Deny {
-		Subject(subj).Validate(vr)
+		checkPermission(vr, subj, permitQueue)
 	}
 }
 
@@ -228,7 +359,7 @@ type ResponsePermission struct {
 }
 
 // Validate the response permission.
-func (p *ResponsePermission) Validate(vr *ValidationResults) {
+func (p *ResponsePermission) Validate(_ *ValidationResults) {
 	// Any values can be valid for now.
 }
 
@@ -241,11 +372,11 @@ type Permissions struct {
 
 // Validate the pub and sub fields in the permissions list
 func (p *Permissions) Validate(vr *ValidationResults) {
-	p.Pub.Validate(vr)
-	p.Sub.Validate(vr)
 	if p.Resp != nil {
 		p.Resp.Validate(vr)
 	}
+	p.Sub.Validate(vr, true)
+	p.Pub.Validate(vr, false)
 }
 
 // StringList is a wrapper for an array of strings
@@ -289,7 +420,7 @@ type TagList []string
 
 // Contains returns true if the list contains the tags
 func (u *TagList) Contains(p string) bool {
-	p = strings.ToLower(p)
+	p = strings.ToLower(strings.TrimSpace(p))
 	for _, t := range *u {
 		if t == p {
 			return true
@@ -301,7 +432,7 @@ func (u *TagList) Contains(p string) bool {
 // Add appends 1 or more tags to a list
 func (u *TagList) Add(p ...string) {
 	for _, v := range p {
-		v = strings.ToLower(v)
+		v = strings.ToLower(strings.TrimSpace(v))
 		if !u.Contains(v) && v != "" {
 			*u = append(*u, v)
 		}
@@ -311,7 +442,7 @@ func (u *TagList) Add(p ...string) {
 // Remove removes 1 or more tags from a list
 func (u *TagList) Remove(p ...string) {
 	for _, v := range p {
-		v = strings.ToLower(v)
+		v = strings.ToLower(strings.TrimSpace(v))
 		for i, t := range *u {
 			if t == v {
 				a := *u
@@ -322,13 +453,36 @@ func (u *TagList) Remove(p ...string) {
 	}
 }
 
-// Identity is used to associate an account or operator with a real entity
-type Identity struct {
-	ID    string `json:"id,omitempty"`
-	Proof string `json:"proof,omitempty"`
+type CIDRList TagList
+
+func (c *CIDRList) Contains(p string) bool {
+	return (*TagList)(c).Contains(p)
 }
 
-// Validate checks the values in an Identity
-func (u *Identity) Validate(vr *ValidationResults) {
-	//Fixme identity validation
+func (c *CIDRList) Add(p ...string) {
+	(*TagList)(c).Add(p...)
+}
+
+func (c *CIDRList) Remove(p ...string) {
+	(*TagList)(c).Remove(p...)
+}
+
+func (c *CIDRList) Set(values string) {
+	*c = CIDRList{}
+	c.Add(strings.Split(strings.ToLower(values), ",")...)
+}
+
+func (c *CIDRList) UnmarshalJSON(body []byte) (err error) {
+	// parse either as array of strings or comma separate list
+	var request []string
+	var list string
+	if err := json.Unmarshal(body, &request); err == nil {
+		*c = request
+		return nil
+	} else if err := json.Unmarshal(body, &list); err == nil {
+		c.Set(list)
+		return nil
+	} else {
+		return err
+	}
 }

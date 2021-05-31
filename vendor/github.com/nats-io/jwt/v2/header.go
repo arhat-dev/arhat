@@ -23,15 +23,18 @@ import (
 
 const (
 	// Version is semantic version.
-	Version = "1.2.2"
+	Version = "2.0.2"
 
 	// TokenTypeJwt is the JWT token type supported JWT tokens
 	// encoded and decoded by this library
-	TokenTypeJwt = "jwt"
+	// from RFC7519 5.1 "typ":
+	// it is RECOMMENDED that "JWT" always be spelled using uppercase characters for compatibility
+	TokenTypeJwt = "JWT"
 
 	// AlgorithmNkey is the algorithm supported by JWT tokens
 	// encoded and decoded by this library
-	AlgorithmNkey = "ed25519"
+	AlgorithmNkeyOld = "ed25519"
+	AlgorithmNkey    = AlgorithmNkeyOld + "-nkey"
 )
 
 // Header is a JWT Jose Header
@@ -60,14 +63,15 @@ func parseHeaders(s string) (*Header, error) {
 // Valid validates the Header. It returns nil if the Header is
 // a JWT header, and the algorithm used is the NKEY algorithm.
 func (h *Header) Valid() error {
-	if TokenTypeJwt != strings.ToLower(h.Type) {
+	if TokenTypeJwt != strings.ToUpper(h.Type) {
 		return fmt.Errorf("not supported type %q", h.Type)
 	}
 
-	if alg := strings.ToLower(h.Algorithm); alg != AlgorithmNkey {
-		if alg == "ed25519-nkey" {
-			return fmt.Errorf("more recent jwt version")
-		}
+	alg := strings.ToLower(h.Algorithm)
+	if !strings.HasPrefix(alg, AlgorithmNkeyOld) {
+		return fmt.Errorf("unexpected %q algorithm", h.Algorithm)
+	}
+	if AlgorithmNkeyOld != alg && AlgorithmNkey != alg {
 		return fmt.Errorf("unexpected %q algorithm", h.Algorithm)
 	}
 	return nil

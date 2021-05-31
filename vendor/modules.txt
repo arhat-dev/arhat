@@ -91,7 +91,7 @@ github.com/cespare/xxhash/v2
 github.com/containerd/cgroups/stats/v1
 # github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 github.com/coreos/go-systemd/dbus
-# github.com/creack/pty v1.1.11 => github.com/jeffreystoke/pty v1.1.12-0.20210531072317-7306c72011c4
+# github.com/creack/pty v1.1.11 => github.com/jeffreystoke/pty v1.1.12-0.20210531091229-b834701fbcc6
 github.com/creack/pty
 # github.com/denisbrodbeck/machineid v1.0.1
 ## explicit
@@ -183,25 +183,25 @@ github.com/mdlayher/wifi/internal/nl80211
 # github.com/mholt/archiver/v3 v3.5.0
 ## explicit
 github.com/mholt/archiver/v3
-# github.com/mssola/user_agent v0.5.2
+# github.com/mssola/user_agent v0.5.3
 ## explicit
 github.com/mssola/user_agent
-# github.com/nats-io/jwt v1.2.2
+# github.com/nats-io/jwt/v2 v2.0.2
 ## explicit
-github.com/nats-io/jwt
+github.com/nats-io/jwt/v2
 # github.com/nats-io/nats-streaming-server v0.19.0
 ## explicit
-# github.com/nats-io/nats.go v1.10.0
+# github.com/nats-io/nats.go v1.11.0
 ## explicit
 github.com/nats-io/nats.go
 github.com/nats-io/nats.go/encoders/builtin
 github.com/nats-io/nats.go/util
-# github.com/nats-io/nkeys v0.2.0
+# github.com/nats-io/nkeys v0.3.0
 ## explicit
 github.com/nats-io/nkeys
 # github.com/nats-io/nuid v1.0.1
 github.com/nats-io/nuid
-# github.com/nats-io/stan.go v0.8.2
+# github.com/nats-io/stan.go v0.9.0
 ## explicit
 github.com/nats-io/stan.go
 github.com/nats-io/stan.go/pb
@@ -374,7 +374,7 @@ go.uber.org/zap/internal/bufferpool
 go.uber.org/zap/internal/color
 go.uber.org/zap/internal/exit
 go.uber.org/zap/zapcore
-# golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad => github.com/golang/crypto v0.0.0-20210513164829-c07d793c2f9a
+# golang.org/x/crypto v0.0.0-20210314154223-e6e6c4f2bb5b => github.com/golang/crypto v0.0.0-20210513164829-c07d793c2f9a
 golang.org/x/crypto/cryptobyte
 golang.org/x/crypto/cryptobyte/asn1
 golang.org/x/crypto/curve25519
@@ -396,7 +396,7 @@ golang.org/x/net/trace
 # golang.org/x/sync v0.0.0-20210220032951-036812b2e83c => github.com/golang/sync v0.0.0-20210220032951-036812b2e83c
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.0.0-20210525143221-35b2ab0089ea => github.com/golang/sys v0.0.0-20210525143221-35b2ab0089ea
+# golang.org/x/sys v0.0.0-20210531080801-fdfd190a6549 => github.com/golang/sys v0.0.0-20210531080801-fdfd190a6549
 ## explicit
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
@@ -503,7 +503,7 @@ nhooyr.io/websocket/internal/bpool
 nhooyr.io/websocket/internal/errd
 nhooyr.io/websocket/internal/wsjs
 nhooyr.io/websocket/internal/xsync
-# github.com/creack/pty => github.com/jeffreystoke/pty v1.1.12-0.20210531072317-7306c72011c4
+# github.com/creack/pty => github.com/jeffreystoke/pty v1.1.12-0.20210531091229-b834701fbcc6
 # github.com/dsnet/golib => github.com/dsnet/golib v0.0.0-20200723050859-c110804dfa93
 # github.com/fsnotify/fsnotify => github.com/fsnotify/fsnotify v1.4.9
 # github.com/klauspost/compress => github.com/klauspost/compress v1.12.3
@@ -530,7 +530,7 @@ nhooyr.io/websocket/internal/xsync
 # golang.org/x/lint => github.com/golang/lint v0.0.0-20210508222113-6edffad5e616
 # golang.org/x/net => github.com/golang/net v0.0.0-20210525063256-abc453219eb5
 # golang.org/x/sync => github.com/golang/sync v0.0.0-20210220032951-036812b2e83c
-# golang.org/x/sys => github.com/golang/sys v0.0.0-20210525143221-35b2ab0089ea
+# golang.org/x/sys => github.com/golang/sys v0.0.0-20210531080801-fdfd190a6549
 # golang.org/x/text => github.com/golang/text v0.3.6
 # golang.org/x/tools => github.com/golang/tools v0.1.2
 # golang.org/x/xerrors => github.com/golang/xerrors v0.0.0-20200804184101-5ec99f83aff1
@@ -544,8 +544,8 @@ nhooyr.io/websocket/internal/xsync
 # k8s.io/cluster-bootstrap => github.com/kubernetes/cluster-bootstrap v0.20.7
 # k8s.io/code-generator => github.com/kubernetes/code-generator v0.20.7
 # k8s.io/component-base => github.com/kubernetes/component-base v0.20.7
-# k8s.io/component-helpers => k8s.io/component-helpers v0.20.7
-# k8s.io/controller-manager => k8s.io/controller-manager v0.20.7
+# k8s.io/component-helpers => github.com/kubernetes/component-helpers v0.20.7
+# k8s.io/controller-manager => github.com/kubernetes/controller-manager v0.20.7
 # k8s.io/cri-api => github.com/kubernetes/cri-api v0.20.7
 # k8s.io/csi-translation-lib => github.com/kubernetes/csi-translation-lib v0.20.7
 # k8s.io/klog => github.com/kubernetes/klog v1.0.0
@@ -559,8 +559,8 @@ nhooyr.io/websocket/internal/xsync
 # k8s.io/kubernetes => github.com/kubernetes/kubernetes v1.20.7
 # k8s.io/legacy-cloud-providers => github.com/kubernetes/legacy-cloud-providers v0.20.7
 # k8s.io/metrics => github.com/kubernetes/metrics v0.20.7
-# k8s.io/mount-utils => k8s.io/mount-utils v0.20.7
+# k8s.io/mount-utils => github.com/kubernetes/mount-utils v0.20.7
 # k8s.io/sample-apiserver => github.com/kubernetes/sample-apiserver v0.20.7
-# k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.20.7
-# k8s.io/sample-controller => k8s.io/sample-controller v0.20.7
+# k8s.io/sample-cli-plugin => github.com/kubernetes/sample-cli-plugin v0.20.7
+# k8s.io/sample-controller => github.com/kubernetes/sample-controller v0.20.7
 # k8s.io/utils => github.com/kubernetes/utils v0.0.0-20210527160623-6fdb442a123b
