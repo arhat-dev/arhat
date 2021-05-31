@@ -98,7 +98,6 @@ arhat.linux.all: \
 arhat.darwin.amd64:
 	sh scripts/build/build.sh $@
 
-# currently darwin/arm64 build will fail due to golang link error
 arhat.darwin.arm64:
 	sh scripts/build/build.sh $@
 
